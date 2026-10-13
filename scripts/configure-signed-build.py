@@ -46,7 +46,7 @@ def main():
                 CFBundleShortVersionString="$(MARKETING_VERSION)", CFBundleVersion="$(CURRENT_PROJECT_VERSION)",
                 JotleyCloudKitContainerIdentifier=args.container, ITSAppUsesNonExemptEncryption=False)
     if args.platform == "ios":
-        info["UIBackgroundModes"] = ["audio", "remote-notification"]
+        info["UIBackgroundModes"] = list(dict.fromkeys(info.get("UIBackgroundModes", []) + ["remote-notification"]))
     with (source / "Jotley.entitlements").open("rb") as handle:
         entitlements = plistlib.load(handle)
     entitlements.update({"com.apple.developer.icloud-container-identifiers": [args.container],

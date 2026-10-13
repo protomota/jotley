@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject the model-variant imports missing from tested iOS 27 runtimes."""
+"""Verify model linkage and the exported iOS summary background configuration."""
 import argparse
 from pathlib import Path
 import plistlib
@@ -31,6 +31,12 @@ def main():
         if len(infos) != 1:
             raise SystemExit("Expected one main app in the IPA.")
         info = plistlib.loads(archive.read(infos[0]))
+        identifiers = info.get("BGTaskSchedulerPermittedIdentifiers", [])
+        if any(".summary." in item for item in identifiers):
+            expected = info["CFBundleIdentifier"] + ".summary.*"
+            if expected not in identifiers or "processing" not in info.get("UIBackgroundModes", []):
+                raise SystemExit("Exported summary background processing registration or mode is missing.")
+            print("Verified: exported summary background identifier and processing mode.")
         executable = info["CFBundleExecutable"]
         if Path(executable).name != executable:
             raise SystemExit("Invalid app executable name.")
