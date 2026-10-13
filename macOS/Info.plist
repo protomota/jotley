@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Jotley Local Development</string>
+	<key>CFBundleExecutable</key>
+	<string>Jotley</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Jotley</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>336</string>
+	<key>JotleyEnableSparkle</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://jotley.ai/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>oVkqL3P3OGrwFhzgcWJQcF2dQ2Dn2rBvlB3bNOXGZSc=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUEnableDownloaderService</key>
+	<true/>
+	<key>SUSendProfileInfo</key>
+	<false/>
+	<key>LSMinimumSystemVersion</key>
+	<string>27.0</string>
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Jotley needs access to record system audio for transcription.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Jotley needs microphone access to record audio input alongside system audio.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Jotley transcribes saved audio using installed on-device speech models.</string>
+</dict>
+</plist>

@@ -1,0 +1,69 @@
+.DS_Store
+.build
+.swiftpm
+
+# Environment files - NEVER commit!
+.env
+.env.*
+.env.notarization
+*.bin
+*.mlmodelc
+JotVibe/LLM/*
+
+# Build and release directories
+build/
+releases/
+
+# Sparkle signing keys (NEVER commit private keys!)
+sparkle-keys/
+dsa_priv.pem
+sparkle_private_key.pem
+
+# Export options (may contain team IDs)
+ExportOptions.plist
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/.env
+fastlane/README.md
+
+# Build artifacts
+*.ipa
+*.dSYM.zip
+*.app.dSYM.zip
+
+# Ruby
+.bundle
+vendor/bundle
+Gemfile.lock
+
+Jotley.xcodeproj/project.xcworkspace/xcuserdata/brad.xcuserdatad/UserInterfaceState.xcuserstate
+*.xcuserstate
+
+# UI Test Credentials (never commit real tokens)
+JotleyUITests-iOS/TestHelpers/TestCredentials.plist
+JotleyUITests-iOS/*.credentials
+JotleyUITests-macOS/TestHelpers/TestCredentials.plist
+JotleyUITests-macOS/*.credentials
+SECURITY_AUDIT.md
+SECURITY_REMEDIATION.md
+
+# MCP (never commit tokens)
+.mcp.json
+.mcp.local.json
+
+.sentryclirc
+.env.local
+build-local/
+releases-deploy/
+releases-local/
+
+# Owner signing/release configuration and credentials stay private.
+.private-release/
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile

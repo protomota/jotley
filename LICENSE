@@ -1,0 +1,85 @@
+Jotley Source-Available License 1.0
+Copyright (c) 2026 Protomota, LLC
+
+1. Scope
+
+This license applies to Jotley's original source code, build scripts,
+documentation and artwork owned by Protomota, LLC (the "Software"), unless
+an item is expressly covered by a separate license. Third-party material
+is excluded and retains its own license as explained in section 5.
+
+2. Use, modification and noncommercial redistribution
+
+Permission is granted, free of charge, to inspect, copy, build, use and
+modify the Software for personal, educational, nonprofit and business
+purposes, including paid work and internal business use. You may share
+copies within your organization solely for that internal use.
+
+You may redistribute the Software, including modified source and compiled
+versions, only noncommercially and subject to section 4. Noncommercial
+redistribution means providing copies without payment or other commercial
+consideration and without incorporating the Software into a commercial
+product or monetized software service.
+
+3. Commercial distribution requires permission; paid work is allowed
+
+Without separate written permission from Protomota, LLC, you may not sell
+or commercially license the Software, distribute it as part of a commercial
+product, or offer its functionality as a paid or otherwise monetized
+software service. This restriction applies to source code, compiled apps,
+modified versions and portions of Jotley's original code. Contact
+jotly-legal@protomota.com for commercial distribution permission.
+
+Using Jotley or an internally modified version at work, recording client
+meetings, preparing paid deliverables and using the resulting notes,
+transcripts or summaries commercially are permitted. Selling your own
+outputs or providing professional services using those outputs is not
+commercial distribution of the Software. This license does not restrict
+user-created recordings, notes, transcripts, summaries or other outputs;
+any separate rights in material supplied by users remain applicable.
+
+The official Jotley app distributed by Protomota, LLC remains free to use
+for personal and business purposes. Its distribution channel may have
+separate end-user terms. This source license does not impose a payment,
+subscription or restriction on paid work performed with that app.
+
+4. Notices and redistribution conditions
+
+Include this license and applicable copyright and third-party notices
+with every redistributed copy or substantial portion of the Software.
+Identify your modifications and do not represent a modified version as
+an official Protomota release. Your distribution of Jotley's original
+material must preserve the permissions and restrictions of this license;
+it cannot grant commercial distribution rights you have not received.
+This license grants no trademark rights or endorsement by Protomota or
+any third-party brand owner.
+
+5. Independent third-party rights
+
+Third-party source code and assets retain their existing licenses,
+including AudioCap-derived material under the BSD-2-Clause license in
+docs/Rambo-BSD-2-Clause.txt and Comfortaa under the SIL Open Font License
+in Comfortaa-OFL.txt. Preserve those notices and comply with their terms.
+
+Nothing in this license narrows permissions granted by a third-party
+license, including any commercial use or redistribution it permits.
+Those permissions apply to the separately licensed third-party material;
+they do not grant commercial distribution rights to Jotley's original
+material or to a combined app containing that material.
+
+6. Earlier licenses
+
+Copies of Jotley's original material previously received under MIT or
+another license retain the permissions granted for those copies. This
+license does not retroactively revoke those permissions or relicense
+third-party material.
+
+7. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.

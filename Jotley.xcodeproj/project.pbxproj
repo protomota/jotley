@@ -1,0 +1,2131 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 70;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1FA1E1A17AA00E4B4E11A622 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB11239D313826CEC1D213A0 /* AppIcon.icon */; };
+		A2BBE437307D9B1C009F7720 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BBE436307D9B1C009F7720 /* WidgetKit.framework */; };
+		A2BBE439307D9B1C009F7720 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BBE438307D9B1C009F7720 /* SwiftUI.framework */; };
+		A2BBE446307D9B1D009F7720 /* JotleyWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A2BBE435307D9B1C009F7720 /* JotleyWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A2EA9104307B41D700AAB201 /* JotleyNotes.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = A2EA90ED307B41D700AAB201 /* JotleyNotes.xcdatamodeld */; };
+		A2EA9105307B41D700AAB201 /* CoreAudioUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA90E1307B41D700AAB201 /* CoreAudioUtils.swift */; };
+		A2EA9106307B41D700AAB201 /* JotleyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA90E9307B41D700AAB201 /* JotleyApp.swift */; };
+		A2EA9109307B41EB00AAB201 /* JotleyUITests_macOS.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9107307B41EB00AAB201 /* JotleyUITests_macOS.swift */; };
+		A2EA916B307B452800AAB201 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2EA9110307B452800AAB201 /* Preview Assets.xcassets */; };
+		A2EA916C307B452800AAB201 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2EA9163307B452800AAB201 /* Assets.xcassets */; };
+		A2EA916F307B452800AAB201 /* NotesListView+PreviewAndAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9150307B452800AAB201 /* NotesListView+PreviewAndAlerts.swift */; };
+		A2EA9170307B452800AAB201 /* PermissionsRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9152307B452800AAB201 /* PermissionsRequestView.swift */; };
+		A2EA9171307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9121307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift */; };
+		A2EA9172307B452800AAB201 /* NoteDetailPlaceholderView+ScrollAndTabControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9142307B452800AAB201 /* NoteDetailPlaceholderView+ScrollAndTabControls.swift */; };
+		A2EA9173307B452800AAB201 /* NoteDetailPlaceholderView+EventHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913E307B452800AAB201 /* NoteDetailPlaceholderView+EventHandlers.swift */; };
+		A2EA9174307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9137307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopover.swift */; };
+		A2EA9175307B452800AAB201 /* NotesListView+NewNotePopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914F307B452800AAB201 /* NotesListView+NewNotePopover.swift */; };
+		A2EA9176307B452800AAB201 /* ProcessTapRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9115307B452800AAB201 /* ProcessTapRecorder.swift */; };
+		A2EA9177307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9139307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift */; };
+		A2EA9178307B452800AAB201 /* RecordingWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9154307B452800AAB201 /* RecordingWidgetView.swift */; };
+		A2EA9179307B452800AAB201 /* NoteDetailPlaceholderView+Folder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913F307B452800AAB201 /* NoteDetailPlaceholderView+Folder.swift */; };
+		A2EA917B307B452800AAB201 /* DetailTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9130307B452800AAB201 /* DetailTab.swift */; };
+		A2EA917C307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9146307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift */; };
+		A2EA917D307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9144307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift */; };
+		A2EA917E307B452800AAB201 /* TagView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915F307B452800AAB201 /* TagView.swift */; };
+		A2EA917F307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */; };
+		A2EA9180307B452800AAB201 /* PersistenceControllerCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA910C307B452800AAB201 /* PersistenceControllerCompat.swift */; };
+		A2EA9181307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913A307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift */; };
+		A2EA9182307B452800AAB201 /* MeetingRecordingSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911A307B452800AAB201 /* MeetingRecordingSettings.swift */; };
+		A2EA9183307B452800AAB201 /* RecordingWidgetController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911B307B452800AAB201 /* RecordingWidgetController.swift */; };
+		A2EA9184307B452800AAB201 /* TagSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915E307B452800AAB201 /* TagSidebarView.swift */; };
+		A2EA9185307B452800AAB201 /* NoteDetailPlaceholderView+MetadataContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9140307B452800AAB201 /* NoteDetailPlaceholderView+MetadataContent.swift */; };
+		A2EA9186307B452800AAB201 /* ExpandedTranscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9132307B452800AAB201 /* ExpandedTranscriptionView.swift */; };
+		A2EA9187307B452800AAB201 /* SettingsView+ObsidianTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915B307B452800AAB201 /* SettingsView+ObsidianTab.swift */; };
+		A2EA9188307B452800AAB201 /* CustomOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912B307B452800AAB201 /* CustomOverlays.swift */; };
+		A2EA9189307B452800AAB201 /* NoteDetailPlaceholderView+Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913C307B452800AAB201 /* NoteDetailPlaceholderView+Content.swift */; };
+		A2EA918A307B452800AAB201 /* NoteDetailPlaceholderView+ToolbarActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9145307B452800AAB201 /* NoteDetailPlaceholderView+ToolbarActions.swift */; };
+		A2EA918B307B452800AAB201 /* NoteListSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9148307B452800AAB201 /* NoteListSectionView.swift */; };
+		A2EA918C307B452800AAB201 /* NotesListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911D307B452800AAB201 /* NotesListViewModel.swift */; };
+		A2EA918D307B452800AAB201 /* TranscriptionTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9124307B452800AAB201 /* TranscriptionTabView.swift */; };
+		A2EA918E307B452800AAB201 /* NotesListView+Filtering.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914C307B452800AAB201 /* NotesListView+Filtering.swift */; };
+		A2EA918F307B452800AAB201 /* TranscriptionPreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9161307B452800AAB201 /* TranscriptionPreviewViews.swift */; };
+		A2EA9190307B452800AAB201 /* CustomTooltip+ThemedTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912E307B452800AAB201 /* CustomTooltip+ThemedTextField.swift */; };
+		A2EA9191307B452800AAB201 /* NotesListView+WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9151307B452800AAB201 /* NotesListView+WelcomeView.swift */; };
+		A2EA9192307B452800AAB201 /* DetailTabViewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9131307B452800AAB201 /* DetailTabViewPanel.swift */; };
+		A2EA9193307B452800AAB201 /* NotesListView+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914B307B452800AAB201 /* NotesListView+Commands.swift */; };
+		A2EA9194307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915D307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift */; };
+		A2EA9195307B452800AAB201 /* NSImage+Resize.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA910E307B452800AAB201 /* NSImage+Resize.swift */; };
+		A2EA9196307B452800AAB201 /* CustomTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912C307B452800AAB201 /* CustomTooltip.swift */; };
+		A2EA9197307B452800AAB201 /* RootView+PermissionGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9156307B452800AAB201 /* RootView+PermissionGateView.swift */; };
+		A2EA9198307B452800AAB201 /* NoteDetailPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9136307B452800AAB201 /* NoteDetailPlaceholderView.swift */; };
+		A2EA9199307B452800AAB201 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9155307B452800AAB201 /* RootView.swift */; };
+		A2EA919A307B452800AAB201 /* SettingsView+Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915C307B452800AAB201 /* SettingsView+Sidebar.swift */; };
+		A2EA919B307B452800AAB201 /* ButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9129307B452800AAB201 /* ButtonStyles.swift */; };
+		A2EA919D307B452800AAB201 /* RecordingWidgetPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9153307B452800AAB201 /* RecordingWidgetPanel.swift */; };
+		A2EA919E307B452800AAB201 /* ContentLayoutConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912A307B452800AAB201 /* ContentLayoutConstants.swift */; };
+		A2EA919F307B452800AAB201 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9169307B452800AAB201 /* WindowAccessor.swift */; };
+		A2EA91A0307B452800AAB201 /* TemplateSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9160307B452800AAB201 /* TemplateSelectionView.swift */; };
+		A2EA91A1307B452800AAB201 /* SummaryTabView+SelectableTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */; };
+		A2EA91A3307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9143307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift */; };
+		A2EA91A4307B452800AAB201 /* PointerCursorModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9126307B452800AAB201 /* PointerCursorModifier.swift */; };
+		A2EA91A5307B452800AAB201 /* ThemeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9118307B452800AAB201 /* ThemeColors.swift */; };
+		A2EA91A6307B452800AAB201 /* NoteDetailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9135307B452800AAB201 /* NoteDetailComponents.swift */; };
+		A2EA91A7307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9138307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift */; };
+		A2EA91A8307B452800AAB201 /* NotesListView+Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914A307B452800AAB201 /* NotesListView+Body.swift */; };
+		A2EA91A9307B452800AAB201 /* RootView+SupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9157307B452800AAB201 /* RootView+SupportViews.swift */; };
+		A2EA91AA307B452800AAB201 /* SettingsView+ContentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9159307B452800AAB201 /* SettingsView+ContentRouter.swift */; };
+		A2EA91AB307B452800AAB201 /* NoteDetailPlaceholderView+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9141307B452800AAB201 /* NoteDetailPlaceholderView+Persistence.swift */; };
+		A2EA91AC307B452800AAB201 /* FolderSidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9134307B452800AAB201 /* FolderSidebarView.swift */; };
+		A2EA91AD307B452800AAB201 /* NoteListRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9147307B452800AAB201 /* NoteListRowView.swift */; };
+		A2EA91AE307B452800AAB201 /* CustomTooltip+ThemedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912D307B452800AAB201 /* CustomTooltip+ThemedTextEditor.swift */; };
+		A2EA91AF307B452800AAB201 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9158307B452800AAB201 /* SettingsView.swift */; };
+		A2EA91B0307B452800AAB201 /* SFRoundedFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9117307B452800AAB201 /* SFRoundedFonts.swift */; };
+		A2EA91B1307B452800AAB201 /* NotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9149307B452800AAB201 /* NotesListView.swift */; };
+		A2EA91B2307B452800AAB201 /* NoteDetailPlaceholderView+Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913D307B452800AAB201 /* NoteDetailPlaceholderView+Core.swift */; };
+		A2EA91B3307B452800AAB201 /* AudioRecordingPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9112307B452800AAB201 /* AudioRecordingPermission.swift */; };
+		A2EA91B4307B452800AAB201 /* JotleyAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9168307B452800AAB201 /* JotleyAppDelegate.swift */; };
+		A2EA91B5307B452800AAB201 /* AddTagPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9128307B452800AAB201 /* AddTagPopoverView.swift */; };
+		A2EA91B6307B452800AAB201 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9133307B452800AAB201 /* FlowLayout.swift */; };
+		A2EA91B7307B452800AAB201 /* SummaryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9120307B452800AAB201 /* SummaryTabView.swift */; };
+		A2EA91B8307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913B307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift */; };
+		A2EA91B9307B452800AAB201 /* DescriptionTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911F307B452800AAB201 /* DescriptionTabView.swift */; };
+		A2EA91BA307B452800AAB201 /* ProcessTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9114307B452800AAB201 /* ProcessTap.swift */; };
+		A2EA91BB307B452800AAB201 /* SettingsView+GeneralTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915A307B452800AAB201 /* SettingsView+GeneralTab.swift */; };
+		A2EA91BC307B452800AAB201 /* NotesListView+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914D307B452800AAB201 /* NotesListView+Helpers.swift */; };
+		A2EA91BD307B452800AAB201 /* NotesListView+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914E307B452800AAB201 /* NotesListView+Layout.swift */; };
+		A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91C9307B453D00AAB201 /* Comfortaa-Bold.ttf */; };
+		A2EA91E5307B453D00AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */; };
+		A2EA91E6307B453D00AAB201 /* RecordingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */; };
+		A2EA91E7307B453D00AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */; };
+		A2EA91E8307B453D00AAB201 /* RecordingMarker+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C6307B453D00AAB201 /* RecordingMarker+Extensions.swift */; };
+		A2EA91E9307B453D00AAB201 /* FilterAndSortState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C2307B453D00AAB201 /* FilterAndSortState.swift */; };
+		A2EA91EA307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D0307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift */; };
+		A2EA91EB307B453D00AAB201 /* Note+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C5307B453D00AAB201 /* Note+Extensions.swift */; };
+		A2EA91EC307B453D00AAB201 /* Folder+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C3307B453D00AAB201 /* Folder+Extensions.swift */; };
+		A2EA91ED307B453D00AAB201 /* SummarizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CF307B453D00AAB201 /* SummarizationService.swift */; };
+		A2EA91EE307B453D00AAB201 /* Font+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D3307B453D00AAB201 /* Font+Extensions.swift */; };
+		A2EA91EF307B453D00AAB201 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D1307B453D00AAB201 /* TranscriptionService.swift */; };
+		A2EA91F0307B453D00AAB201 /* SharedPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CE307B453D00AAB201 /* SharedPersistence.swift */; };
+		A2EA91F1307B453D00AAB201 /* SummaryEmptyStateContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */; };
+		A2EA91F2307B453D00AAB201 /* JotleyDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CC307B453D00AAB201 /* JotleyDefaults.swift */; };
+		A2EA91F3307B453D00AAB201 /* SharedThemeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D4307B453D00AAB201 /* SharedThemeColors.swift */; };
+		A2EA91F4307B453D00AAB201 /* String+MarkdownStripping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C0307B453D00AAB201 /* String+MarkdownStripping.swift */; };
+		A2EA91F5307B453D00AAB201 /* FilterAndSortPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D6307B453D00AAB201 /* FilterAndSortPopoverView.swift */; };
+		A2EA91F6307B453D00AAB201 /* RecordingSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C7307B453D00AAB201 /* RecordingSidecar.swift */; };
+		A2EA91F8307B453D00AAB201 /* FolderManagementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D7307B453D00AAB201 /* FolderManagementSheet.swift */; };
+		A2EA91FA307B486500AAB201 /* Rambo-BSD-2-Clause.txt in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */; };
+		A2EA91FC307B487600AAB201 /* Comfortaa-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */; };
+		A2EA924A307B523300AAB201 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9243307B523300AAB201 /* ShareSheet.swift */; };
+		A2EA924B307B523300AAB201 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923D307B523300AAB201 /* MainTabView.swift */; };
+		A2EA924C307B523300AAB201 /* iOSNewNoteMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9231307B523300AAB201 /* iOSNewNoteMenuView.swift */; };
+		A2EA924D307B523300AAB201 /* iOSNoteDetailView+Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9234307B523300AAB201 /* iOSNoteDetailView+Body.swift */; };
+		A2EA924E307B523300AAB201 /* iOSNoteRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9236307B523300AAB201 /* iOSNoteRowView.swift */; };
+		A2EA924F307B523300AAB201 /* iOSNotesListView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923A307B523300AAB201 /* iOSNotesListView+Actions.swift */; };
+		A2EA9250307B523300AAB201 /* iOSFolderDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9230307B523300AAB201 /* iOSFolderDrawer.swift */; };
+		A2EA9251307B523300AAB201 /* AudioRecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA922C307B523300AAB201 /* AudioRecordingManager.swift */; };
+		A2EA9252307B523300AAB201 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9242307B523300AAB201 /* SettingsView.swift */; };
+		A2EA9253307B523300AAB201 /* iOSNoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9233307B523300AAB201 /* iOSNoteDetailView.swift */; };
+		A2EA9254307B523300AAB201 /* iOSNotesListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9238307B523300AAB201 /* iOSNotesListItem.swift */; };
+		A2EA9255307B523300AAB201 /* iOSNotesListView+Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923C307B523300AAB201 /* iOSNotesListView+Sheets.swift */; };
+		A2EA9256307B523300AAB201 /* RecordingView+Waveform.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9241307B523300AAB201 /* RecordingView+Waveform.swift */; };
+		A2EA9257307B523300AAB201 /* iOSNotesListEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9237307B523300AAB201 /* iOSNotesListEmptyStateView.swift */; };
+		A2EA9258307B523300AAB201 /* RecordingModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923E307B523300AAB201 /* RecordingModalView.swift */; };
+		A2EA9259307B523300AAB201 /* iOSNoteDetailComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9232307B523300AAB201 /* iOSNoteDetailComponents.swift */; };
+		A2EA925A307B523300AAB201 /* iOSNoteFolderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9235307B523300AAB201 /* iOSNoteFolderRow.swift */; };
+		A2EA925B307B523300AAB201 /* iOSNotesListView+Data.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923B307B523300AAB201 /* iOSNotesListView+Data.swift */; };
+		A2EA925C307B523300AAB201 /* RecordingPlaybackFromNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9240307B523300AAB201 /* RecordingPlaybackFromNotesView.swift */; };
+		A2EA925D307B523300AAB201 /* iOSNotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9239307B523300AAB201 /* iOSNotesListView.swift */; };
+		A2EA925E307B523300AAB201 /* JotleyiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9248307B523300AAB201 /* JotleyiOSApp.swift */; };
+		A2EA925F307B523300AAB201 /* RecordingModalView+Sections.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA923F307B523300AAB201 /* RecordingModalView+Sections.swift */; };
+		A2EA9261307B523300AAB201 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2EA9245307B523300AAB201 /* Assets.xcassets */; };
+		A2EA9284307B532700AAB201 /* Comfortaa-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A2EA926B307B532700AAB201 /* Comfortaa-Bold.ttf */; };
+		A2EA9285307B532700AAB201 /* SummaryTitleReplacementPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9272307B532700AAB201 /* SummaryTitleReplacementPolicy.swift */; };
+		A2EA9286307B532700AAB201 /* FolderManagementSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9279307B532700AAB201 /* FolderManagementSheet.swift */; };
+		A2EA9287307B532700AAB201 /* JotleyDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA926E307B532700AAB201 /* JotleyDefaults.swift */; };
+		A2EA9288307B532700AAB201 /* FilterAndSortPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9278307B532700AAB201 /* FilterAndSortPopoverView.swift */; };
+		A2EA9289307B532700AAB201 /* RecordingSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9269307B532700AAB201 /* RecordingSidecar.swift */; };
+		A2EA928A307B532700AAB201 /* String+MarkdownStripping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9262307B532700AAB201 /* String+MarkdownStripping.swift */; };
+		A2EA928B307B532700AAB201 /* RecordingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA927A307B532700AAB201 /* RecordingIndicator.swift */; };
+		A2EA928C307B532700AAB201 /* SharedThemeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9276307B532700AAB201 /* SharedThemeColors.swift */; };
+		A2EA928D307B532700AAB201 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9273307B532700AAB201 /* TranscriptionService.swift */; };
+		A2EA928E307B532700AAB201 /* Folder+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9265307B532700AAB201 /* Folder+Extensions.swift */; };
+		A2EA928F307B532700AAB201 /* SummaryEmptyStateContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */; };
+		A2EA9290307B532700AAB201 /* Font+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9275307B532700AAB201 /* Font+Extensions.swift */; };
+		A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA926F307B532700AAB201 /* ServiceConstants.swift */; };
+		A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9264307B532700AAB201 /* FilterAndSortState.swift */; };
+		A2EA9293307B532700AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */; };
+		A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9270307B532700AAB201 /* SharedPersistence.swift */; };
+		A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9266307B532700AAB201 /* JotleyNotes.xcdatamodeld */; };
+		A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9271307B532700AAB201 /* SummarizationService.swift */; };
+		A2EA9297307B532700AAB201 /* RecordingMarker+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9268307B532700AAB201 /* RecordingMarker+Extensions.swift */; };
+		A2EA9298307B532700AAB201 /* Note+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9267307B532700AAB201 /* Note+Extensions.swift */; };
+		A2EA9299307B535700AAB201 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB11239D313826CEC1D213A0 /* AppIcon.icon */; };
+		A2EA929A307B536200AAB201 /* Comfortaa-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */; };
+		A2EA929C307BB12900AAB201 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = A2EA929B307BB12900AAB201 /* LICENSE */; };
+		A2EA929D307BB12900AAB201 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = A2EA929B307BB12900AAB201 /* LICENSE */; };
+		A2EA929E307BC9CF00AAB201 /* Rambo-BSD-2-Clause.txt in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */; };
+		A2EB8BED307D4385008E0696 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A2EB8BEC307D4385008E0696 /* Sparkle */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A25995592F2956C3002C9FDE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F47AD9362BF5B61E005B75AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F47AD93D2BF5B61E005B75AC;
+			remoteInfo = Jotley;
+		};
+		A2BBE444307D9B1D009F7720 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F47AD9362BF5B61E005B75AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A2BBE434307D9B1C009F7720;
+			remoteInfo = JotleyWidgetsExtension;
+		};
+		A2EA9212307B4F2C00AAB201 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F47AD9362BF5B61E005B75AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A2EA9200307B4F2B00AAB201;
+			remoteInfo = "Jotley-iOS";
+		};
+		A2EA921C307B4F2C00AAB201 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F47AD9362BF5B61E005B75AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A2EA9200307B4F2B00AAB201;
+			remoteInfo = "Jotley-iOS";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A2BBE44B307D9B1D009F7720 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A2BBE446307D9B1D009F7720 /* JotleyWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A23A1B782DDB6DE50068D823 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
+		A25995532F2956C3002C9FDE /* JotleyUITests-macOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "JotleyUITests-macOS.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2BBE435307D9B1C009F7720 /* JotleyWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JotleyWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2BBE436307D9B1C009F7720 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		A2BBE438307D9B1C009F7720 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		A2EA90DD307B41D700AAB201 /* Main.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Main.xcconfig; sourceTree = "<group>"; };
+		A2EA90DF307B41D700AAB201 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		A2EA90E1307B41D700AAB201 /* CoreAudioUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioUtils.swift; sourceTree = "<group>"; };
+		A2EA90E2307B41D700AAB201 /* ProcessTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTap.swift; sourceTree = "<group>"; };
+		A2EA90E3307B41D700AAB201 /* ProcessTapRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapRecorder.swift; sourceTree = "<group>"; };
+		A2EA90E5307B41D700AAB201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2EA90E6307B41D700AAB201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2EA90E7307B41D700AAB201 /* Jotley.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Jotley.entitlements; sourceTree = "<group>"; };
+		A2EA90E8307B41D700AAB201 /* Jotley-Development.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Jotley-Development.entitlements"; sourceTree = "<group>"; };
+		A2EA90E9307B41D700AAB201 /* JotleyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyApp.swift; sourceTree = "<group>"; };
+		A2EA90EB307B41D700AAB201 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A2EA90EF307B41D700AAB201 /* SharedPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPersistence.swift; sourceTree = "<group>"; };
+		A2EA90F0307B41D700AAB201 /* SummarizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummarizationService.swift; sourceTree = "<group>"; };
+		A2EA90F1307B41D700AAB201 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		A2EA90F4307B41D700AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
+		A2EA90F5307B41D700AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA90F6307B41D700AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA90F7307B41D700AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA90F8307B41D700AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA9107307B41EB00AAB201 /* JotleyUITests_macOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyUITests_macOS.swift; sourceTree = "<group>"; };
+		A2EA910A307B452800AAB201 /* Main.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Main.xcconfig; sourceTree = "<group>"; };
+		A2EA910C307B452800AAB201 /* PersistenceControllerCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceControllerCompat.swift; sourceTree = "<group>"; };
+		A2EA910E307B452800AAB201 /* NSImage+Resize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSImage+Resize.swift"; sourceTree = "<group>"; };
+		A2EA9110307B452800AAB201 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		A2EA9112307B452800AAB201 /* AudioRecordingPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingPermission.swift; sourceTree = "<group>"; };
+		A2EA9113307B452800AAB201 /* CoreAudioUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioUtils.swift; sourceTree = "<group>"; };
+		A2EA9114307B452800AAB201 /* ProcessTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTap.swift; sourceTree = "<group>"; };
+		A2EA9115307B452800AAB201 /* ProcessTapRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapRecorder.swift; sourceTree = "<group>"; };
+		A2EA9117307B452800AAB201 /* SFRoundedFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFRoundedFonts.swift; sourceTree = "<group>"; };
+		A2EA9118307B452800AAB201 /* ThemeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeColors.swift; sourceTree = "<group>"; };
+		A2EA911A307B452800AAB201 /* MeetingRecordingSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingRecordingSettings.swift; sourceTree = "<group>"; };
+		A2EA911B307B452800AAB201 /* RecordingWidgetController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingWidgetController.swift; sourceTree = "<group>"; };
+		A2EA911D307B452800AAB201 /* NotesListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListViewModel.swift; sourceTree = "<group>"; };
+		A2EA911F307B452800AAB201 /* DescriptionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescriptionTabView.swift; sourceTree = "<group>"; };
+		A2EA9120307B452800AAB201 /* SummaryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTabView.swift; sourceTree = "<group>"; };
+		A2EA9121307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+InlineEditableTextView.swift"; sourceTree = "<group>"; };
+		A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+MarkdownRendering.swift"; sourceTree = "<group>"; };
+		A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+SelectableTextView.swift"; sourceTree = "<group>"; };
+		A2EA9124307B452800AAB201 /* TranscriptionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionTabView.swift; sourceTree = "<group>"; };
+		A2EA9126307B452800AAB201 /* PointerCursorModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerCursorModifier.swift; sourceTree = "<group>"; };
+		A2EA9128307B452800AAB201 /* AddTagPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTagPopoverView.swift; sourceTree = "<group>"; };
+		A2EA9129307B452800AAB201 /* ButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonStyles.swift; sourceTree = "<group>"; };
+		A2EA912A307B452800AAB201 /* ContentLayoutConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentLayoutConstants.swift; sourceTree = "<group>"; };
+		A2EA912B307B452800AAB201 /* CustomOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomOverlays.swift; sourceTree = "<group>"; };
+		A2EA912C307B452800AAB201 /* CustomTooltip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTooltip.swift; sourceTree = "<group>"; };
+		A2EA912D307B452800AAB201 /* CustomTooltip+ThemedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CustomTooltip+ThemedTextEditor.swift"; sourceTree = "<group>"; };
+		A2EA912E307B452800AAB201 /* CustomTooltip+ThemedTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CustomTooltip+ThemedTextField.swift"; sourceTree = "<group>"; };
+		A2EA912F307B452800AAB201 /* DescriptionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescriptionTabView.swift; sourceTree = "<group>"; };
+		A2EA9130307B452800AAB201 /* DetailTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailTab.swift; sourceTree = "<group>"; };
+		A2EA9131307B452800AAB201 /* DetailTabViewPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailTabViewPanel.swift; sourceTree = "<group>"; };
+		A2EA9132307B452800AAB201 /* ExpandedTranscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedTranscriptionView.swift; sourceTree = "<group>"; };
+		A2EA9133307B452800AAB201 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		A2EA9134307B452800AAB201 /* FolderSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSidebarView.swift; sourceTree = "<group>"; };
+		A2EA9135307B452800AAB201 /* NoteDetailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailComponents.swift; sourceTree = "<group>"; };
+		A2EA9136307B452800AAB201 /* NoteDetailPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailPlaceholderView.swift; sourceTree = "<group>"; };
+		A2EA9137307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ActionsPopover.swift"; sourceTree = "<group>"; };
+		A2EA9138307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift"; sourceTree = "<group>"; };
+		A2EA9139307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift"; sourceTree = "<group>"; };
+		A2EA913A307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Body.swift"; sourceTree = "<group>"; };
+		A2EA913B307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ClipboardExport.swift"; sourceTree = "<group>"; };
+		A2EA913C307B452800AAB201 /* NoteDetailPlaceholderView+Content.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Content.swift"; sourceTree = "<group>"; };
+		A2EA913D307B452800AAB201 /* NoteDetailPlaceholderView+Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Core.swift"; sourceTree = "<group>"; };
+		A2EA913E307B452800AAB201 /* NoteDetailPlaceholderView+EventHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+EventHandlers.swift"; sourceTree = "<group>"; };
+		A2EA913F307B452800AAB201 /* NoteDetailPlaceholderView+Folder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Folder.swift"; sourceTree = "<group>"; };
+		A2EA9140307B452800AAB201 /* NoteDetailPlaceholderView+MetadataContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+MetadataContent.swift"; sourceTree = "<group>"; };
+		A2EA9141307B452800AAB201 /* NoteDetailPlaceholderView+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Persistence.swift"; sourceTree = "<group>"; };
+		A2EA9142307B452800AAB201 /* NoteDetailPlaceholderView+ScrollAndTabControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ScrollAndTabControls.swift"; sourceTree = "<group>"; };
+		A2EA9143307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+SummaryRecording.swift"; sourceTree = "<group>"; };
+		A2EA9144307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+Tags.swift"; sourceTree = "<group>"; };
+		A2EA9145307B452800AAB201 /* NoteDetailPlaceholderView+ToolbarActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteDetailPlaceholderView+ToolbarActions.swift"; sourceTree = "<group>"; };
+		A2EA9146307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailPlaceholderViewActions.swift; sourceTree = "<group>"; };
+		A2EA9147307B452800AAB201 /* NoteListRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListRowView.swift; sourceTree = "<group>"; };
+		A2EA9148307B452800AAB201 /* NoteListSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListSectionView.swift; sourceTree = "<group>"; };
+		A2EA9149307B452800AAB201 /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
+		A2EA914A307B452800AAB201 /* NotesListView+Body.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+Body.swift"; sourceTree = "<group>"; };
+		A2EA914B307B452800AAB201 /* NotesListView+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+Commands.swift"; sourceTree = "<group>"; };
+		A2EA914C307B452800AAB201 /* NotesListView+Filtering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+Filtering.swift"; sourceTree = "<group>"; };
+		A2EA914D307B452800AAB201 /* NotesListView+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+Helpers.swift"; sourceTree = "<group>"; };
+		A2EA914E307B452800AAB201 /* NotesListView+Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+Layout.swift"; sourceTree = "<group>"; };
+		A2EA914F307B452800AAB201 /* NotesListView+NewNotePopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+NewNotePopover.swift"; sourceTree = "<group>"; };
+		A2EA9150307B452800AAB201 /* NotesListView+PreviewAndAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+PreviewAndAlerts.swift"; sourceTree = "<group>"; };
+		A2EA9151307B452800AAB201 /* NotesListView+WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesListView+WelcomeView.swift"; sourceTree = "<group>"; };
+		A2EA9152307B452800AAB201 /* PermissionsRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsRequestView.swift; sourceTree = "<group>"; };
+		A2EA9153307B452800AAB201 /* RecordingWidgetPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingWidgetPanel.swift; sourceTree = "<group>"; };
+		A2EA9154307B452800AAB201 /* RecordingWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingWidgetView.swift; sourceTree = "<group>"; };
+		A2EA9155307B452800AAB201 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		A2EA9156307B452800AAB201 /* RootView+PermissionGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView+PermissionGateView.swift"; sourceTree = "<group>"; };
+		A2EA9157307B452800AAB201 /* RootView+SupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView+SupportViews.swift"; sourceTree = "<group>"; };
+		A2EA9158307B452800AAB201 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A2EA9159307B452800AAB201 /* SettingsView+ContentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView+ContentRouter.swift"; sourceTree = "<group>"; };
+		A2EA915A307B452800AAB201 /* SettingsView+GeneralTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView+GeneralTab.swift"; sourceTree = "<group>"; };
+		A2EA915B307B452800AAB201 /* SettingsView+ObsidianTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView+ObsidianTab.swift"; sourceTree = "<group>"; };
+		A2EA915C307B452800AAB201 /* SettingsView+Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView+Sidebar.swift"; sourceTree = "<group>"; };
+		A2EA915D307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView+ThemeColorDropdown.swift"; sourceTree = "<group>"; };
+		A2EA915E307B452800AAB201 /* TagSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSidebarView.swift; sourceTree = "<group>"; };
+		A2EA915F307B452800AAB201 /* TagView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagView.swift; sourceTree = "<group>"; };
+		A2EA9160307B452800AAB201 /* TemplateSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateSelectionView.swift; sourceTree = "<group>"; };
+		A2EA9161307B452800AAB201 /* TranscriptionPreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionPreviewViews.swift; sourceTree = "<group>"; };
+		A2EA9163307B452800AAB201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2EA9164307B452800AAB201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2EA9165307B452800AAB201 /* Jotley.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Jotley.entitlements; sourceTree = "<group>"; };
+		A2EA9166307B452800AAB201 /* Jotley-Development.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Jotley-Development.entitlements"; sourceTree = "<group>"; };
+		A2EA9167307B452800AAB201 /* JotleyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyApp.swift; sourceTree = "<group>"; };
+		A2EA9168307B452800AAB201 /* JotleyAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyAppDelegate.swift; sourceTree = "<group>"; };
+		A2EA9169307B452800AAB201 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
+		A2EA91BE307B453D00AAB201 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A2EA91C0307B453D00AAB201 /* String+MarkdownStripping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+MarkdownStripping.swift"; sourceTree = "<group>"; };
+		A2EA91C2307B453D00AAB201 /* FilterAndSortState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterAndSortState.swift; sourceTree = "<group>"; };
+		A2EA91C3307B453D00AAB201 /* Folder+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Folder+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA91C5307B453D00AAB201 /* Note+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA91C6307B453D00AAB201 /* RecordingMarker+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordingMarker+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA91C7307B453D00AAB201 /* RecordingSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSidecar.swift; sourceTree = "<group>"; };
+		A2EA91C9307B453D00AAB201 /* Comfortaa-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Comfortaa-Bold.ttf"; sourceTree = "<group>"; };
+		A2EA91CC307B453D00AAB201 /* JotleyDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyDefaults.swift; sourceTree = "<group>"; };
+		A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceConstants.swift; sourceTree = "<group>"; };
+		A2EA91CE307B453D00AAB201 /* SharedPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPersistence.swift; sourceTree = "<group>"; };
+		A2EA91CF307B453D00AAB201 /* SummarizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummarizationService.swift; sourceTree = "<group>"; };
+		A2EA91D0307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTitleReplacementPolicy.swift; sourceTree = "<group>"; };
+		A2EA91D1307B453D00AAB201 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		A2EA91D3307B453D00AAB201 /* Font+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA91D4307B453D00AAB201 /* SharedThemeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedThemeColors.swift; sourceTree = "<group>"; };
+		A2EA91D6307B453D00AAB201 /* FilterAndSortPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterAndSortPopoverView.swift; sourceTree = "<group>"; };
+		A2EA91D7307B453D00AAB201 /* FolderManagementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderManagementSheet.swift; sourceTree = "<group>"; };
+		A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
+		A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
+		A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
+		A2EA91DD307B453D00AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
+		A2EA91DE307B453D00AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA91DF307B453D00AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA91E0307B453D00AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA91E1307B453D00AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "Rambo-BSD-2-Clause.txt"; path = "docs/Rambo-BSD-2-Clause.txt"; sourceTree = "<group>"; };
+		A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Comfortaa-OFL.txt"; sourceTree = "<group>"; };
+		A2EA9201307B4F2B00AAB201 /* Jotley-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jotley-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2EA9211307B4F2C00AAB201 /* Jotley-iOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jotley-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2EA921B307B4F2C00AAB201 /* Jotley-iOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Jotley-iOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2EA922C307B523300AAB201 /* AudioRecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingManager.swift; sourceTree = "<group>"; };
+		A2EA9230307B523300AAB201 /* iOSFolderDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSFolderDrawer.swift; sourceTree = "<group>"; };
+		A2EA9231307B523300AAB201 /* iOSNewNoteMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNewNoteMenuView.swift; sourceTree = "<group>"; };
+		A2EA9232307B523300AAB201 /* iOSNoteDetailComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteDetailComponents.swift; sourceTree = "<group>"; };
+		A2EA9233307B523300AAB201 /* iOSNoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteDetailView.swift; sourceTree = "<group>"; };
+		A2EA9234307B523300AAB201 /* iOSNoteDetailView+Body.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNoteDetailView+Body.swift"; sourceTree = "<group>"; };
+		A2EA9235307B523300AAB201 /* iOSNoteFolderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteFolderRow.swift; sourceTree = "<group>"; };
+		A2EA9236307B523300AAB201 /* iOSNoteRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNoteRowView.swift; sourceTree = "<group>"; };
+		A2EA9237307B523300AAB201 /* iOSNotesListEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNotesListEmptyStateView.swift; sourceTree = "<group>"; };
+		A2EA9238307B523300AAB201 /* iOSNotesListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNotesListItem.swift; sourceTree = "<group>"; };
+		A2EA9239307B523300AAB201 /* iOSNotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSNotesListView.swift; sourceTree = "<group>"; };
+		A2EA923A307B523300AAB201 /* iOSNotesListView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNotesListView+Actions.swift"; sourceTree = "<group>"; };
+		A2EA923B307B523300AAB201 /* iOSNotesListView+Data.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNotesListView+Data.swift"; sourceTree = "<group>"; };
+		A2EA923C307B523300AAB201 /* iOSNotesListView+Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOSNotesListView+Sheets.swift"; sourceTree = "<group>"; };
+		A2EA923D307B523300AAB201 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A2EA923E307B523300AAB201 /* RecordingModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingModalView.swift; sourceTree = "<group>"; };
+		A2EA923F307B523300AAB201 /* RecordingModalView+Sections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordingModalView+Sections.swift"; sourceTree = "<group>"; };
+		A2EA9240307B523300AAB201 /* RecordingPlaybackFromNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingPlaybackFromNotesView.swift; sourceTree = "<group>"; };
+		A2EA9241307B523300AAB201 /* RecordingView+Waveform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordingView+Waveform.swift"; sourceTree = "<group>"; };
+		A2EA9242307B523300AAB201 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A2EA9243307B523300AAB201 /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+		A2EA9245307B523300AAB201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A2EA9246307B523300AAB201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A2EA9247307B523300AAB201 /* Jotley.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Jotley.entitlements; sourceTree = "<group>"; };
+		A2EA9248307B523300AAB201 /* JotleyiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyiOSApp.swift; sourceTree = "<group>"; };
+		A2EA9262307B532700AAB201 /* String+MarkdownStripping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+MarkdownStripping.swift"; sourceTree = "<group>"; };
+		A2EA9264307B532700AAB201 /* FilterAndSortState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterAndSortState.swift; sourceTree = "<group>"; };
+		A2EA9265307B532700AAB201 /* Folder+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Folder+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA9267307B532700AAB201 /* Note+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Note+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA9268307B532700AAB201 /* RecordingMarker+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecordingMarker+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA9269307B532700AAB201 /* RecordingSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSidecar.swift; sourceTree = "<group>"; };
+		A2EA926B307B532700AAB201 /* Comfortaa-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Comfortaa-Bold.ttf"; sourceTree = "<group>"; };
+		A2EA926E307B532700AAB201 /* JotleyDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyDefaults.swift; sourceTree = "<group>"; };
+		A2EA926F307B532700AAB201 /* ServiceConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceConstants.swift; sourceTree = "<group>"; };
+		A2EA9270307B532700AAB201 /* SharedPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedPersistence.swift; sourceTree = "<group>"; };
+		A2EA9271307B532700AAB201 /* SummarizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummarizationService.swift; sourceTree = "<group>"; };
+		A2EA9272307B532700AAB201 /* SummaryTitleReplacementPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTitleReplacementPolicy.swift; sourceTree = "<group>"; };
+		A2EA9273307B532700AAB201 /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		A2EA9275307B532700AAB201 /* Font+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Extensions.swift"; sourceTree = "<group>"; };
+		A2EA9276307B532700AAB201 /* SharedThemeColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedThemeColors.swift; sourceTree = "<group>"; };
+		A2EA9278307B532700AAB201 /* FilterAndSortPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterAndSortPopoverView.swift; sourceTree = "<group>"; };
+		A2EA9279307B532700AAB201 /* FolderManagementSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderManagementSheet.swift; sourceTree = "<group>"; };
+		A2EA927A307B532700AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
+		A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
+		A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
+		A2EA927E307B532700AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
+		A2EA927F307B532700AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA9280307B532700AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA9281307B532700AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA9282307B532700AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		A2EA929B307BB12900AAB201 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		DB11239D313826CEC1D213A0 /* AppIcon.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		F47AD93E2BF5B61E005B75AC /* Jotley.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jotley.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A2BBE447307D9B1D009F7720 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A2BBE434307D9B1C009F7720 /* JotleyWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A2BBE43A307D9B1C009F7720 /* JotleyWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A2BBE447307D9B1D009F7720 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = JotleyWidgets; sourceTree = "<group>"; };
+		A2EA9214307B4F2C00AAB201 /* Jotley-iOSTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "Jotley-iOSTests"; sourceTree = "<group>"; };
+		A2EA921E307B4F2C00AAB201 /* Jotley-iOSUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "Jotley-iOSUITests"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A25995502F2956C3002C9FDE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2BBE432307D9B1C009F7720 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2BBE439307D9B1C009F7720 /* SwiftUI.framework in Frameworks */,
+				A2BBE437307D9B1C009F7720 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA91FE307B4F2B00AAB201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA920E307B4F2C00AAB201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA9218307B4F2C00AAB201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F47AD93B2BF5B61E005B75AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EB8BED307D4385008E0696 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A2EA90DE307B41D700AAB201 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90DD307B41D700AAB201 /* Main.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		A2EA90E0307B41D700AAB201 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90DF307B41D700AAB201 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		A2EA90E4307B41D700AAB201 /* ProcessTap */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90E1307B41D700AAB201 /* CoreAudioUtils.swift */,
+				A2EA90E2307B41D700AAB201 /* ProcessTap.swift */,
+				A2EA90E3307B41D700AAB201 /* ProcessTapRecorder.swift */,
+			);
+			path = ProcessTap;
+			sourceTree = "<group>";
+		};
+		A2EA90EA307B41D700AAB201 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90DE307B41D700AAB201 /* Config */,
+				A2EA90E0307B41D700AAB201 /* Preview Content */,
+				A2EA90E4307B41D700AAB201 /* ProcessTap */,
+				A2EA90E5307B41D700AAB201 /* Assets.xcassets */,
+				A2EA90E6307B41D700AAB201 /* Info.plist */,
+				A2EA90E7307B41D700AAB201 /* Jotley.entitlements */,
+				A2EA90E8307B41D700AAB201 /* Jotley-Development.entitlements */,
+				A2EA90E9307B41D700AAB201 /* JotleyApp.swift */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		A2EA90EC307B41D700AAB201 /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90EB307B41D700AAB201 /* README.md */,
+			);
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		A2EA90EE307B41D700AAB201 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90ED307B41D700AAB201 /* JotleyNotes.xcdatamodeld */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A2EA90F2307B41D700AAB201 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90EF307B41D700AAB201 /* SharedPersistence.swift */,
+				A2EA90F0307B41D700AAB201 /* SummarizationService.swift */,
+				A2EA90F1307B41D700AAB201 /* TranscriptionService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A2EA90F3307B41D700AAB201 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA90EC307B41D700AAB201 /* Docs */,
+				A2EA90EE307B41D700AAB201 /* Models */,
+				A2EA90F2307B41D700AAB201 /* Services */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A2EA9108307B41EB00AAB201 /* JotleyUITests-macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA916A307B452800AAB201 /* macOS */,
+				A2EA9107307B41EB00AAB201 /* JotleyUITests_macOS.swift */,
+			);
+			path = "JotleyUITests-macOS";
+			sourceTree = "<group>";
+		};
+		A2EA910B307B452800AAB201 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA910A307B452800AAB201 /* Main.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		A2EA910D307B452800AAB201 /* CoreData */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA910C307B452800AAB201 /* PersistenceControllerCompat.swift */,
+			);
+			path = CoreData;
+			sourceTree = "<group>";
+		};
+		A2EA910F307B452800AAB201 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA910E307B452800AAB201 /* NSImage+Resize.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		A2EA9111307B452800AAB201 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9110307B452800AAB201 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		A2EA9116307B452800AAB201 /* ProcessTap */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9112307B452800AAB201 /* AudioRecordingPermission.swift */,
+				A2EA9113307B452800AAB201 /* CoreAudioUtils.swift */,
+				A2EA9114307B452800AAB201 /* ProcessTap.swift */,
+				A2EA9115307B452800AAB201 /* ProcessTapRecorder.swift */,
+			);
+			path = ProcessTap;
+			sourceTree = "<group>";
+		};
+		A2EA9119307B452800AAB201 /* Styling */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9117307B452800AAB201 /* SFRoundedFonts.swift */,
+				A2EA9118307B452800AAB201 /* ThemeColors.swift */,
+			);
+			path = Styling;
+			sourceTree = "<group>";
+		};
+		A2EA911C307B452800AAB201 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA911A307B452800AAB201 /* MeetingRecordingSettings.swift */,
+				A2EA911B307B452800AAB201 /* RecordingWidgetController.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		A2EA911E307B452800AAB201 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA911D307B452800AAB201 /* NotesListViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A2EA9125307B452800AAB201 /* TabViews */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA911F307B452800AAB201 /* DescriptionTabView.swift */,
+				A2EA9120307B452800AAB201 /* SummaryTabView.swift */,
+				A2EA9121307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift */,
+				A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */,
+				A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */,
+				A2EA9124307B452800AAB201 /* TranscriptionTabView.swift */,
+			);
+			path = TabViews;
+			sourceTree = "<group>";
+		};
+		A2EA9127307B452800AAB201 /* ViewModifiers */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9126307B452800AAB201 /* PointerCursorModifier.swift */,
+			);
+			path = ViewModifiers;
+			sourceTree = "<group>";
+		};
+		A2EA9162307B452800AAB201 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9125307B452800AAB201 /* TabViews */,
+				A2EA9127307B452800AAB201 /* ViewModifiers */,
+				A2EA9128307B452800AAB201 /* AddTagPopoverView.swift */,
+				A2EA9129307B452800AAB201 /* ButtonStyles.swift */,
+				A2EA912A307B452800AAB201 /* ContentLayoutConstants.swift */,
+				A2EA912B307B452800AAB201 /* CustomOverlays.swift */,
+				A2EA912C307B452800AAB201 /* CustomTooltip.swift */,
+				A2EA912D307B452800AAB201 /* CustomTooltip+ThemedTextEditor.swift */,
+				A2EA912E307B452800AAB201 /* CustomTooltip+ThemedTextField.swift */,
+				A2EA912F307B452800AAB201 /* DescriptionTabView.swift */,
+				A2EA9130307B452800AAB201 /* DetailTab.swift */,
+				A2EA9131307B452800AAB201 /* DetailTabViewPanel.swift */,
+				A2EA9132307B452800AAB201 /* ExpandedTranscriptionView.swift */,
+				A2EA9133307B452800AAB201 /* FlowLayout.swift */,
+				A2EA9134307B452800AAB201 /* FolderSidebarView.swift */,
+				A2EA9135307B452800AAB201 /* NoteDetailComponents.swift */,
+				A2EA9136307B452800AAB201 /* NoteDetailPlaceholderView.swift */,
+				A2EA9137307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopover.swift */,
+				A2EA9138307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift */,
+				A2EA9139307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift */,
+				A2EA913A307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift */,
+				A2EA913B307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift */,
+				A2EA913C307B452800AAB201 /* NoteDetailPlaceholderView+Content.swift */,
+				A2EA913D307B452800AAB201 /* NoteDetailPlaceholderView+Core.swift */,
+				A2EA913E307B452800AAB201 /* NoteDetailPlaceholderView+EventHandlers.swift */,
+				A2EA913F307B452800AAB201 /* NoteDetailPlaceholderView+Folder.swift */,
+				A2EA9140307B452800AAB201 /* NoteDetailPlaceholderView+MetadataContent.swift */,
+				A2EA9141307B452800AAB201 /* NoteDetailPlaceholderView+Persistence.swift */,
+				A2EA9142307B452800AAB201 /* NoteDetailPlaceholderView+ScrollAndTabControls.swift */,
+				A2EA9143307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift */,
+				A2EA9144307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift */,
+				A2EA9145307B452800AAB201 /* NoteDetailPlaceholderView+ToolbarActions.swift */,
+				A2EA9146307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift */,
+				A2EA9147307B452800AAB201 /* NoteListRowView.swift */,
+				A2EA9148307B452800AAB201 /* NoteListSectionView.swift */,
+				A2EA9149307B452800AAB201 /* NotesListView.swift */,
+				A2EA914A307B452800AAB201 /* NotesListView+Body.swift */,
+				A2EA914B307B452800AAB201 /* NotesListView+Commands.swift */,
+				A2EA914C307B452800AAB201 /* NotesListView+Filtering.swift */,
+				A2EA914D307B452800AAB201 /* NotesListView+Helpers.swift */,
+				A2EA914E307B452800AAB201 /* NotesListView+Layout.swift */,
+				A2EA914F307B452800AAB201 /* NotesListView+NewNotePopover.swift */,
+				A2EA9150307B452800AAB201 /* NotesListView+PreviewAndAlerts.swift */,
+				A2EA9151307B452800AAB201 /* NotesListView+WelcomeView.swift */,
+				A2EA9152307B452800AAB201 /* PermissionsRequestView.swift */,
+				A2EA9153307B452800AAB201 /* RecordingWidgetPanel.swift */,
+				A2EA9154307B452800AAB201 /* RecordingWidgetView.swift */,
+				A2EA9155307B452800AAB201 /* RootView.swift */,
+				A2EA9156307B452800AAB201 /* RootView+PermissionGateView.swift */,
+				A2EA9157307B452800AAB201 /* RootView+SupportViews.swift */,
+				A2EA9158307B452800AAB201 /* SettingsView.swift */,
+				A2EA9159307B452800AAB201 /* SettingsView+ContentRouter.swift */,
+				A2EA915A307B452800AAB201 /* SettingsView+GeneralTab.swift */,
+				A2EA915B307B452800AAB201 /* SettingsView+ObsidianTab.swift */,
+				A2EA915C307B452800AAB201 /* SettingsView+Sidebar.swift */,
+				A2EA915D307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift */,
+				A2EA915E307B452800AAB201 /* TagSidebarView.swift */,
+				A2EA915F307B452800AAB201 /* TagView.swift */,
+				A2EA9160307B452800AAB201 /* TemplateSelectionView.swift */,
+				A2EA9161307B452800AAB201 /* TranscriptionPreviewViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A2EA916A307B452800AAB201 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA910B307B452800AAB201 /* Config */,
+				A2EA910D307B452800AAB201 /* CoreData */,
+				A2EA910F307B452800AAB201 /* Extensions */,
+				A2EA9111307B452800AAB201 /* Preview Content */,
+				A2EA9116307B452800AAB201 /* ProcessTap */,
+				A2EA9119307B452800AAB201 /* Styling */,
+				A2EA911C307B452800AAB201 /* Utilities */,
+				A2EA911E307B452800AAB201 /* ViewModels */,
+				A2EA9162307B452800AAB201 /* Views */,
+				A2EA9163307B452800AAB201 /* Assets.xcassets */,
+				A2EA9164307B452800AAB201 /* Info.plist */,
+				A2EA9165307B452800AAB201 /* Jotley.entitlements */,
+				A2EA9166307B452800AAB201 /* Jotley-Development.entitlements */,
+				A2EA9167307B452800AAB201 /* JotleyApp.swift */,
+				A2EA9168307B452800AAB201 /* JotleyAppDelegate.swift */,
+				A2EA9169307B452800AAB201 /* WindowAccessor.swift */,
+			);
+			path = macOS;
+			sourceTree = SOURCE_ROOT;
+		};
+		A2EA91BF307B453D00AAB201 /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91BE307B453D00AAB201 /* README.md */,
+			);
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		A2EA91C1307B453D00AAB201 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91C0307B453D00AAB201 /* String+MarkdownStripping.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		A2EA91C8307B453D00AAB201 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91C2307B453D00AAB201 /* FilterAndSortState.swift */,
+				A2EA91C3307B453D00AAB201 /* Folder+Extensions.swift */,
+				A2EA91C4307B453D00AAB201 /* JotleyNotes.xcdatamodeld */,
+				A2EA91C5307B453D00AAB201 /* Note+Extensions.swift */,
+				A2EA91C6307B453D00AAB201 /* RecordingMarker+Extensions.swift */,
+				A2EA91C7307B453D00AAB201 /* RecordingSidecar.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A2EA91CA307B453D00AAB201 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91C9307B453D00AAB201 /* Comfortaa-Bold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		A2EA91CB307B453D00AAB201 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91CA307B453D00AAB201 /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A2EA91D2307B453D00AAB201 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91CC307B453D00AAB201 /* JotleyDefaults.swift */,
+				A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */,
+				A2EA91CE307B453D00AAB201 /* SharedPersistence.swift */,
+				A2EA91CF307B453D00AAB201 /* SummarizationService.swift */,
+				A2EA91D0307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift */,
+				A2EA91D1307B453D00AAB201 /* TranscriptionService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A2EA91D5307B453D00AAB201 /* Styling */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91D3307B453D00AAB201 /* Font+Extensions.swift */,
+				A2EA91D4307B453D00AAB201 /* SharedThemeColors.swift */,
+			);
+			path = Styling;
+			sourceTree = "<group>";
+		};
+		A2EA91DB307B453D00AAB201 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91D6307B453D00AAB201 /* FilterAndSortPopoverView.swift */,
+				A2EA91D7307B453D00AAB201 /* FolderManagementSheet.swift */,
+				A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */,
+				A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */,
+				A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A2EA91DC307B453D00AAB201 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA91BF307B453D00AAB201 /* Docs */,
+				A2EA91C1307B453D00AAB201 /* Extensions */,
+				A2EA91C8307B453D00AAB201 /* Models */,
+				A2EA91CB307B453D00AAB201 /* Resources */,
+				A2EA91D2307B453D00AAB201 /* Services */,
+				A2EA91D5307B453D00AAB201 /* Styling */,
+				A2EA91DB307B453D00AAB201 /* Views */,
+			);
+			path = Shared;
+			sourceTree = SOURCE_ROOT;
+		};
+		A2EA922B307B523300AAB201 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		A2EA922D307B523300AAB201 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA922C307B523300AAB201 /* AudioRecordingManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A2EA922E307B523300AAB201 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		A2EA922F307B523300AAB201 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A2EA9244307B523300AAB201 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9230307B523300AAB201 /* iOSFolderDrawer.swift */,
+				A2EA9231307B523300AAB201 /* iOSNewNoteMenuView.swift */,
+				A2EA9232307B523300AAB201 /* iOSNoteDetailComponents.swift */,
+				A2EA9233307B523300AAB201 /* iOSNoteDetailView.swift */,
+				A2EA9234307B523300AAB201 /* iOSNoteDetailView+Body.swift */,
+				A2EA9235307B523300AAB201 /* iOSNoteFolderRow.swift */,
+				A2EA9236307B523300AAB201 /* iOSNoteRowView.swift */,
+				A2EA9237307B523300AAB201 /* iOSNotesListEmptyStateView.swift */,
+				A2EA9238307B523300AAB201 /* iOSNotesListItem.swift */,
+				A2EA9239307B523300AAB201 /* iOSNotesListView.swift */,
+				A2EA923A307B523300AAB201 /* iOSNotesListView+Actions.swift */,
+				A2EA923B307B523300AAB201 /* iOSNotesListView+Data.swift */,
+				A2EA923C307B523300AAB201 /* iOSNotesListView+Sheets.swift */,
+				A2EA923D307B523300AAB201 /* MainTabView.swift */,
+				A2EA923E307B523300AAB201 /* RecordingModalView.swift */,
+				A2EA923F307B523300AAB201 /* RecordingModalView+Sections.swift */,
+				A2EA9240307B523300AAB201 /* RecordingPlaybackFromNotesView.swift */,
+				A2EA9241307B523300AAB201 /* RecordingView+Waveform.swift */,
+				A2EA9242307B523300AAB201 /* SettingsView.swift */,
+				A2EA9243307B523300AAB201 /* ShareSheet.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A2EA9249307B523300AAB201 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA922B307B523300AAB201 /* Extensions */,
+				A2EA922D307B523300AAB201 /* Services */,
+				A2EA922E307B523300AAB201 /* Utilities */,
+				A2EA922F307B523300AAB201 /* ViewModels */,
+				A2EA9244307B523300AAB201 /* Views */,
+				A2EA9245307B523300AAB201 /* Assets.xcassets */,
+				A2EA9246307B523300AAB201 /* Info.plist */,
+				A2EA9247307B523300AAB201 /* Jotley.entitlements */,
+				A2EA9248307B523300AAB201 /* JotleyiOSApp.swift */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		A2EA9263307B532700AAB201 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9262307B532700AAB201 /* String+MarkdownStripping.swift */,
+			);
+			name = Extensions;
+			path = Shared/Extensions;
+			sourceTree = "<group>";
+		};
+		A2EA926A307B532700AAB201 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9264307B532700AAB201 /* FilterAndSortState.swift */,
+				A2EA9265307B532700AAB201 /* Folder+Extensions.swift */,
+				A2EA9266307B532700AAB201 /* JotleyNotes.xcdatamodeld */,
+				A2EA9267307B532700AAB201 /* Note+Extensions.swift */,
+				A2EA9268307B532700AAB201 /* RecordingMarker+Extensions.swift */,
+				A2EA9269307B532700AAB201 /* RecordingSidecar.swift */,
+			);
+			name = Models;
+			path = Shared/Models;
+			sourceTree = "<group>";
+		};
+		A2EA926C307B532700AAB201 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA926B307B532700AAB201 /* Comfortaa-Bold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		A2EA926D307B532700AAB201 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA926C307B532700AAB201 /* Fonts */,
+			);
+			name = Resources;
+			path = Shared/Resources;
+			sourceTree = "<group>";
+		};
+		A2EA9274307B532700AAB201 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA926E307B532700AAB201 /* JotleyDefaults.swift */,
+				A2EA926F307B532700AAB201 /* ServiceConstants.swift */,
+				A2EA9270307B532700AAB201 /* SharedPersistence.swift */,
+				A2EA9271307B532700AAB201 /* SummarizationService.swift */,
+				A2EA9272307B532700AAB201 /* SummaryTitleReplacementPolicy.swift */,
+				A2EA9273307B532700AAB201 /* TranscriptionService.swift */,
+			);
+			name = Services;
+			path = Shared/Services;
+			sourceTree = "<group>";
+		};
+		A2EA9277307B532700AAB201 /* Styling */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9275307B532700AAB201 /* Font+Extensions.swift */,
+				A2EA9276307B532700AAB201 /* SharedThemeColors.swift */,
+			);
+			name = Styling;
+			path = Shared/Styling;
+			sourceTree = "<group>";
+		};
+		A2EA927D307B532700AAB201 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A2EA9278307B532700AAB201 /* FilterAndSortPopoverView.swift */,
+				A2EA9279307B532700AAB201 /* FolderManagementSheet.swift */,
+				A2EA927A307B532700AAB201 /* RecordingIndicator.swift */,
+				A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */,
+				A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */,
+			);
+			name = Views;
+			path = Shared/Views;
+			sourceTree = "<group>";
+		};
+		A2EB8BEB307D4385008E0696 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A2BBE436307D9B1C009F7720 /* WidgetKit.framework */,
+				A2BBE438307D9B1C009F7720 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F47AD9352BF5B61E005B75AC = {
+			isa = PBXGroup;
+			children = (
+				A2EA929B307BB12900AAB201 /* LICENSE */,
+				A2EA9263307B532700AAB201 /* Extensions */,
+				A2EA926A307B532700AAB201 /* Models */,
+				A2EA926D307B532700AAB201 /* Resources */,
+				A2EA9274307B532700AAB201 /* Services */,
+				A2EA9277307B532700AAB201 /* Styling */,
+				A2EA927D307B532700AAB201 /* Views */,
+				A2EA9249307B523300AAB201 /* iOS */,
+				A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */,
+				A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */,
+				A2EA91DC307B453D00AAB201 /* Shared */,
+				A23A1B782DDB6DE50068D823 /* Package.swift */,
+				A2EA9214307B4F2C00AAB201 /* Jotley-iOSTests */,
+				A2EA921E307B4F2C00AAB201 /* Jotley-iOSUITests */,
+				A2BBE43A307D9B1C009F7720 /* JotleyWidgets */,
+				F47AD93F2BF5B61E005B75AC /* Products */,
+				DB11239D313826CEC1D213A0 /* AppIcon.icon */,
+				A2EA90EA307B41D700AAB201 /* macOS */,
+				A2EA90F3307B41D700AAB201 /* Shared */,
+				A2EA9108307B41EB00AAB201 /* JotleyUITests-macOS */,
+				A2EB8BEB307D4385008E0696 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		F47AD93F2BF5B61E005B75AC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F47AD93E2BF5B61E005B75AC /* Jotley.app */,
+				A25995532F2956C3002C9FDE /* JotleyUITests-macOS.xctest */,
+				A2EA9201307B4F2B00AAB201 /* Jotley-iOS.app */,
+				A2EA9211307B4F2C00AAB201 /* Jotley-iOSTests.xctest */,
+				A2EA921B307B4F2C00AAB201 /* Jotley-iOSUITests.xctest */,
+				A2BBE435307D9B1C009F7720 /* JotleyWidgetsExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A25995522F2956C3002C9FDE /* JotleyUITests-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A259955B2F2956C3002C9FDE /* Build configuration list for PBXNativeTarget "JotleyUITests-macOS" */;
+			buildPhases = (
+				A259954F2F2956C3002C9FDE /* Sources */,
+				A25995502F2956C3002C9FDE /* Frameworks */,
+				A25995512F2956C3002C9FDE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A259955A2F2956C3002C9FDE /* PBXTargetDependency */,
+			);
+			name = "JotleyUITests-macOS";
+			productName = "JotleyUITests-macOS";
+			productReference = A25995532F2956C3002C9FDE /* JotleyUITests-macOS.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		A2BBE434307D9B1C009F7720 /* JotleyWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2BBE448307D9B1D009F7720 /* Build configuration list for PBXNativeTarget "JotleyWidgetsExtension" */;
+			buildPhases = (
+				A2BBE431307D9B1C009F7720 /* Sources */,
+				A2BBE432307D9B1C009F7720 /* Frameworks */,
+				A2BBE433307D9B1C009F7720 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A2BBE43A307D9B1C009F7720 /* JotleyWidgets */,
+			);
+			name = JotleyWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = JotleyWidgetsExtension;
+			productReference = A2BBE435307D9B1C009F7720 /* JotleyWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A2EA9200307B4F2B00AAB201 /* Jotley-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2EA9222307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOS" */;
+			buildPhases = (
+				A2EA91FD307B4F2B00AAB201 /* Sources */,
+				A2EA91FE307B4F2B00AAB201 /* Frameworks */,
+				A2EA91FF307B4F2B00AAB201 /* Resources */,
+				A2BBE44B307D9B1D009F7720 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A2BBE445307D9B1D009F7720 /* PBXTargetDependency */,
+			);
+			name = "Jotley-iOS";
+			packageProductDependencies = (
+			);
+			productName = "Jotley-iOS";
+			productReference = A2EA9201307B4F2B00AAB201 /* Jotley-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A2EA9210307B4F2C00AAB201 /* Jotley-iOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2EA9225307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOSTests" */;
+			buildPhases = (
+				A2EA920D307B4F2C00AAB201 /* Sources */,
+				A2EA920E307B4F2C00AAB201 /* Frameworks */,
+				A2EA920F307B4F2C00AAB201 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A2EA9213307B4F2C00AAB201 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A2EA9214307B4F2C00AAB201 /* Jotley-iOSTests */,
+			);
+			name = "Jotley-iOSTests";
+			packageProductDependencies = (
+			);
+			productName = "Jotley-iOSTests";
+			productReference = A2EA9211307B4F2C00AAB201 /* Jotley-iOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A2EA921A307B4F2C00AAB201 /* Jotley-iOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2EA9228307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOSUITests" */;
+			buildPhases = (
+				A2EA9217307B4F2C00AAB201 /* Sources */,
+				A2EA9218307B4F2C00AAB201 /* Frameworks */,
+				A2EA9219307B4F2C00AAB201 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A2EA921D307B4F2C00AAB201 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A2EA921E307B4F2C00AAB201 /* Jotley-iOSUITests */,
+			);
+			name = "Jotley-iOSUITests";
+			packageProductDependencies = (
+			);
+			productName = "Jotley-iOSUITests";
+			productReference = A2EA921B307B4F2C00AAB201 /* Jotley-iOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F47AD93D2BF5B61E005B75AC /* Jotley */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F47AD94D2BF5B61F005B75AC /* Build configuration list for PBXNativeTarget "Jotley" */;
+			buildPhases = (
+				F47AD93A2BF5B61E005B75AC /* Sources */,
+				F47AD93B2BF5B61E005B75AC /* Frameworks */,
+				F47AD93C2BF5B61E005B75AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Jotley;
+			packageProductDependencies = (
+				A2EB8BEC307D4385008E0696 /* Sparkle */,
+			);
+			productName = AudioCap;
+			productReference = F47AD93E2BF5B61E005B75AC /* Jotley.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F47AD9362BF5B61E005B75AC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					A25995522F2956C3002C9FDE = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = F47AD93D2BF5B61E005B75AC;
+					};
+					A2BBE434307D9B1C009F7720 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					A2EA9200307B4F2B00AAB201 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					A2EA9210307B4F2C00AAB201 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = A2EA9200307B4F2B00AAB201;
+					};
+					A2EA921A307B4F2C00AAB201 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = A2EA9200307B4F2B00AAB201;
+					};
+					F47AD93D2BF5B61E005B75AC = {
+						CreatedOnToolsVersion = 15.3;
+					};
+				};
+			};
+			buildConfigurationList = F47AD9392BF5B61E005B75AC /* Build configuration list for PBXProject "Jotley" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = F47AD9352BF5B61E005B75AC;
+			packageReferences = (
+				A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			productRefGroup = F47AD93F2BF5B61E005B75AC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F47AD93D2BF5B61E005B75AC /* Jotley */,
+				A25995522F2956C3002C9FDE /* JotleyUITests-macOS */,
+				A2EA9200307B4F2B00AAB201 /* Jotley-iOS */,
+				A2EA9210307B4F2C00AAB201 /* Jotley-iOSTests */,
+				A2EA921A307B4F2C00AAB201 /* Jotley-iOSUITests */,
+				A2BBE434307D9B1C009F7720 /* JotleyWidgetsExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A25995512F2956C3002C9FDE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2BBE433307D9B1C009F7720 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA91FF307B4F2B00AAB201 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EA929A307B536200AAB201 /* Comfortaa-OFL.txt in Resources */,
+				A2EA9299307B535700AAB201 /* AppIcon.icon in Resources */,
+				A2EA9261307B523300AAB201 /* Assets.xcassets in Resources */,
+				A2EA9284307B532700AAB201 /* Comfortaa-Bold.ttf in Resources */,
+				A2EA929E307BC9CF00AAB201 /* Rambo-BSD-2-Clause.txt in Resources */,
+				A2EA929C307BB12900AAB201 /* LICENSE in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA920F307B4F2C00AAB201 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA9219307B4F2C00AAB201 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F47AD93C2BF5B61E005B75AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */,
+				A2EA91FA307B486500AAB201 /* Rambo-BSD-2-Clause.txt in Resources */,
+				A2EA916B307B452800AAB201 /* Preview Assets.xcassets in Resources */,
+				A2EA929D307BB12900AAB201 /* LICENSE in Resources */,
+				A2EA91FC307B487600AAB201 /* Comfortaa-OFL.txt in Resources */,
+				A2EA916C307B452800AAB201 /* Assets.xcassets in Resources */,
+				1FA1E1A17AA00E4B4E11A622 /* AppIcon.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A259954F2F2956C3002C9FDE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EA9109307B41EB00AAB201 /* JotleyUITests_macOS.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2BBE431307D9B1C009F7720 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA91FD307B4F2B00AAB201 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EA924A307B523300AAB201 /* ShareSheet.swift in Sources */,
+				A2EA924B307B523300AAB201 /* MainTabView.swift in Sources */,
+				A2EA924C307B523300AAB201 /* iOSNewNoteMenuView.swift in Sources */,
+				A2EA924D307B523300AAB201 /* iOSNoteDetailView+Body.swift in Sources */,
+				A2EA924E307B523300AAB201 /* iOSNoteRowView.swift in Sources */,
+				A2EA924F307B523300AAB201 /* iOSNotesListView+Actions.swift in Sources */,
+				A2EA9250307B523300AAB201 /* iOSFolderDrawer.swift in Sources */,
+				A2EA9251307B523300AAB201 /* AudioRecordingManager.swift in Sources */,
+				A2EA9252307B523300AAB201 /* SettingsView.swift in Sources */,
+				A2EA9253307B523300AAB201 /* iOSNoteDetailView.swift in Sources */,
+				A2EA9254307B523300AAB201 /* iOSNotesListItem.swift in Sources */,
+				A2EA9255307B523300AAB201 /* iOSNotesListView+Sheets.swift in Sources */,
+				A2EA9256307B523300AAB201 /* RecordingView+Waveform.swift in Sources */,
+				A2EA9285307B532700AAB201 /* SummaryTitleReplacementPolicy.swift in Sources */,
+				A2EA9286307B532700AAB201 /* FolderManagementSheet.swift in Sources */,
+				A2EA9287307B532700AAB201 /* JotleyDefaults.swift in Sources */,
+				A2EA9288307B532700AAB201 /* FilterAndSortPopoverView.swift in Sources */,
+				A2EA9289307B532700AAB201 /* RecordingSidecar.swift in Sources */,
+				A2EA928A307B532700AAB201 /* String+MarkdownStripping.swift in Sources */,
+				A2EA928B307B532700AAB201 /* RecordingIndicator.swift in Sources */,
+				A2EA928C307B532700AAB201 /* SharedThemeColors.swift in Sources */,
+				A2EA928D307B532700AAB201 /* TranscriptionService.swift in Sources */,
+				A2EA928E307B532700AAB201 /* Folder+Extensions.swift in Sources */,
+				A2EA928F307B532700AAB201 /* SummaryEmptyStateContent.swift in Sources */,
+				A2EA9290307B532700AAB201 /* Font+Extensions.swift in Sources */,
+				A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */,
+				A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */,
+				A2EA9293307B532700AAB201 /* SummaryStreamingDots.swift in Sources */,
+				A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */,
+				A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */,
+				A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */,
+				A2EA9297307B532700AAB201 /* RecordingMarker+Extensions.swift in Sources */,
+				A2EA9298307B532700AAB201 /* Note+Extensions.swift in Sources */,
+				A2EA9257307B523300AAB201 /* iOSNotesListEmptyStateView.swift in Sources */,
+				A2EA9258307B523300AAB201 /* RecordingModalView.swift in Sources */,
+				A2EA9259307B523300AAB201 /* iOSNoteDetailComponents.swift in Sources */,
+				A2EA925A307B523300AAB201 /* iOSNoteFolderRow.swift in Sources */,
+				A2EA925B307B523300AAB201 /* iOSNotesListView+Data.swift in Sources */,
+				A2EA925C307B523300AAB201 /* RecordingPlaybackFromNotesView.swift in Sources */,
+				A2EA925D307B523300AAB201 /* iOSNotesListView.swift in Sources */,
+				A2EA925E307B523300AAB201 /* JotleyiOSApp.swift in Sources */,
+				A2EA925F307B523300AAB201 /* RecordingModalView+Sections.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA920D307B4F2C00AAB201 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2EA9217307B4F2C00AAB201 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F47AD93A2BF5B61E005B75AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2EA916F307B452800AAB201 /* NotesListView+PreviewAndAlerts.swift in Sources */,
+				A2EA9170307B452800AAB201 /* PermissionsRequestView.swift in Sources */,
+				A2EA9171307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift in Sources */,
+				A2EA9172307B452800AAB201 /* NoteDetailPlaceholderView+ScrollAndTabControls.swift in Sources */,
+				A2EA9173307B452800AAB201 /* NoteDetailPlaceholderView+EventHandlers.swift in Sources */,
+				A2EA9174307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopover.swift in Sources */,
+				A2EA9175307B452800AAB201 /* NotesListView+NewNotePopover.swift in Sources */,
+				A2EA9176307B452800AAB201 /* ProcessTapRecorder.swift in Sources */,
+				A2EA9177307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverTemplateSubmenu.swift in Sources */,
+				A2EA9178307B452800AAB201 /* RecordingWidgetView.swift in Sources */,
+				A2EA9179307B452800AAB201 /* NoteDetailPlaceholderView+Folder.swift in Sources */,
+				A2EA917B307B452800AAB201 /* DetailTab.swift in Sources */,
+				A2EA917C307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift in Sources */,
+				A2EA917D307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift in Sources */,
+				A2EA917E307B452800AAB201 /* TagView.swift in Sources */,
+				A2EA917F307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift in Sources */,
+				A2EA91E5307B453D00AAB201 /* SummaryStreamingDots.swift in Sources */,
+				A2EA91E6307B453D00AAB201 /* RecordingIndicator.swift in Sources */,
+				A2EA91E7307B453D00AAB201 /* ServiceConstants.swift in Sources */,
+				A2EA91E8307B453D00AAB201 /* RecordingMarker+Extensions.swift in Sources */,
+				A2EA91E9307B453D00AAB201 /* FilterAndSortState.swift in Sources */,
+				A2EA91EA307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift in Sources */,
+				A2EA91EB307B453D00AAB201 /* Note+Extensions.swift in Sources */,
+				A2EA91EC307B453D00AAB201 /* Folder+Extensions.swift in Sources */,
+				A2EA91ED307B453D00AAB201 /* SummarizationService.swift in Sources */,
+				A2EA91EE307B453D00AAB201 /* Font+Extensions.swift in Sources */,
+				A2EA91EF307B453D00AAB201 /* TranscriptionService.swift in Sources */,
+				A2EA91F0307B453D00AAB201 /* SharedPersistence.swift in Sources */,
+				A2EA91F1307B453D00AAB201 /* SummaryEmptyStateContent.swift in Sources */,
+				A2EA91F2307B453D00AAB201 /* JotleyDefaults.swift in Sources */,
+				A2EA91F3307B453D00AAB201 /* SharedThemeColors.swift in Sources */,
+				A2EA91F4307B453D00AAB201 /* String+MarkdownStripping.swift in Sources */,
+				A2EA91F5307B453D00AAB201 /* FilterAndSortPopoverView.swift in Sources */,
+				A2EA91F6307B453D00AAB201 /* RecordingSidecar.swift in Sources */,
+				A2EA91F8307B453D00AAB201 /* FolderManagementSheet.swift in Sources */,
+				A2EA9180307B452800AAB201 /* PersistenceControllerCompat.swift in Sources */,
+				A2EA9181307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift in Sources */,
+				A2EA9182307B452800AAB201 /* MeetingRecordingSettings.swift in Sources */,
+				A2EA9183307B452800AAB201 /* RecordingWidgetController.swift in Sources */,
+				A2EA9184307B452800AAB201 /* TagSidebarView.swift in Sources */,
+				A2EA9185307B452800AAB201 /* NoteDetailPlaceholderView+MetadataContent.swift in Sources */,
+				A2EA9186307B452800AAB201 /* ExpandedTranscriptionView.swift in Sources */,
+				A2EA9187307B452800AAB201 /* SettingsView+ObsidianTab.swift in Sources */,
+				A2EA9188307B452800AAB201 /* CustomOverlays.swift in Sources */,
+				A2EA9189307B452800AAB201 /* NoteDetailPlaceholderView+Content.swift in Sources */,
+				A2EA918A307B452800AAB201 /* NoteDetailPlaceholderView+ToolbarActions.swift in Sources */,
+				A2EA918B307B452800AAB201 /* NoteListSectionView.swift in Sources */,
+				A2EA918C307B452800AAB201 /* NotesListViewModel.swift in Sources */,
+				A2EA918D307B452800AAB201 /* TranscriptionTabView.swift in Sources */,
+				A2EA918E307B452800AAB201 /* NotesListView+Filtering.swift in Sources */,
+				A2EA918F307B452800AAB201 /* TranscriptionPreviewViews.swift in Sources */,
+				A2EA9190307B452800AAB201 /* CustomTooltip+ThemedTextField.swift in Sources */,
+				A2EA9191307B452800AAB201 /* NotesListView+WelcomeView.swift in Sources */,
+				A2EA9192307B452800AAB201 /* DetailTabViewPanel.swift in Sources */,
+				A2EA9193307B452800AAB201 /* NotesListView+Commands.swift in Sources */,
+				A2EA9194307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift in Sources */,
+				A2EA9195307B452800AAB201 /* NSImage+Resize.swift in Sources */,
+				A2EA9196307B452800AAB201 /* CustomTooltip.swift in Sources */,
+				A2EA9197307B452800AAB201 /* RootView+PermissionGateView.swift in Sources */,
+				A2EA9198307B452800AAB201 /* NoteDetailPlaceholderView.swift in Sources */,
+				A2EA9199307B452800AAB201 /* RootView.swift in Sources */,
+				A2EA919A307B452800AAB201 /* SettingsView+Sidebar.swift in Sources */,
+				A2EA919B307B452800AAB201 /* ButtonStyles.swift in Sources */,
+				A2EA919D307B452800AAB201 /* RecordingWidgetPanel.swift in Sources */,
+				A2EA919E307B452800AAB201 /* ContentLayoutConstants.swift in Sources */,
+				A2EA919F307B452800AAB201 /* WindowAccessor.swift in Sources */,
+				A2EA91A0307B452800AAB201 /* TemplateSelectionView.swift in Sources */,
+				A2EA91A1307B452800AAB201 /* SummaryTabView+SelectableTextView.swift in Sources */,
+				A2EA91A3307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift in Sources */,
+				A2EA91A4307B452800AAB201 /* PointerCursorModifier.swift in Sources */,
+				A2EA91A5307B452800AAB201 /* ThemeColors.swift in Sources */,
+				A2EA91A6307B452800AAB201 /* NoteDetailComponents.swift in Sources */,
+				A2EA91A7307B452800AAB201 /* NoteDetailPlaceholderView+ActionsPopoverMenuItem.swift in Sources */,
+				A2EA91A8307B452800AAB201 /* NotesListView+Body.swift in Sources */,
+				A2EA91A9307B452800AAB201 /* RootView+SupportViews.swift in Sources */,
+				A2EA91AA307B452800AAB201 /* SettingsView+ContentRouter.swift in Sources */,
+				A2EA91AB307B452800AAB201 /* NoteDetailPlaceholderView+Persistence.swift in Sources */,
+				A2EA91AC307B452800AAB201 /* FolderSidebarView.swift in Sources */,
+				A2EA91AD307B452800AAB201 /* NoteListRowView.swift in Sources */,
+				A2EA91AE307B452800AAB201 /* CustomTooltip+ThemedTextEditor.swift in Sources */,
+				A2EA91AF307B452800AAB201 /* SettingsView.swift in Sources */,
+				A2EA91B0307B452800AAB201 /* SFRoundedFonts.swift in Sources */,
+				A2EA91B1307B452800AAB201 /* NotesListView.swift in Sources */,
+				A2EA91B2307B452800AAB201 /* NoteDetailPlaceholderView+Core.swift in Sources */,
+				A2EA91B3307B452800AAB201 /* AudioRecordingPermission.swift in Sources */,
+				A2EA91B4307B452800AAB201 /* JotleyAppDelegate.swift in Sources */,
+				A2EA91B5307B452800AAB201 /* AddTagPopoverView.swift in Sources */,
+				A2EA91B6307B452800AAB201 /* FlowLayout.swift in Sources */,
+				A2EA91B7307B452800AAB201 /* SummaryTabView.swift in Sources */,
+				A2EA91B8307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift in Sources */,
+				A2EA91B9307B452800AAB201 /* DescriptionTabView.swift in Sources */,
+				A2EA91BA307B452800AAB201 /* ProcessTap.swift in Sources */,
+				A2EA91BB307B452800AAB201 /* SettingsView+GeneralTab.swift in Sources */,
+				A2EA91BC307B452800AAB201 /* NotesListView+Helpers.swift in Sources */,
+				A2EA91BD307B452800AAB201 /* NotesListView+Layout.swift in Sources */,
+				A2EA9104307B41D700AAB201 /* JotleyNotes.xcdatamodeld in Sources */,
+				A2EA9105307B41D700AAB201 /* CoreAudioUtils.swift in Sources */,
+				A2EA9106307B41D700AAB201 /* JotleyApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A259955A2F2956C3002C9FDE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F47AD93D2BF5B61E005B75AC /* Jotley */;
+			targetProxy = A25995592F2956C3002C9FDE /* PBXContainerItemProxy */;
+		};
+		A2BBE445307D9B1D009F7720 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A2BBE434307D9B1C009F7720 /* JotleyWidgetsExtension */;
+			targetProxy = A2BBE444307D9B1D009F7720 /* PBXContainerItemProxy */;
+		};
+		A2EA9213307B4F2C00AAB201 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A2EA9200307B4F2B00AAB201 /* Jotley-iOS */;
+			targetProxy = A2EA9212307B4F2C00AAB201 /* PBXContainerItemProxy */;
+		};
+		A2EA921D307B4F2C00AAB201 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A2EA9200307B4F2B00AAB201 /* Jotley-iOS */;
+			targetProxy = A2EA921C307B4F2C00AAB201 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A259955C2F2956C3002C9FDE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 280;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0.38;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.JotleyUITests-macOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Jotley;
+			};
+			name = Debug;
+		};
+		A259955D2F2956C3002C9FDE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 280;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0.38;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.JotleyUITests-macOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Jotley;
+			};
+			name = Release;
+		};
+		A2BBE449307D9B1D009F7720 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JotleyWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JotleyWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A2BBE44A307D9B1D009F7720 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JotleyWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JotleyWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A2EA9223307B4F2C00AAB201 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = iOS/Jotley.entitlements;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley records audio directly from your microphone and saves it on this device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "arm64 microphone";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A2EA9224307B4F2C00AAB201 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = iOS/Jotley.entitlements;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley records audio directly from your microphone and saves it on this device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "arm64 microphone";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A2EA9226307B4F2C00AAB201 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.Jotley-iOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Jotley-iOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Jotley-iOS";
+			};
+			name = Debug;
+		};
+		A2EA9227307B4F2C00AAB201 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.Jotley-iOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Jotley-iOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Jotley-iOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A2EA9229307B4F2C00AAB201 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.Jotley-iOSUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Jotley-iOS";
+			};
+			name = Debug;
+		};
+		A2EA922A307B4F2C00AAB201 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.Jotley-iOSUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Jotley-iOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F47AD94B2BF5B61F005B75AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D DEBUG";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		F47AD94C2BF5B61F005B75AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		F47AD94E2BF5B61F005B75AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "macOS/Jotley-Development.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = macOS/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Protomota, LLC. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley needs microphone access to record audio input alongside system audio.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F47AD94F2BF5B61F005B75AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = macOS/Jotley.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 22HV69L32T;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = macOS/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Protomota, LLC. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley needs microphone access to record audio input alongside system audio.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A259955B2F2956C3002C9FDE /* Build configuration list for PBXNativeTarget "JotleyUITests-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A259955C2F2956C3002C9FDE /* Debug */,
+				A259955D2F2956C3002C9FDE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A2BBE448307D9B1D009F7720 /* Build configuration list for PBXNativeTarget "JotleyWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2BBE449307D9B1D009F7720 /* Debug */,
+				A2BBE44A307D9B1D009F7720 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A2EA9222307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2EA9223307B4F2C00AAB201 /* Debug */,
+				A2EA9224307B4F2C00AAB201 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A2EA9225307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2EA9226307B4F2C00AAB201 /* Debug */,
+				A2EA9227307B4F2C00AAB201 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A2EA9228307B4F2C00AAB201 /* Build configuration list for PBXNativeTarget "Jotley-iOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2EA9229307B4F2C00AAB201 /* Debug */,
+				A2EA922A307B4F2C00AAB201 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F47AD9392BF5B61E005B75AC /* Build configuration list for PBXProject "Jotley" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F47AD94B2BF5B61F005B75AC /* Debug */,
+				F47AD94C2BF5B61F005B75AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F47AD94D2BF5B61F005B75AC /* Build configuration list for PBXNativeTarget "Jotley" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F47AD94E2BF5B61F005B75AC /* Debug */,
+				F47AD94F2BF5B61F005B75AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A2EB8BEC307D4385008E0696 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		A2EA90ED307B41D700AAB201 /* JotleyNotes.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				A2EA90F4307B41D700AAB201 /* JotleyNotes.xcdatamodel */,
+				A2EA90F5307B41D700AAB201 /* JotleyNotes 2.xcdatamodel */,
+				A2EA90F6307B41D700AAB201 /* JotleyNotes 3.xcdatamodel */,
+				A2EA90F7307B41D700AAB201 /* JotleyNotes 4.xcdatamodel */,
+				A2EA90F8307B41D700AAB201 /* JotleyNotes 5.xcdatamodel */,
+				A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */,
+			);
+			currentVersion = A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */;
+			path = JotleyNotes.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+		A2EA91C4307B453D00AAB201 /* JotleyNotes.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				A2EA91DD307B453D00AAB201 /* JotleyNotes.xcdatamodel */,
+				A2EA91DE307B453D00AAB201 /* JotleyNotes 2.xcdatamodel */,
+				A2EA91DF307B453D00AAB201 /* JotleyNotes 3.xcdatamodel */,
+				A2EA91E0307B453D00AAB201 /* JotleyNotes 4.xcdatamodel */,
+				A2EA91E1307B453D00AAB201 /* JotleyNotes 5.xcdatamodel */,
+				A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */,
+			);
+			currentVersion = A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */;
+			path = JotleyNotes.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+		A2EA9266307B532700AAB201 /* JotleyNotes.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				A2EA927E307B532700AAB201 /* JotleyNotes.xcdatamodel */,
+				A2EA927F307B532700AAB201 /* JotleyNotes 2.xcdatamodel */,
+				A2EA9280307B532700AAB201 /* JotleyNotes 3.xcdatamodel */,
+				A2EA9281307B532700AAB201 /* JotleyNotes 4.xcdatamodel */,
+				A2EA9282307B532700AAB201 /* JotleyNotes 5.xcdatamodel */,
+				A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */,
+			);
+			currentVersion = A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */;
+			path = JotleyNotes.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = F47AD9362BF5B61E005B75AC /* Project object */;
+}
