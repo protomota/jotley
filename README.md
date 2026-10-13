@@ -42,7 +42,7 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 | --- | --- |
 | **Live transcription** | Start with **+** on iPhone/iPad. Timestamped cards follow new words; the waveform shows microphone input. Mac supports microphone and system audio. |
 | **Summaries that finish** | Choose **Auto** or a template. Long notes become one consolidated summary. See preparation progress while sections are reviewed, then follow the summary as it is written. **Cancel Generation** stays visible; regeneration starts with one tap. |
-| **Ask your notes** | Open **More → Ask AI** to find an answer, pull out action items or clarify a detail using on-device Apple Intelligence. |
+| **Ask your notes** | On iPhone and iPad, tap **Ask AI** on the Summary tab; on Mac, use **More → Ask AI**. Find answers, pull out action items or clarify a detail using on-device Apple Intelligence. |
 | **Make it yours** | Edit transcripts and summaries, organize with folders and tags, search and filter, and choose light or dark appearance. |
 | **Keep moving** | iPhone widgets and the Lock Screen/Dynamic Island show the active transcription session. |
 | **Share your work** | Export text or Markdown, share natively, and send notes to Obsidian on Mac. |

@@ -371,10 +371,17 @@ struct LocalAskNoteView: View {
                 if message.role == "assistant" { MarkdownContentView(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
                 if message.role == "assistant" {
-                    HStack {
-                        Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.content }
-                        Button("Share", systemImage: "square.and.arrow.up") { share = LocalSharePayload(items: [message.content]) }
-                    }.font(.caption).buttonStyle(.borderless)
+                    HStack(spacing: 12) {
+                        Button { UIPasteboard.general.string = message.content } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                                .frame(minWidth: 104, minHeight: 44)
+                        }.accessibilityIdentifier("askAICopyAnswerButton")
+                        Button { share = LocalSharePayload(items: [message.content]) } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                                .frame(minWidth: 104, minHeight: 44)
+                        }.accessibilityIdentifier("askAIShareAnswerButton")
+                    }.font(.body.weight(.medium)).buttonStyle(.bordered)
+                        .padding(.top, 4)
                 }
             }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
             if message.role == "assistant" { Spacer(minLength: 32) }

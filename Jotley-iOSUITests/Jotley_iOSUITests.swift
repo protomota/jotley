@@ -66,6 +66,64 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     #if DEBUG
+
+    @MainActor func testSummaryAskAIAndTranscriptFooterWithLargeAnswerActions() throws {
+        guard case .available = SystemLanguageModel.default.availability else {
+            throw XCTSkip("Apple model is not ready in this simulator")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-transcriptionLanguage", "en-US"]
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Weekly Design Review","folder":"Work","tags":[],"transcript":"We agreed to keep live transcription simple. Maya will test the microphone on Friday. Sam will review summary templates on Monday.","summary":"# Key Decisions\nKeep live transcription simple.\n\n## Next Steps\n- Maya: test the microphone on Friday.\n- Sam: review summary templates on Monday."}]"##
+        app.launch()
+        let row = app.buttons.containing(.staticText, identifier: "Weekly Design Review").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let ask = app.buttons["noteDetailSummaryAskAIButton"]
+        let resume = app.buttons["noteDetailContinueTranscriptionButton"]
+        XCTAssertTrue(ask.waitForExistence(timeout: 5)); XCTAssertFalse(resume.exists)
+        for _ in 0..<2 {
+            app.buttons["noteDetailTranscriptTab"].tap()
+            XCTAssertTrue(resume.waitForExistence(timeout: 5)); XCTAssertFalse(ask.exists)
+            app.buttons["noteDetailSummaryTab"].tap()
+            XCTAssertTrue(ask.waitForExistence(timeout: 5)); XCTAssertFalse(resume.exists)
+            XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].exists)
+            XCTAssertEqual(app.buttons["noteDetailGenerateSummaryButton"].label, "Regenerate Summary")
+        }
+        let footer = XCTAttachment(screenshot: app.screenshot())
+        footer.name = "Summary tab with contextual Ask AI"; footer.lifetime = .keepAlways; add(footer)
+        ask.tap()
+        XCTAssertTrue(app.textFields["askAIQuestionField"].waitForExistence(timeout: 10))
+        app.buttons["List any action items"].tap()
+        app.buttons["askAISendButton"].tap()
+        let copy = app.buttons["askAICopyAnswerButton"].firstMatch
+        let share = app.buttons["askAIShareAnswerButton"].firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 90), app.debugDescription)
+        for button in [copy, share] {
+            XCTAssertTrue(button.isHittable)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 104)
+        }
+        let actions = XCTAttachment(screenshot: app.screenshot())
+        actions.name = "Larger Ask AI Copy and Share controls"; actions.lifetime = .keepAlways; add(actions)
+        copy.tap()
+        XCTAssertTrue(share.isHittable)
+        XCTAssertTrue(app.buttons["askAIDoneButton"].waitForExistence(timeout: 5))
+        app.buttons["askAIDoneButton"].tap()
+        XCTAssertTrue(ask.waitForExistence(timeout: 5))
+        let returnedToNote = expectation(for: NSPredicate(format: "hittable == YES"), evaluatedWith: ask)
+        wait(for: [returnedToNote], timeout: 5)
+        app.buttons["noteDetailTranscriptTab"].tap()
+        XCTAssertTrue(resume.waitForExistence(timeout: 5)); XCTAssertFalse(ask.exists)
+        app.buttons["noteDetailSummaryTab"].tap()
+        XCTAssertTrue(ask.waitForExistence(timeout: 5)); ask.tap()
+        XCTAssertTrue(share.waitForExistence(timeout: 10))
+        share.tap()
+        let nativeCopy = app.cells["Copy"]
+        XCTAssertTrue(nativeCopy.waitForExistence(timeout: 10), app.debugDescription)
+        // Verify the native local-sharing action without sending to another person.
+        nativeCopy.tap()
+    }
     @MainActor func testLongTranscriptShowsRealPreparationAndSavesActualSummary() throws {
         guard case .available = SystemLanguageModel.default.availability else {
             throw XCTSkip("Apple summary model is not ready in this simulator")

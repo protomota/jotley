@@ -191,11 +191,19 @@ extension NoteDetailView {
     }
     private var transcriptionAndSummaryFooter: some View {
         VStack(spacing: 8) {
-            Button("Continue Transcription", systemImage: "waveform") { showingTranscription = true }
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .buttonStyle(.bordered)
-                .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
-                .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
+            if selectedTab == "Summary" {
+                Button("Ask AI", systemImage: "bubble.left.and.bubble.right") { showingAskAI = true }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonStyle(.bordered)
+                    .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
+                    .accessibilityIdentifier("noteDetailSummaryAskAIButton")
+            } else {
+                Button("Continue Transcription", systemImage: "waveform") { showingTranscription = true }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonStyle(.bordered)
+                    .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
+                    .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
+            }
             if hasTranscript {
                 HStack(spacing: 8) {
                     Menu {
