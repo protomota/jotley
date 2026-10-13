@@ -12,8 +12,14 @@ extension NoteDetailView {
                         TextEditor(text: Binding(get: { note.summary ?? "" }, set: { note.summary = $0; transcriptionManager.saveEdits() }))
                             .frame(minHeight: 320).scrollContentBackground(.hidden).padding(.horizontal)
                     } else {
-                        MarkdownContentView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
-                            .padding(.horizontal).accessibilityIdentifier("noteDetailSummaryContent")
+                        if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
+                            Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
+                                .font(.body).foregroundColor(.themeTextSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading).padding()
+                        } else {
+                            MarkdownContentView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
+                                .padding(.horizontal).accessibilityIdentifier("noteDetailSummaryContent")
+                        }
                     }
                 } else if hasTranscript || noteIsTranscribing {
                     transcriptContent.padding(.horizontal)
@@ -38,12 +44,26 @@ extension NoteDetailView {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if summaryIsRunning {
-                Button { transcriptionManager.cancelProcessing() } label: {
-                    Label("Cancel Generation", systemImage: "xmark.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                }.buttonStyle(.bordered)
-                    .accessibilityIdentifier("noteDetailCancelGenerationButton")
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        ProgressView().tint(.themePrimaryAccent)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(transcriptionManager.summaryProgress.title).font(.body.weight(.semibold))
+                            if let detail = transcriptionManager.summaryProgress.detail {
+                                Text(detail).font(.subheadline).foregroundColor(.themeTextSecondary)
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }.accessibilityIdentifier("noteDetailSummaryProgress")
+                    if let fraction = transcriptionManager.summaryProgress.fraction {
+                        ProgressView(value: fraction).tint(.themePrimaryAccent)
+                    }
+                    Button { transcriptionManager.cancelProcessing() } label: {
+                        Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.bordered)
+                        .accessibilityIdentifier("noteDetailCancelGenerationButton")
+                }
                     .padding(.horizontal,16).padding(.vertical,8).background(Color.themeBackground)
             } else { transcriptionAndSummaryFooter }
         }
@@ -101,10 +121,6 @@ extension NoteDetailView {
             AddTagSheetView(note: note, isPresented: $showingAddTag, newTagText: $newTagText, currentTags: $currentTags, onSave: transcriptionManager.saveEdits)
         }
         .sheet(item: $exportPayload, onDismiss: clearExport) { payload in ShareSheet(activityItems: payload.items) }
-        .alert("Regenerate Summary?", isPresented: $showingRegenerateSummary) {
-            Button("Cancel", role: .cancel) { }
-            Button("Regenerate", action: generateSummary)
-        } message: { Text("Replace this note's summary using the \(selectedTemplate.title) template? Your transcript remains saved.") }
         .alert("Delete Note", isPresented: $showingDelete) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -198,8 +214,7 @@ extension NoteDetailView {
                         .accessibilityLabel("Templates: \(selectedTemplate.title)")
                         .accessibilityIdentifier("noteDetailTemplatesButton")
                     Button {
-                        if hasSummary { showingRegenerateSummary = true }
-                        else { generateSummary() }
+                        generateSummary()
                     } label: {
                         Text(hasSummary ? "Regenerate Summary" : "Generate Summary")
                             .lineLimit(1).minimumScaleFactor(0.8)

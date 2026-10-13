@@ -361,11 +361,21 @@ private final class RoutingRefusedNote: Note {
             throw LocalError.message("The actual on-device summary flow did not save both summary and title: \(viewModel.syncErrorMessage)")
         }
         let generatedTitle = title
+        var progress: [LocalSummaryProgress] = [], snapshots: [String] = []
+        let progressObserver = viewModel.streamingSummaryViewModel.$progress.sink { progress.append($0) }
+        let streamObserver = viewModel.streamingSummaryViewModel.$summary.sink { if !$0.isEmpty { snapshots.append($0) } }
+        defer { progressObserver.cancel(); streamObserver.cancel() }
+        note.transcription = Array(repeating: note.transcription ?? "", count: 64).joined(separator: "\n\n")
+        let began = Date()
         await viewModel.generateSummary(note: note, templateKey: "Meeting")
-        guard note.title == generatedTitle, note.summaryType == "Meeting", !viewModel.showSyncError else {
+        guard note.title == generatedTitle, note.summaryType == LocalSummaryTemplate.meeting.key, !viewModel.showSyncError else {
             throw LocalError.message("Template regeneration changed an already named note or failed.")
         }
-        print("PASS: installed Apple model generated summary and title through the Mac view model; template regeneration preserved the title.")
+        guard progress.contains(where: { if case .reading = $0 { return true }; return false }),
+              progress.contains(.writing), snapshots.count > 1, !viewModel.isGeneratingSummary else {
+            throw LocalError.message("Mac long-note generation did not report preparation and live text before finishing.")
+        }
+        print("PASS: installed Apple model generated summary/title and regenerated a long transcript in \(Date().timeIntervalSince(began)) seconds with \(snapshots.count) live snapshots; preparation progress was reported and the title was preserved.")
     }
     @MainActor private static func verifyRecordingControlLayout() async throws {
         let original = ThemeManager.shared.currentAppearanceMode

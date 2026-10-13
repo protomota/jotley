@@ -21,6 +21,7 @@ import Combine
     var pendingFolderSelection: FolderSelection = .all
     var activeRecordingNote: Note? { recorder.isRecording ? newNoteBeingRecorded : nil }
     let streamingSummaryViewModel = StreamingSummaryViewModel()
+    var summaryProgress: LocalSummaryProgress { streamingSummaryViewModel.progress }
     private var subscriptions: Set<AnyCancellable> = []
     private var inference: Task<Void, Never>?
     #if DEBUG
@@ -32,6 +33,7 @@ import Combine
     private var baseUtterances: [TranscriptUtterance] = []
     init(viewContext: NSManagedObjectContext, recorder: ProcessTapRecorder, persistenceController: SharedPersistenceController) {
         self.viewContext = viewContext; self.recorder = recorder; self.persistenceController = persistenceController
+        streamingSummaryViewModel.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
         recorder.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
     }
     func saveContext() {
@@ -178,28 +180,34 @@ import Combine
     func generateSummary(note: Note, templateKey: String) async {
         guard !operationInProgress, !isGeneratingSummary, !recorder.isRecording, !recorder.isBusy, !LocalAppModel.shared.busy else { return }
         isGeneratingSummary = true; generatingSummaryNoteID = note.objectID; generatingSummaryStartedAt = Date()
+        streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing
         let template = LocalSummaryTemplate.resolve(templateKey)
         let task = Task { @MainActor in
             JotleyEngagement.shared.beginProcessing()
             defer { JotleyEngagement.shared.endProcessing() }
-            defer { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil; streamingSummaryViewModel.summary = "" }
+            defer { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil; streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing }
             do {
                 let update: @Sendable (String) async -> Void = { [weak self] text in
                     guard !Task.isCancelled else { return }
-                    await MainActor.run { self?.streamingSummaryViewModel.summary = text; self?.objectWillChange.send() }
+                    await MainActor.run { self?.streamingSummaryViewModel.summary = text; if !text.isEmpty { self?.streamingSummaryViewModel.progress = .writing } }
+                }
+                let progress: @Sendable (LocalSummaryProgress) async -> Void = { [weak self] value in
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run { self?.streamingSummaryViewModel.progress = value }
                 }
                 let result: String
                 #if DEBUG
                 if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
                 else { result = try await LocalSummary.generate(note.transcription ?? "", template: template,
-                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), snapshot: update) }
+                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update) }
                 #else
                 result = try await LocalSummary.generate(note.transcription ?? "", template: template,
-                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), snapshot: update)
+                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update)
                 #endif
                 var generatedTitle: String?
                 var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
+                    streamingSummaryViewModel.progress = .finishing
                     do {
                         generatedTitle = try await LocalSummary.generateTitle(from: result,
                             locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
@@ -221,6 +229,6 @@ import Combine
 }
 @MainActor final class StreamingSummaryViewModel: ObservableObject {
     @Published var summary = ""
+    @Published var progress: LocalSummaryProgress = .preparing
     var displayedText: String { summary }
-    var streamInactivityTimeoutInterval: TimeInterval { 120 }
 }

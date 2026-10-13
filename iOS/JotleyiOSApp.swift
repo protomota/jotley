@@ -49,6 +49,7 @@ struct JotleyiOSApp: App {
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_SCROLL"] == "1" {
             recorder.simulatedSummaryGeneration = { update in
+                try await Task.sleep(for: .seconds(3))
                 var content = ""
                 for index in 1...160 {
                     try await Task.sleep(for: .milliseconds(200))

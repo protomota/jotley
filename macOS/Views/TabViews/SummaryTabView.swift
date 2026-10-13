@@ -56,13 +56,6 @@ struct SummaryTabView: View {
         isGeneratingSummary && !hasSummaryTextToRender
     }
 
-    private var effectiveLoadingStartedAt: Date? {
-        if isGeneratingSummary {
-            return summaryLoadingStartedAt
-        }
-        return summaryLoadingStartedAt
-    }
-
     private var renderedSummary: NSAttributedString {
         // Memoize. Parsing markdown into an NSAttributedString plus the inline/block
         // regex styling passes is expensive, and this property was recomputed on EVERY
@@ -154,15 +147,10 @@ struct SummaryTabView: View {
     var body: some View {
         Group {
             if shouldShowSummaryLoader {
-                // Use same component as TranscriptTabView for consistent vertical alignment
-                TranscriptLoadingView(
-                    message: "Generating Summary...",
-                    detailMessage: "You'll be notified when the summary is ready. Longer recordings can take a few minutes.",
-                    startedAt: effectiveLoadingStartedAt,
-                    timeoutInterval: streamingSummaryViewModel.streamInactivityTimeoutInterval
-                )
+                Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
+                    .font(.system(size: 15)).foregroundColor(.themeTextSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(16)
                     .accessibilityIdentifier("noteDetailSummaryLoading")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if isGeneratingSummary || hasSummaryTextToRender || isSummaryEditorFocused {
                 // Use our controlled displaySummary instead of directly accessing note.summary
                 VStack(alignment: .leading, spacing: 8) {

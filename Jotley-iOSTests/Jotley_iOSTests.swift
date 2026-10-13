@@ -710,6 +710,8 @@ extension Jotley_iOSTests {
 private actor SummaryTestLog {
     var limits: [Int] = []
     var snapshots: [String] = []
+    var progress: [LocalSummaryProgress] = []
+    func recordProgress(_ value: LocalSummaryProgress) { progress.append(value) }
     func record(limit: Int) { limits.append(limit) }
     func publish(_ text: String) { snapshots.append(text) }
 }
@@ -726,7 +728,13 @@ extension Jotley_iOSTests {
             }
             await update("One final summary")
             return "One final summary: Maya reviews Friday; Sam tests."
-        }, snapshot: { await log.publish($0) })
+        }, progress: { await log.recordProgress($0) }, snapshot: { await log.publish($0) })
+        let progress = await log.progress
+        #expect(progress.first == .preparing && progress.last == .writing)
+        let count = LocalSummary.chunks(source).count
+        #expect(progress.contains(.reading(completed: 0, total: count, pass: 0)))
+        #expect(progress.contains(.reading(completed: count, total: count, pass: 0)))
+        #expect(LocalSummaryProgress.reading(completed: 2, total: 4, pass: 0).fraction == 0.5)
         let limits = await log.limits, snapshots = await log.snapshots
         #expect(limits.filter { $0 == 512 }.count == 1)
         #expect(limits.filter { $0 == 128 }.count > 1)
@@ -803,11 +811,22 @@ extension SimulatorModelAcceptanceTests {
     @MainActor func testActualLongSourceSavesOneConsolidatedSummaryAndFinishes() async throws {
         let locale = Locale(identifier: "en-US")
         if let reason = LocalSummary.readiness(locale: locale) { throw XCTSkip(reason) }
-        let paragraphs = (1...16).map { index in
+        let paragraphs = (1...64).map { index in
             "Review \(index): Maya owns accessibility testing for the native notes app. Sam will check that transcripts remain on the device. The team agreed to review the completed checklist on Friday and keep all features free."
         }.joined(separator: "\n\n")
         XCTAssertGreaterThan(LocalSummary.chunks(paragraphs).count, 1)
-        let result = try await LocalSummary.generate(paragraphs, template: .concise, locale: locale, snapshot: { _ in })
+        let log = SummaryTestLog()
+        let began = Date()
+        let result = try await LocalSummary.generate(paragraphs, template: .concise, locale: locale,
+            progress: { await log.recordProgress($0) }, snapshot: { await log.publish($0) })
+        let progress = await log.progress, snapshots = await log.snapshots
+        XCTAssertTrue(progress.contains { if case .reading = $0 { return true }; return false })
+        XCTAssertEqual(progress.last, .writing)
+        XCTAssertFalse(snapshots.isEmpty)
+        XCTAssertEqual(snapshots.last, result)
+        XCTAssertTrue(result.localizedCaseInsensitiveContains("Maya"))
+        let trace = XCTAttachment(string: "Elapsed: \(Date().timeIntervalSince(began)) seconds\nProgress: \(progress)\nLive snapshots: \(snapshots.count)\nFirst live text: \(snapshots.first ?? "")")
+        trace.name = "Actual Apple model preparation and live summary trace"; trace.lifetime = .keepAlways; add(trace)
         XCTAssertFalse(result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         XCTAssertFalse(result.contains("## Part "))
         XCTAssertNil(LocalSummary.withoutRepeatingTail(result))

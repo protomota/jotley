@@ -13,15 +13,29 @@ extension NoteDetailPlaceholderView {
         }
         .safeAreaInset(edge: .bottom) {
             if isGeneratingThisSummary {
-                Button { viewModel.cancelInference() } label: {
-                    Label("Cancel Generation", systemImage: "xmark.circle.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal,20).frame(minWidth: 220, minHeight: 44)
-                        .background(Capsule().fill(Color.themePrimaryAccent))
-                }.buttonStyle(.plain).keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("noteDetailCancelGenerationButton")
-                    .frame(maxWidth: .infinity).padding(12).background(Color.themeBackground)
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        ProgressView().controlSize(.small)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(viewModel.summaryProgress.title).font(.system(size: 15, weight: .semibold))
+                            if let detail = viewModel.summaryProgress.detail {
+                                Text(detail).font(.system(size: 13)).foregroundColor(.themeTextSecondary)
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }.accessibilityIdentifier("noteDetailSummaryProgress")
+                    if let fraction = viewModel.summaryProgress.fraction {
+                        ProgressView(value: fraction).tint(.themePrimaryAccent)
+                    }
+                    Button { viewModel.cancelInference() } label: {
+                        Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal,20).frame(minWidth: 220, minHeight: 44)
+                            .background(Capsule().fill(Color.themePrimaryAccent))
+                    }.buttonStyle(.plain).keyboardShortcut(.cancelAction)
+                        .accessibilityIdentifier("noteDetailCancelGenerationButton")
+                        .frame(maxWidth: .infinity)
+                }.frame(maxWidth: 480).padding(12).frame(maxWidth: .infinity).background(Color.themeBackground)
             }
         }
         .onAppear(perform: handleOnAppear)

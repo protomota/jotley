@@ -165,6 +165,7 @@ final class LiveTranscriptionManager: ObservableObject {
     @Published var errorMessage: String?
     @Published private(set) var summaryNoteID: UUID?
     @Published private(set) var summaryPreview = ""
+    @Published private(set) var summaryProgress: LocalSummaryProgress = .preparing
     private let store: SharedPersistenceController?
     private let audioSessionOwner = UUID()
     private var pendingInterruption: String?
@@ -516,28 +517,37 @@ final class LiveTranscriptionManager: ObservableObject {
 
     func summarize(_ note: Note, template: LocalSummaryTemplate) {
         guard canStart, let store, let id = note.id else { return }
-        summaryNoteID = id; summaryPreview = ""; errorMessage = nil
+        summaryNoteID = id; summaryPreview = ""; summaryProgress = .preparing; errorMessage = nil
         summaryTask = Task { [weak self] in
             guard let self else { return }
-            defer { self.summaryNoteID = nil; self.summaryPreview = ""; self.summaryTask = nil }
+            defer { self.summaryNoteID = nil; self.summaryPreview = ""; self.summaryProgress = .preparing; self.summaryTask = nil }
             do {
                 let update: @Sendable (String) async -> Void = { [weak self] value in
                     guard !Task.isCancelled else { return }
                     await MainActor.run { [weak self] in
                         guard self?.summaryNoteID == id else { return }
                         self?.summaryPreview = value
+                        if !value.isEmpty { self?.summaryProgress = .writing }
+                    }
+                }
+                let progress: @Sendable (LocalSummaryProgress) async -> Void = { [weak self] value in
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run {
+                        guard self?.summaryNoteID == id else { return }
+                        self?.summaryProgress = value
                     }
                 }
                 let result: String
                 #if DEBUG && targetEnvironment(simulator)
                 if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
-                else { result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, snapshot: update) }
+                else { result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, progress: progress, snapshot: update) }
                 #else
-                result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, snapshot: update)
+                result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, progress: progress, snapshot: update)
                 #endif
                 var generatedTitle: String?
                 var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
+                    self.summaryProgress = .finishing
                     do { generatedTitle = try await LocalSummary.generateTitle(from: result, locale: self.locale) }
                     catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }

@@ -16,9 +16,12 @@ final class Jotley_iOSUITests: XCTestCase {
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         app.buttons["noteDetailGenerateSummaryButton"].tap()
-        app.alerts["Regenerate Summary?"].buttons["Regenerate"].tap()
         let cancel = app.buttons["noteDetailCancelGenerationButton"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 10)); XCTAssertTrue(cancel.isHittable)
+        XCTAssertTrue(app.staticTexts["Preparing summary"].exists)
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+        let preparing = XCTAttachment(screenshot: app.screenshot())
+        preparing.name = "Visible summary preparation before first words"; preparing.lifetime = .keepAlways; add(preparing)
         let latest = app.staticTexts.matching(NSPredicate(format: "label == 'Summary update 18'")).firstMatch
         XCTAssertTrue(latest.waitForExistence(timeout: 10)); XCTAssertTrue(latest.isHittable)
         XCTAssertTrue(cancel.isHittable)
@@ -32,6 +35,37 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].isEnabled)
         XCTAssertFalse(app.staticTexts["Summary update 25"].waitForExistence(timeout: 2))
     }
+
+    #if DEBUG
+    @MainActor func testLongTranscriptShowsRealPreparationAndSavesActualSummary() throws {
+        guard case .available = SystemLanguageModel.default.availability else {
+            throw XCTSkip("Apple summary model is not ready in this simulator")
+        }
+        let app = XCUIApplication()
+        let transcript = Array(repeating: "Maya owns accessibility testing for the native notes app. Sam will check that transcripts remain on the device. The team agreed to review the completed checklist on Friday and keep all features free.", count: 64).joined(separator: "\n\n")
+        let fixture = [["title": "Weekly accessibility review", "folder": "Work", "tags": ["meeting"], "transcript": transcript, "summary": ""]] as [[String: Any]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchArguments = ["-transcriptionLanguage", "en-US", "-selectedAppearanceMode", "Dark"]
+        app.launch()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let generate = app.buttons["noteDetailGenerateSummaryButton"]
+        generate.tap()
+        XCTAssertTrue(app.staticTexts["Reading transcript"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["noteDetailCancelGenerationButton"].isHittable)
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+        let preparation = XCTAttachment(screenshot: app.screenshot())
+        preparation.name = "Actual long transcript preparation with section progress"; preparation.lifetime = .keepAlways; add(preparation)
+        let finished = expectation(for: NSPredicate(format: "exists == true AND enabled == true"), evaluatedWith: generate)
+        wait(for: [finished], timeout: 90)
+        XCTAssertFalse(app.buttons["noteDetailCancelGenerationButton"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Maya'")).firstMatch.exists)
+        XCTAssertFalse(app.alerts.firstMatch.exists, app.debugDescription)
+        let completed = XCTAttachment(screenshot: app.screenshot())
+        completed.name = "Actual long transcript summary completed"; completed.lifetime = .keepAlways; add(completed)
+    }
+    #endif
 
     @MainActor func testStopAndCloseSaveWithoutConfirmationAndRejectLateWords() throws {
         for action in ["transcriptionStopButton", "transcriptionCloseButton"] {
@@ -650,8 +684,7 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists,
                       "Changing templates keeps the rendered summary open")
         generate.tap()
-        let confirmation = app.alerts["Regenerate Summary?"]
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 5)); confirmation.buttons["Regenerate"].tap()
+        XCTAssertFalse(app.alerts.firstMatch.exists, "Regenerate starts without a confirmation")
         let finished = expectation(for: NSPredicate(format: "exists == true AND enabled == true"), evaluatedWith: generate)
         wait(for: [finished], timeout: 60)
         XCTAssertEqual(templates.label, "Templates: General Meeting")
@@ -700,10 +733,6 @@ final class Jotley_iOSUITests: XCTestCase {
                       "Template choice must keep the rendered summary visible")
         let regenerate = app.buttons["noteDetailGenerateSummaryButton"]
         XCTAssertEqual(regenerate.label, "Regenerate Summary")
-        regenerate.tap()
-        let confirmation = app.alerts["Regenerate Summary?"]
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
-        confirmation.buttons["Cancel"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
         launch("Light")
         openMeeting()

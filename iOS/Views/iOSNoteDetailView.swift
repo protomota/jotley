@@ -31,7 +31,6 @@ struct NoteDetailView: View {
     @State var currentTags: [String] = []
     @State var showingTranscriptEditor = false
     @State var editingSummary = false
-    @State var showingRegenerateSummary = false
     @State var showingAskAI = false
     var selectedTemplate: LocalSummaryTemplate { .resolve(note.summaryType) }
     func selectTemplate(_ template: LocalSummaryTemplate) {
