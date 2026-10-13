@@ -83,8 +83,10 @@ struct JotleyiOSApp: App {
                     .environment(\.managedObjectContext, store.context)
                     .environmentObject(store)
                     .environmentObject(transcriptionManager)
+                    .task { transcriptionManager.resumePendingSummary() }
                     .onChange(of: scenePhase) { _, phase in
-                        if phase == .background { transcriptionManager.saveEdits(); transcriptionManager.cancelProcessing() }
+                        if phase == .background { transcriptionManager.saveEdits() }
+                        if phase == .active { transcriptionManager.resumePendingSummary() }
                     }
             } else {
                 ContentUnavailableView("Jotley Unavailable", systemImage: "iphone", description: Text(launchError ?? "Local notes are unavailable."))

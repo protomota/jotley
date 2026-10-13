@@ -36,13 +36,43 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Summary update 25"].waitForExistence(timeout: 2))
     }
 
+    @MainActor func testSummaryContinuesAfterLeavingNoteAndBackgroundingApp() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Background summary","folder":"","tags":[],"transcript":"Maya reviews Friday.","summary":"Existing summary"}]"##
+        app.launchEnvironment["JOTLEY_TEST_SUMMARY_SCROLL"] = "1"
+        app.launch()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        app.buttons["noteDetailGenerateSummaryButton"].tap()
+        XCTAssertTrue(app.buttons["noteDetailCancelGenerationButton"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 6)
+        app.activate()
+        let cancel = app.buttons["noteDetailCancelGenerationButton"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Summary update '")).firstMatch.waitForExistence(timeout: 5))
+        let back = app.navigationBars.buttons.matching(NSPredicate(format: "label IN {'Back', 'Notes'}")).firstMatch
+        XCTAssertTrue(back.exists); back.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Summary continues after app background and note navigation"; shot.lifetime = .keepAlways; add(shot)
+        cancel.tap()
+        let stopped = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cancel)
+        wait(for: [stopped], timeout: 10)
+        XCTAssertTrue(app.staticTexts["Existing summary"].exists)
+    }
+
     #if DEBUG
     @MainActor func testLongTranscriptShowsRealPreparationAndSavesActualSummary() throws {
         guard case .available = SystemLanguageModel.default.availability else {
             throw XCTSkip("Apple summary model is not ready in this simulator")
         }
         let app = XCUIApplication()
-        let transcript = Array(repeating: "Maya owns accessibility testing for the native notes app. Sam will check that transcripts remain on the device. The team agreed to review the completed checklist on Friday and keep all features free.", count: 64).joined(separator: "\n\n")
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        let transcript = Array(repeating: "Maya owns accessibility testing for the native notes app. Sam will check that transcripts remain on the device. The team agreed to review the completed checklist on Friday and keep all features free.", count: 192).joined(separator: "\n\n")
         let fixture = [["title": "Weekly accessibility review", "folder": "Work", "tags": ["meeting"], "transcript": transcript, "summary": ""]] as [[String: Any]]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
         app.launchArguments = ["-transcriptionLanguage", "en-US", "-selectedAppearanceMode", "Dark"]
@@ -56,6 +86,10 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.alerts.firstMatch.exists)
         let preparation = XCTAttachment(screenshot: app.screenshot())
         preparation.name = "Actual long transcript preparation with section progress"; preparation.lifetime = .keepAlways; add(preparation)
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 4)
+        app.activate()
+        XCTAssertFalse(app.alerts.firstMatch.exists)
         let finished = expectation(for: NSPredicate(format: "exists == true AND enabled == true"), evaluatedWith: generate)
         wait(for: [finished], timeout: 90)
         XCTAssertFalse(app.buttons["noteDetailCancelGenerationButton"].exists)

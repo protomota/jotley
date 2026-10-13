@@ -182,9 +182,14 @@ import Combine
         isGeneratingSummary = true; generatingSummaryNoteID = note.objectID; generatingSummaryStartedAt = Date()
         streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing
         let template = LocalSummaryTemplate.resolve(templateKey)
+        let activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "Finish on-device note summary")
         let task = Task { @MainActor in
             JotleyEngagement.shared.beginProcessing()
-            defer { JotleyEngagement.shared.endProcessing() }
+            defer {
+                ProcessInfo.processInfo.endActivity(activity)
+                JotleyEngagement.shared.endProcessing()
+            }
             defer { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil; streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing }
             do {
                 let update: @Sendable (String) async -> Void = { [weak self] text in

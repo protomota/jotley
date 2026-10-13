@@ -132,6 +132,7 @@ public enum LocalSummaryProgress: Equatable, Sendable {
     case reading(completed: Int, total: Int, pass: Int)
     case writing
     case finishing
+    case waitingForForeground
 
     public var title: String {
         switch self {
@@ -139,9 +140,11 @@ public enum LocalSummaryProgress: Equatable, Sendable {
         case .reading(_, _, let pass): return pass == 0 ? "Reading transcript" : "Combining key points"
         case .writing: return "Writing summary"
         case .finishing: return "Finishing note title"
+        case .waitingForForeground: return "Summary paused by iOS"
         }
     }
     public var detail: String? {
+        if self == .waitingForForeground { return "Will continue when you return to Jotley" }
         if case .reading(let completed, let total, _) = self {
             return "\(completed) of \(total) sections reviewed"
         }
@@ -152,6 +155,22 @@ public enum LocalSummaryProgress: Equatable, Sendable {
             return Double(completed) / Double(total)
         }
         return nil
+    }
+}
+
+/// A local recovery record, separate from the saved summary. Completed source
+/// sections survive system expiration; unfinished model output is never saved as
+/// a completed note. It is valid only for the exact transcript and template.
+public struct LocalSummaryCheckpoint: Codable, Sendable {
+    public let input: String
+    public let templateKey: String
+    public var source: String
+    public var pass: Int = 0
+    public var facts: [String] = []
+    public var sections: [String]?
+    public var result: String?
+    public init(input: String, template: LocalSummaryTemplate) {
+        self.input = input; self.templateKey = template.key; self.source = input
     }
 }
 
@@ -224,38 +243,99 @@ public enum LocalSummary {
 
     typealias Inference = @Sendable (String, String, Int, @escaping @Sendable (String) async -> Void) async throws -> String
 
-    /// Long inputs are reduced privately, then produce exactly one visible summary.
-    /// Every reduction must shrink the input; no retry or unbounded reduction loop.
+    static let extractionPrompt = "Extract the key facts, decisions and action items from this source in compact notes. Preserve names, dates, numbers, decisions and unresolved questions across the entire source. Do not repeat facts or add a preamble."
+    static func finalPrompt(_ template: LocalSummaryTemplate) -> String {
+        template.prompt + "\nCreate one summary. Combine overlapping facts; do not repeat sections. End after the summary."
+    }
+
+    typealias Partition = @Sendable (String) async throws -> [String]
+
+    /// Greedily pack complete UTF-8 sections using the actual installed model's
+    /// tokenizer. Count instructions and the longest prompt, reserve output and
+    /// framing tokens, and never truncate any source. Small chunks remain the
+    /// fallback for callers that do not have an installed tokenizer.
+    static func packedSections(_ text: String, fits: @Sendable (String) async throws -> Bool) async throws -> [String] {
+        try Task.checkCancellation()
+        if try await fits(text) { return [text] }
+        var result: [String] = [], current = ""
+        for piece in chunks(text) {
+            try Task.checkCancellation()
+            let candidate = current + piece
+            if try await fits(candidate) { current = candidate }
+            else {
+                if !current.isEmpty { result.append(current); current = "" }
+                // Some scripts tokenize densely. Recursively split rather than
+                // assuming that a byte-sized section fits the model window.
+                for small in try await splitToFit(piece, fits: fits) {
+                    if current.isEmpty { current = small }
+                    else { result.append(current); current = small }
+                }
+            }
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
+    }
+
+    private static func splitToFit(_ text: String, fits: @Sendable (String) async throws -> Bool) async throws -> [String] {
+        try Task.checkCancellation()
+        if try await fits(text) { return [text] }
+        guard text.unicodeScalars.count > 1 else { throw LocalError.message("The model context is too small for this source.") }
+        let smaller = chunks(text, byteLimit: max(4, text.utf8.count / 2))
+        guard smaller.count > 1 else { throw LocalError.message("The model context is too small for this source.") }
+        var result: [String] = []
+        for piece in smaller { result += try await splitToFit(piece, fits: fits) }
+        return result
+    }
+
+    /// Every original section is visited in order. Completed extractions are
+    /// checkpointed; resumed jobs continue at the next section, not the start.
     static func run(_ text: String, template: LocalSummaryTemplate, infer: Inference,
+                    partition: @escaping Partition = { chunks($0) }, extractionLimit: Int = 128,
+                    resuming saved: LocalSummaryCheckpoint? = nil,
+                    checkpoint: @escaping @Sendable (LocalSummaryCheckpoint) async throws -> Void = { _ in },
                     progress: @escaping @Sendable (LocalSummaryProgress) async -> Void = { _ in },
                     snapshot: @escaping @Sendable (String) async -> Void) async throws -> String {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LocalError.message("Transcribe some spoken words first.")
         }
         await progress(.preparing)
-        var source = text
-        for pass in 0..<8 {
+        var state = saved.flatMap { $0.input == text && $0.templateKey == template.key ? $0 : nil }
+            ?? LocalSummaryCheckpoint(input: text, template: template)
+        if let result = state.result { await snapshot(result); return result }
+        while state.pass < 8 {
             try Task.checkCancellation()
-            let parts = chunks(source)
+            let parts: [String]
+            if let savedParts = state.sections, savedParts.joined() == state.source, !savedParts.isEmpty { parts = savedParts }
+            else { state.facts = []; parts = try await partition(state.source); state.sections = parts }
+            guard !parts.isEmpty, parts.joined() == state.source else {
+                throw LocalError.message("Summary sections do not contain the complete source. Your note was preserved.")
+            }
+            try await checkpoint(state)
             if parts.count == 1 {
                 await progress(.writing)
-                return try await infer(source, template.prompt + "\nCreate one summary. Combine overlapping facts; do not repeat sections. End after the summary.", 512, snapshot)
-            }
-            var facts: [String] = []
-            await progress(.reading(completed: 0, total: parts.count, pass: pass))
-            for (index, part) in parts.enumerated() {
+                let result = try await infer(state.source, finalPrompt(template), 512, snapshot)
                 try Task.checkCancellation()
-                let result = try await infer(part,
-                    "Extract the key facts, decisions and action items from this source in compact notes. Preserve names and dates. Do not repeat facts or add a preamble.", 128, { _ in })
-                facts.append(result)
-                await progress(.reading(completed: index + 1, total: parts.count, pass: pass))
+                state.result = result
+                try await checkpoint(state)
+                return result
             }
-            let reduced = facts.joined(separator: "\n\n")
+            guard state.facts.count <= parts.count else { throw LocalError.message("Summary recovery data does not match this transcript.") }
+            await progress(.reading(completed: state.facts.count, total: parts.count, pass: state.pass))
+            for index in state.facts.count..<parts.count {
+                try Task.checkCancellation()
+                let result = try await infer(parts[index], extractionPrompt, extractionLimit, { _ in })
+                try Task.checkCancellation()
+                state.facts.append(result)
+                try await checkpoint(state)
+                await progress(.reading(completed: index + 1, total: parts.count, pass: state.pass))
+            }
+            let reduced = state.facts.joined(separator: "\n\n")
             guard !reduced.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  reduced.utf8.count < source.utf8.count else {
+                  reduced.utf8.count < state.source.utf8.count else {
                 throw LocalError.message("The on-device model could not condense this note. Generation stopped; your existing content is preserved.")
             }
-            source = reduced
+            state.source = reduced; state.facts = []; state.sections = nil; state.pass += 1
+            try await checkpoint(state)
         }
         throw LocalError.message("This note is too long to summarize in one result. Generation stopped; your existing content is preserved.")
     }
@@ -292,27 +372,51 @@ public enum LocalSummary {
         return nil
     }
 
-    @available(macOS 26.0, iOS 26.0, *)
+    @available(macOS 26.4, iOS 26.4, *)
     @concurrent
     public static func generate(_ text: String, template: LocalSummaryTemplate, locale: Locale,
+                                resuming saved: LocalSummaryCheckpoint? = nil,
+                                checkpoint: @escaping @Sendable (LocalSummaryCheckpoint) async throws -> Void = { _ in },
                                 progress: @escaping @Sendable (LocalSummaryProgress) async -> Void = { _ in },
                                 snapshot: @escaping @Sendable (String) async -> Void) async throws -> String {
         try Task.checkCancellation()
         if let reason = readiness(locale: locale) { throw LocalError.message(reason) }
-        return try await bounded {
-            try await run(text, template: template, infer: { source, prompt, limit, update in
-                let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
-                let stream = session.streamResponse(to: "\(prompt)\nSource:\n\(source)",
-                    options: GenerationOptions(temperature: 0.2, maximumResponseTokens: limit))
+        let model = SystemLanguageModel.default
+        let instructionTokens = try await model.tokenCount(for: Instructions(instructions))
+        // A large advertised window is not a speed target. Keep individual
+        // prefills bounded while using real tokens instead of tiny byte limits.
+        let contextSize = min(model.contextSize, 4096)
+        let partition: Partition = { source in
+            try await packedSections(source) { candidate in
+                let finalTokens = try await model.tokenCount(for: Prompt("\(finalPrompt(template))\nSource:\n\(candidate)"))
+                let extractTokens = try await model.tokenCount(for: Prompt("\(extractionPrompt)\nSource:\n\(candidate)"))
+                return instructionTokens + max(finalTokens, extractTokens) + 512 + 256 <= contextSize
+            }
+        }
+        return try await run(text, template: template, infer: { source, prompt, limit, update in
+            // Bound each model call instead of timing out legitimate long jobs
+            // while they are still completing source sections.
+            try await bounded({
+                let session = LanguageModelSession(model: model, instructions: instructions)
+                let input = "\(prompt)\nSource:\n\(source)"
+                let options = GenerationOptions(temperature: 0.2, maximumResponseTokens: limit)
+                if prompt == extractionPrompt {
+                    // Private fact extraction needs one response, not repeated
+                    // Markdown rendering/repetition scans for every token.
+                    let response = try await session.respond(to: input, options: options)
+                    try Task.checkCancellation()
+                    let result = markdownForDisplay(response.content)
+                    guard !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                        throw LocalError.message("The on-device model returned no key points. Existing note content was preserved.")
+                    }
+                    return result
+                }
                 var current = "", lastPublished = ""
                 var lastPublishTime = -Double.infinity
-                for try await response in stream {
+                for try await response in session.streamResponse(to: input, options: options) {
                     try Task.checkCancellation()
-                    current = markdownForDisplay(response.content) // Full snapshots, never append.
-                    if let unique = withoutRepeatingTail(current) {
-                        current = unique
-                        break
-                    }
+                    current = markdownForDisplay(response.content)
+                    if let unique = withoutRepeatingTail(current) { current = unique; break }
                     let now = ProcessInfo.processInfo.systemUptime
                     if current != lastPublished, now - lastPublishTime >= 0.2 {
                         await update(current)
@@ -325,7 +429,8 @@ public enum LocalSummary {
                 }
                 if current != lastPublished { await update(current) }
                 return current
-            }, progress: progress, snapshot: snapshot)
-        }
+            }, timeout: .seconds(120), timeoutMessage: "The on-device model stopped making progress on a section. Your existing note is preserved.")
+        }, partition: partition, extractionLimit: 512, resuming: saved, checkpoint: checkpoint,
+           progress: progress, snapshot: snapshot)
     }
 }

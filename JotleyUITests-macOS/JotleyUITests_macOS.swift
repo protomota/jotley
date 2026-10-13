@@ -371,7 +371,7 @@ private final class RoutingRefusedNote: Note {
         guard note.title == generatedTitle, note.summaryType == LocalSummaryTemplate.meeting.key, !viewModel.showSyncError else {
             throw LocalError.message("Template regeneration changed an already named note or failed.")
         }
-        guard progress.contains(where: { if case .reading = $0 { return true }; return false }),
+        guard progress.contains(.preparing),
               progress.contains(.writing), snapshots.count > 1, !viewModel.isGeneratingSummary else {
             throw LocalError.message("Mac long-note generation did not report preparation and live text before finishing.")
         }

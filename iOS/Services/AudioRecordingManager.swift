@@ -5,6 +5,99 @@ import CoreData
 import Darwin
 import UIKit
 import ActivityKit
+import BackgroundTasks
+
+/// Apple's continued-processing runtime is requested only for an explicit
+/// summary action. The OS can still expire it; checkpointed work then resumes
+/// in the foreground. No silent audio session is used to keep the app alive.
+@MainActor final class SummaryBackgroundRuntime {
+    private let identifier = (Bundle.main.bundleIdentifier ?? "com.protomota.jotley") + ".summary." + UUID().uuidString
+    private var assertion: UIBackgroundTaskIdentifier = .invalid
+    private var continuedTask: BGContinuedProcessingTask?
+    private var submission: Task<Void, Never>?
+    private var finished = false
+    private var currentProgress: LocalSummaryProgress = .preparing
+    private var priorSections: Int64 = 0
+    private var lastPass = 0
+    private var lastTotal = 0
+    private let expired: @MainActor () -> Void
+
+    init(expired: @escaping @MainActor () -> Void) { self.expired = expired }
+    func begin() {
+        assertion = UIApplication.shared.beginBackgroundTask(withName: "Finish Jotley summary") { [weak self] in
+            self?.expire() // UIKit delivers this handler on the main actor.
+        }
+        #if !targetEnvironment(simulator)
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: .main) { [weak self] task in
+            MainActor.assumeIsolated {
+                guard let self, !self.finished, let task = task as? BGContinuedProcessingTask else {
+                    task.setTaskCompleted(success: false); return
+                }
+                self.continuedTask = task
+                task.progress.totalUnitCount = 2
+                task.progress.completedUnitCount = 0
+                task.expirationHandler = { [weak self] in Task { @MainActor in self?.expire() } }
+                self.update(self.currentProgress)
+                self.endAssertion()
+            }
+        }
+        guard registered else { return } // The short runtime remains available.
+        let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: "Summarizing your note", subtitle: "Preparing summary")
+        request.strategy = .fail // Never queue a second copy of the same inference.
+        submission = Task { [weak self] in
+            do { try await Self.submit(request) }
+            catch { /* Fall back to the short runtime and durable checkpoint. */ }
+            guard let self else { return }
+            if self.finished { BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: self.identifier) }
+        }
+        #endif
+    }
+    @concurrent private static func submit(_ request: BGContinuedProcessingTaskRequest) async throws {
+        try await BGTaskScheduler.shared.submitTaskRequest(request)
+    }
+    func update(_ progress: LocalSummaryProgress) {
+        currentProgress = progress
+        guard let task = continuedTask else { return }
+        task.updateTitle("Summarizing your note", subtitle: [progress.title, progress.detail].compactMap { $0 }.joined(separator: " · "))
+        switch progress {
+        case .reading(let completed, let total, let pass):
+            if pass != lastPass { priorSections += Int64(lastTotal); lastPass = pass }
+            lastTotal = total
+            task.progress.totalUnitCount = priorSections + Int64(total) + 2
+            task.progress.completedUnitCount = priorSections + Int64(completed)
+        case .writing:
+            task.progress.totalUnitCount = priorSections + Int64(lastTotal) + 2
+            task.progress.completedUnitCount = priorSections + Int64(lastTotal)
+        case .finishing:
+            task.progress.completedUnitCount = task.progress.totalUnitCount - 1
+        default: break
+        }
+    }
+    private func expire() {
+        guard !finished else { return }
+        expired()
+        finish(success: false)
+    }
+    func finish(success: Bool) {
+        guard !finished else { return }
+        finished = true
+        if success, let task = continuedTask { task.progress.completedUnitCount = task.progress.totalUnitCount }
+        continuedTask?.setTaskCompleted(success: success); continuedTask = nil
+        submission?.cancel(); submission = nil
+        BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
+        endAssertion()
+    }
+    private func endAssertion() {
+        if assertion != .invalid { UIApplication.shared.endBackgroundTask(assertion); assertion = .invalid }
+    }
+}
+
+struct MobileSummaryJob: Codable, Sendable {
+    let noteID: UUID
+    let templateKey: String
+    let localeIdentifier: String
+    var checkpoint: LocalSummaryCheckpoint
+}
 
 /// Apple Intelligence hardware is required; model setup is checked separately.
 enum MobileDeviceEligibility {
@@ -198,6 +291,10 @@ final class LiveTranscriptionManager: ObservableObject {
     private(set) var transcriptOffset: TimeInterval = 0
     private var captureLease: UUID?
     private var summaryTask: Task<Void, Never>?
+    private var summaryRuntime: SummaryBackgroundRuntime?
+    private var pendingSummaryJob: MobileSummaryJob?
+    private var summaryPausedBySystem = false
+    var summaryRecoveryURL: URL? { store?.root.appendingPathComponent("SummaryGeneration.json") }
     private let liveActivity = LocalTranscriptionLiveActivity()
     var locale: Locale { Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US") }
     var isTranscribing: Bool { transcriptionState != .idle }
@@ -207,6 +304,10 @@ final class LiveTranscriptionManager: ObservableObject {
         self.store = store; self.notificationCenter = notificationCenter
         guard let store, store.ready else { return }
         do { try LegacyMobileAudioCleanup.remove(in: store.root) } catch { errorMessage = "Could not remove previous audio: \(error.localizedDescription). Your transcript text is preserved." }
+        if let url = summaryRecoveryURL, FileManager.default.fileExists(atPath: url.path) {
+            do { pendingSummaryJob = try JSONDecoder().decode(MobileSummaryJob.self, from: Data(contentsOf: url)) }
+            catch { errorMessage = "Summary recovery could not be read. Your saved transcript and summary are unchanged: \(error.localizedDescription)" }
+        }
         let center = notificationCenter
         observers.append(center.addObserver(forName: AVAudioApplication.inputMuteStateChangeNotification, object: nil, queue: .main) { [weak self] notice in
             guard notice.userInfo?[AVAudioApplication.muteStateKey] as? Bool == true else { return }
@@ -516,11 +617,63 @@ final class LiveTranscriptionManager: ObservableObject {
     }
 
     func summarize(_ note: Note, template: LocalSummaryTemplate) {
-        guard canStart, let store, let id = note.id else { return }
-        summaryNoteID = id; summaryPreview = ""; summaryProgress = .preparing; errorMessage = nil
+        guard canStart, store != nil, let id = note.id else { return }
+        let job = MobileSummaryJob(noteID: id, templateKey: template.key, localeIdentifier: locale.identifier,
+            checkpoint: LocalSummaryCheckpoint(input: note.transcription ?? "", template: template))
+        do { try persistSummaryJob(job) }
+        catch { errorMessage = "Could not save summary recovery: \(error.localizedDescription)"; return }
+        startSummary(note, job: job)
+    }
+
+    private func persistSummaryJob(_ job: MobileSummaryJob) throws {
+        guard let url = summaryRecoveryURL else { throw LocalError.message("Local notes are unavailable.") }
+        try JSONEncoder().encode(job).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        pendingSummaryJob = job
+    }
+    private func removeSummaryJob() {
+        pendingSummaryJob = nil
+        guard let url = summaryRecoveryURL, FileManager.default.fileExists(atPath: url.path) else { return }
+        do { try FileManager.default.removeItem(at: url) }
+        catch { errorMessage = "Could not remove summary recovery: \(error.localizedDescription)" }
+    }
+    func resumePendingSummary(applicationState: UIApplication.State = UIApplication.shared.applicationState) {
+        guard applicationState == .active, summaryTask == nil,
+              !busy, !isTranscribing, let job = pendingSummaryJob else { return }
+        guard let note = fetch(job.noteID), note.transcription == job.checkpoint.input else {
+            removeSummaryJob(); summaryNoteID = nil; summaryPausedBySystem = false; return
+        }
+        startSummary(note, job: job)
+    }
+    /// Navigation/backgrounding never calls this. Only Apple's expiration
+    /// handler pauses inference; completed sections remain in the local record.
+    func pauseSummaryForSystem() {
+        guard summaryTask != nil else { return }
+        summaryPausedBySystem = true
+        summaryProgress = .waitingForForeground
+        summaryTask?.cancel()
+    }
+    private func startSummary(_ note: Note, job: MobileSummaryJob) {
+        guard let store else { return }
+        let id = job.noteID, template = LocalSummaryTemplate.resolve(job.templateKey)
+        let locale = Locale(identifier: job.localeIdentifier)
+        summaryPausedBySystem = false
+        summaryNoteID = id; summaryPreview = job.checkpoint.result ?? ""; summaryProgress = .preparing; errorMessage = nil
+        let runtime = SummaryBackgroundRuntime { [weak self] in self?.pauseSummaryForSystem() }
+        summaryRuntime = runtime; runtime.begin()
         summaryTask = Task { [weak self] in
             guard let self else { return }
-            defer { self.summaryNoteID = nil; self.summaryPreview = ""; self.summaryProgress = .preparing; self.summaryTask = nil }
+            var completed = false
+            defer {
+                runtime.finish(success: completed); self.summaryRuntime = nil; self.summaryTask = nil
+                if self.summaryPausedBySystem {
+                    self.summaryProgress = .waitingForForeground
+                    // Expiration can race returning to the foreground. Restart
+                    // only after the old inference has fully unwound.
+                    Task { @MainActor [weak self] in self?.resumePendingSummary() }
+                } else {
+                    self.summaryNoteID = nil; self.summaryPreview = ""; self.summaryProgress = .preparing
+                }
+            }
             do {
                 let update: @Sendable (String) async -> Void = { [weak self] value in
                     guard !Task.isCancelled else { return }
@@ -532,35 +685,67 @@ final class LiveTranscriptionManager: ObservableObject {
                 }
                 let progress: @Sendable (LocalSummaryProgress) async -> Void = { [weak self] value in
                     guard !Task.isCancelled else { return }
-                    await MainActor.run {
+                    await MainActor.run { [weak self] in
                         guard self?.summaryNoteID == id else { return }
-                        self?.summaryProgress = value
+                        self?.summaryProgress = value; self?.summaryRuntime?.update(value)
+                    }
+                }
+                let checkpoint: @Sendable (LocalSummaryCheckpoint) async throws -> Void = { [weak self] state in
+                    try Task.checkCancellation()
+                    try await MainActor.run { [weak self] in
+                        guard let self, self.summaryNoteID == id, self.pendingSummaryJob != nil else { throw CancellationError() }
+                        var next = job; next.checkpoint = state
+                        try self.persistSummaryJob(next)
                     }
                 }
                 let result: String
-                #if DEBUG && targetEnvironment(simulator)
-                if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
-                else { result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, progress: progress, snapshot: update) }
-                #else
-                result = try await LocalSummary.generate(note.transcription ?? "", template: template, locale: self.locale, progress: progress, snapshot: update)
-                #endif
+                if let savedResult = job.checkpoint.result { result = savedResult }
+                else {
+                    #if DEBUG && targetEnvironment(simulator)
+                    if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
+                    else { result = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
+                        resuming: job.checkpoint, checkpoint: checkpoint, progress: progress, snapshot: update) }
+                    #else
+                    result = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
+                        resuming: job.checkpoint, checkpoint: checkpoint, progress: progress, snapshot: update)
+                    #endif
+                }
+                // Keep the completed model result before the separate title call.
+                var finishedJob = self.pendingSummaryJob ?? job; finishedJob.checkpoint.result = result
+                try self.persistSummaryJob(finishedJob)
                 var generatedTitle: String?
                 var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
-                    self.summaryProgress = .finishing
-                    do { generatedTitle = try await LocalSummary.generateTitle(from: result, locale: self.locale) }
+                    self.summaryProgress = .finishing; runtime.update(.finishing)
+                    do { generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale) }
                     catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }
                 }
-                try Task.checkCancellation(); guard !note.isDeleted else { return }
+                try Task.checkCancellation()
+                guard !note.isDeleted, note.transcription == job.checkpoint.input else {
+                    throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
+                }
                 try store.saveNoteChanges(note,
                     values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle))
+                self.removeSummaryJob(); completed = true
                 JotleyEngagement.shared.completedSummary(result: result)
                 if let titleError { self.errorMessage = "Summary saved, but the title could not be generated: \(titleError.localizedDescription)" }
-            } catch is CancellationError { } catch { self.errorMessage = error.localizedDescription }
+            } catch is CancellationError {
+                if !self.summaryPausedBySystem { self.removeSummaryJob() }
+            } catch {
+                if Task.isCancelled {
+                    if !self.summaryPausedBySystem { self.removeSummaryJob() }
+                } else if UIApplication.shared.applicationState != .active {
+                    self.summaryPausedBySystem = true
+                } else { self.removeSummaryJob(); self.errorMessage = error.localizedDescription }
+            }
         }
     }
-    func cancelProcessing() { summaryTask?.cancel() }
+    func cancelProcessing() {
+        summaryPausedBySystem = false; removeSummaryJob()
+        summaryTask?.cancel()
+        if summaryTask == nil { summaryNoteID = nil; summaryPreview = ""; summaryProgress = .preparing }
+    }
     func saveEdits() { flushTranscript(); do { try store?.save() } catch { errorMessage = error.localizedDescription } }
 }
 

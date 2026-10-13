@@ -711,6 +711,10 @@ private actor SummaryTestLog {
     var limits: [Int] = []
     var snapshots: [String] = []
     var progress: [LocalSummaryProgress] = []
+    var checkpoint: LocalSummaryCheckpoint?
+    var sources: [String] = []
+    func save(_ value: LocalSummaryCheckpoint) { checkpoint = value }
+    func visit(_ text: String) { sources.append(text) }
     func recordProgress(_ value: LocalSummaryProgress) { progress.append(value) }
     func record(limit: Int) { limits.append(limit) }
     func publish(_ text: String) { snapshots.append(text) }
@@ -820,12 +824,12 @@ extension SimulatorModelAcceptanceTests {
         let result = try await LocalSummary.generate(paragraphs, template: .concise, locale: locale,
             progress: { await log.recordProgress($0) }, snapshot: { await log.publish($0) })
         let progress = await log.progress, snapshots = await log.snapshots
-        XCTAssertTrue(progress.contains { if case .reading = $0 { return true }; return false })
+        XCTAssertTrue(progress.contains(.preparing))
         XCTAssertEqual(progress.last, .writing)
         XCTAssertFalse(snapshots.isEmpty)
         XCTAssertEqual(snapshots.last, result)
         XCTAssertTrue(result.localizedCaseInsensitiveContains("Maya"))
-        let trace = XCTAttachment(string: "Elapsed: \(Date().timeIntervalSince(began)) seconds\nProgress: \(progress)\nLive snapshots: \(snapshots.count)\nFirst live text: \(snapshots.first ?? "")")
+        let trace = XCTAttachment(string: "Model context: \(SystemLanguageModel.default.contextSize) tokens\nElapsed: \(Date().timeIntervalSince(began)) seconds\nProgress: \(progress)\nLive snapshots: \(snapshots.count)\nFirst live text: \(snapshots.first ?? "")")
         trace.name = "Actual Apple model preparation and live summary trace"; trace.lifetime = .keepAlways; add(trace)
         XCTAssertFalse(result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         XCTAssertFalse(result.contains("## Part "))
@@ -834,3 +838,125 @@ extension SimulatorModelAcceptanceTests {
         attachment.name = "Actual Apple model consolidated a long note once"; attachment.lifetime = .keepAlways; add(attachment)
     }
 }
+
+#if DEBUG && targetEnvironment(simulator)
+extension Jotley_iOSTests {
+    @Test func tokenPackingKeepsEveryByteAndUsesLargerCompleteSections() async throws {
+        let input = String(repeating: "Maya has café notes. 漢字🙂 ", count: 600)
+        let parts = try await LocalSummary.packedSections(input, fits: { $0.utf8.count <= 9000 })
+        #expect(parts.joined() == input)
+        #expect(parts.allSatisfy { $0.utf8.count <= 9000 })
+        #expect(parts.count < LocalSummary.chunks(input).count)
+        let dense = try await LocalSummary.packedSections(input, fits: { $0.utf8.count <= 700 })
+        #expect(dense.joined() == input && dense.allSatisfy { $0.utf8.count <= 700 })
+    }
+    @Test func summaryRecoverySkipsCompletedSectionsAndKeepsSourceOrder() async throws {
+        let input = (1...8).map { "Section \($0). " + String(repeating: "Evidence words. ", count: 200) }.joined()
+        let log = SummaryTestLog()
+        let infer: LocalSummary.Inference = { source, _, limit, update in
+            await log.visit(source)
+            if limit == 128 { return "Reviewed: " + String(source.prefix(30)) }
+            await update("Final summary")
+            return "Final summary"
+        }
+        do {
+            _ = try await LocalSummary.run(input, template: .auto, infer: infer, checkpoint: { state in
+                await log.save(state)
+                if state.facts.count == 2 { throw CancellationError() }
+            }, snapshot: { _ in })
+            Issue.record("Expected a system interruption")
+        } catch is CancellationError { }
+        let saved = try #require(await log.checkpoint)
+        #expect(saved.facts.count == 2)
+        let encoded = try JSONEncoder().encode(saved)
+        let restored = try JSONDecoder().decode(LocalSummaryCheckpoint.self, from: encoded)
+        let result = try await LocalSummary.run(input, template: .auto, infer: infer, resuming: restored,
+            checkpoint: { await log.save($0) }, snapshot: { _ in })
+        let visited = await log.sources
+        #expect(Array(visited.dropLast()) == LocalSummary.chunks(input))
+        #expect(result == "Final summary")
+        // Title recovery uses the finished result without running inference again.
+        let completed = try #require(await log.checkpoint)
+        _ = try await LocalSummary.run(input, template: .auto, infer: { _, _, _, _ in
+            Issue.record("Completed summary must not be regenerated for title recovery"); return "Unexpected"
+        }, resuming: completed, snapshot: { _ in })
+    }
+    @MainActor @Test func leavingNoteDoesNotCancelSummaryAndExplicitCancelRemovesRecovery() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let manager = LiveTranscriptionManager(store: store)
+        let note = try manager.createNote(text: "Maya reviews Friday.", title: "Review")
+        note.summary = "Original summary"
+        manager.simulatedSummaryGeneration = { update in
+            await update("New summary in progress")
+            try await Task.sleep(for: .milliseconds(150))
+            return "Completed new summary"
+        }
+        manager.summarize(note, template: .auto)
+        manager.saveEdits() // The exact app background lifecycle action.
+        #expect(FileManager.default.fileExists(atPath: try #require(manager.summaryRecoveryURL).path))
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(note.summary == "Completed new summary" && manager.summaryNoteID == nil)
+        #expect(!FileManager.default.fileExists(atPath: try #require(manager.summaryRecoveryURL).path))
+        manager.simulatedSummaryGeneration = { _ in try await Task.sleep(for: .seconds(5)); return "Cancelled" }
+        manager.summarize(note, template: .auto)
+        manager.cancelProcessing()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(note.summary == "Completed new summary" && manager.summaryNoteID == nil)
+        #expect(!FileManager.default.fileExists(atPath: try #require(manager.summaryRecoveryURL).path))
+    }
+    @MainActor @Test func pendingSummaryResumesFromDiskWithoutReplacingExistingNoteUntilComplete() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let note = try #require(store.create(title: "Existing title", text: "Maya reviews Friday.") as? Note)
+        note.summary = "Original summary"
+        try store.save()
+        var checkpoint = LocalSummaryCheckpoint(input: note.transcription ?? "", template: .auto)
+        checkpoint.result = "Recovered completed summary"
+        let job = MobileSummaryJob(noteID: try #require(note.id), templateKey: LocalSummaryTemplate.auto.key,
+            localeIdentifier: "en-US", checkpoint: checkpoint)
+        let url = store.root.appendingPathComponent("SummaryGeneration.json")
+        try JSONEncoder().encode(job).write(to: url, options: .atomic)
+        let manager = LiveTranscriptionManager(store: store)
+        #expect(note.summary == "Original summary")
+        manager.resumePendingSummary(applicationState: .active)
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(note.summary == "Recovered completed summary")
+        #expect(note.title == "Existing title" && !FileManager.default.fileExists(atPath: url.path))
+    }
+}
+#endif
+
+#if DEBUG && targetEnvironment(simulator)
+extension Jotley_iOSTests {
+    @MainActor @Test func systemExpirationKeepsRecoveryAndResumesInsteadOfCancellingTheJob() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let manager = LiveTranscriptionManager(store: store)
+        let note = try manager.createNote(text: "Maya reviews Friday.", title: "Review")
+        note.summary = "Original summary"
+        var calls = 0
+        manager.simulatedSummaryGeneration = { update in
+            calls += 1
+            if calls == 1 { try await Task.sleep(for: .seconds(5)) }
+            try await Task.sleep(for: .milliseconds(100))
+            await update("Summary resumed")
+            return "Summary resumed"
+        }
+        manager.summarize(note, template: .auto)
+        try await Task.sleep(for: .milliseconds(20))
+        let url = try #require(manager.summaryRecoveryURL)
+        // Simulator has no data-protection attribute. Verify the durable job,
+        // not a filesystem-encryption property that requires physical hardware.
+        let saved = try JSONDecoder().decode(MobileSummaryJob.self, from: Data(contentsOf: url))
+        #expect(saved.noteID == note.id && saved.checkpoint.input == note.transcription)
+        manager.pauseSummaryForSystem()
+        #expect(FileManager.default.fileExists(atPath: url.path) && note.summary == "Original summary")
+        try await Task.sleep(for: .milliseconds(30))
+        manager.resumePendingSummary(applicationState: .active)
+        try await Task.sleep(for: .milliseconds(250))
+        #expect(calls == 2 && note.summary == "Summary resumed" && manager.summaryNoteID == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+}
+#endif
