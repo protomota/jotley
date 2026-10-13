@@ -101,7 +101,7 @@ extension NoteDetailView {
                             .accessibilityIdentifier("noteDetailEditTranscriptButton")
                     }
                     if Note.isMeaningfulSummaryText(note.summary) {
-                        Button(editingSummary ? "Finish Editing Summary" : "Edit Summary") { editingSummary.toggle(); selectedTab = "Summary" }
+                        Button(editingSummary ? "Finish Editing Summary" : "Edit Summary", systemImage: editingSummary ? "checkmark" : "pencil") { editingSummary.toggle(); selectedTab = "Summary" }
                             .disabled(!transcriptionManager.canStart)
                             .accessibilityIdentifier("noteDetailEditSummaryButton")
                     }

@@ -646,6 +646,19 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertFalse(app.textViews.firstMatch.exists, "Template selection must not enter editing")
             XCTAssertEqual(app.buttons["noteDetailGenerateSummaryButton"].label, "Regenerate Summary")
         }
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        let edit = app.buttons["noteDetailEditSummaryButton"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        let menu = XCTAttachment(screenshot: app.screenshot())
+        menu.name = "Summary menu with pencil icon"; menu.lifetime = .keepAlways; add(menu)
+        edit.tap()
+        XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        XCTAssertEqual(edit.label, "Finish Editing Summary")
+        let finishMenu = XCTAttachment(screenshot: app.screenshot())
+        finishMenu.name = "Finish Editing Summary with checkmark icon"; finishMenu.lifetime = .keepAlways; add(finishMenu)
+        edit.tap()
+        XCTAssertTrue(app.staticTexts["Long recording summary"].waitForExistence(timeout: 5))
     }
 
     @MainActor func testOpenNoteHeadingsFollowLiveAppearanceChanges() throws {
