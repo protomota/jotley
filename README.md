@@ -84,7 +84,7 @@ Choose **Jotley** for Mac or **Jotley-iOS** for iPhone/iPad. Local builds use se
 
 Use Jotley for personal work, school or paid work. Your notes, recordings, transcripts and summaries are yours.
 
-The original code and artwork use the [Jotley Source-Available License 1.0](LICENSE). You may inspect, build, modify and redistribute them noncommercially. Commercial distribution requires written permission from Protomota. This is a source-available license, rather than an OSI open-source license. Third-party code, fonts and dependencies retain their own terms.
+The original code and artwork are © 2026 Protomota, LLC and use the [Jotley Source-Available License 1.0](LICENSE). You may inspect, build, modify and redistribute them noncommercially. Commercial distribution requires written permission from Protomota, LLC. This is a source-available license, rather than an OSI open-source license. Third-party code, fonts and dependencies retain their own terms.
 
 ## Made by Protomota. Supported by people.
 

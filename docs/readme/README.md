@@ -10,4 +10,6 @@ The banner is original Jotley vector artwork created for this source release. Th
 | `iphone-summary.png` | Saved summary on iPhone. |
 | `ipad-organized.png` | iPad note list beside an organized summary. |
 
+The iPad capture was refreshed on October 13, 2026 after restoring the full-height sidebar divider. The same native capture is used for the iPad summary image in the App Store draft.
+
 These captures are documentation assets and are not application resources. They illustrate the product; the README does not claim that every newly added control is visible in these saved-note captures. Jotley's original documentation/artwork uses its [source-available license](../../LICENSE); third-party marks keep their separate rights.

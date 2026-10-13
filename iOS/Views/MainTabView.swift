@@ -19,6 +19,14 @@ struct MainTabView: View {
                 NavigationSplitView(columnVisibility: $columnVisibility) {
                     notesList
                         .navigationSplitViewColumnWidth(min: 380, ideal: 420, max: 480)
+                        .overlay(alignment: .trailing) {
+                            Rectangle()
+                                .fill(Color.primary.opacity(0.2))
+                                .frame(width: 1)
+                                .ignoresSafeArea()
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
                 } detail: {
                     NavigationStack {
                         if let selectedNoteId { NoteDetailByIdView(noteId: selectedNoteId) }

@@ -6,7 +6,7 @@ The clean public snapshot was checked on macOS 27 with Xcode 27.
 - Both exported app projects built: unsigned Mac Debug and unsigned Release iPhone/iPad SDK builds.
 - iPhone core/model checks: 36 passed; one real-speech check explicitly skipped because Apple exposed no compatible installed speech audio format in Simulator.
 - iPhone UI checks passed for summary auto-follow/pinned Cancel, Stop/Close, and real Apple model summary/title regeneration.
-- iPad summary auto-follow/pinned Cancel and current screenshot captures passed.
+- iPad summary auto-follow/pinned Cancel and current screenshot captures passed. The refreshed iPad capture run also verifies the native sidebar divider in light and dark appearance; the README image uses the original exported PNG.
 - A real Apple model summarized a multi-chunk note into one consolidated result and finished.
 - The Mac routing harness passed 17 groups. The separate mounted summary test followed two content growth steps, confirmed a visible pinned Cancel footer, and cancelled the actual task with Escape while preserving the saved summary.
 - Release binary inspection excluded all Debug-only live/summary test injection. Foundation Models linkage checks passed.
