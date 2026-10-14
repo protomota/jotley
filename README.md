@@ -14,7 +14,7 @@ Meetings, lectures, passing ideas and long conversations: Jotley turns spoken wo
 
 Long transcripts are reviewed in full, using sections sized for Apple's on-device model. Watch preparation progress, then see the summary appear as it is written. You can leave a note while it finishes. On iPhone and iPad, Jotley requests background processing time; if iOS interrupts the job, completed sections are saved locally and generation resumes when you return. Background runtime depends on system conditions.
 
-On iPhone and iPad, tap **+** and start live transcription immediately. Watch your words arrive in timestamped cards, pause when you need to, then stop or close to save. **Continue Transcription** adds to the same note. Mobile sessions save transcript text, without saving an audio file.
+On iPhone and iPad, tap **+** and start live transcription immediately. Watch timestamped words fill the page from the top, then follow the newest words as the transcript grows. Pause when you need to, then stop or close to save. **Continue Transcription** adds to the same note. Mobile sessions save transcript text, without saving an audio file.
 
 On Mac, capture your microphone and audio from your apps or system. Keep the recording, transcript and summary together in one familiar native workspace.
 

@@ -41,6 +41,9 @@ struct LiveTranscriptionView: View {
                 }
                 .accessibilityIdentifier("liveTranscript")
                 .defaultScrollAnchor(.bottom)
+                // Fill from the top until the cards outgrow the viewport, then
+                // keep the latest words visible at the bottom as before.
+                .defaultScrollAnchor(.topLeading, for: .alignment)
                 .onChange(of: transcriptionManager.liveUtterances) { _, _ in
                     proxy.scrollTo("liveTranscriptBottom", anchor: .bottom)
                 }

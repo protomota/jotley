@@ -59,7 +59,7 @@ struct JotleyiOSApp: App {
                 return content
             }
         }
-        if ProcessInfo.processInfo.environment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] == "1" {
+        if ["1", "layout"].contains(ProcessInfo.processInfo.environment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] ?? "") {
             recorder.simulatedSpeechStart = { snapshot in
                 let session = SimulatorLifecycleSpeech(snapshot: snapshot)
                 await session.publishCards()
@@ -112,6 +112,31 @@ private struct SimulatorLifecycleSpeech: MobileSpeechSession {
     let snapshot: @Sendable (LocalTranscript) async -> Void
     nonisolated func append(_ data: Data, sampleRate: Double) {}
     func publishCards() async {
+        if ProcessInfo.processInfo.environment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] == "layout" {
+            var first = LocalTranscript()
+            first.accept(text: "First spoken words.", start: 0, end: 1, final: false)
+            await snapshot(first)
+            Task {
+                try? await Task.sleep(for: .seconds(8))
+                var growing = first
+                growing.accept(text: "First spoken words.", start: 0, end: 1, final: true)
+                growing.accept(text: "Second spoken words.", start: 5, end: 6, final: false)
+                await snapshot(growing)
+                try? await Task.sleep(for: .seconds(8))
+                growing.accept(text: "Second spoken words.", start: 5, end: 6, final: true)
+                for index in 2..<18 {
+                    growing.accept(text: "Transcript card \(index + 1). Words from the active session remain on this device.",
+                        start: Double(index * 5), end: Double(index * 5 + 4), final: true)
+                }
+                growing.accept(text: "Full-page transcript words.", start: 90, end: 91, final: false)
+                await snapshot(growing)
+                try? await Task.sleep(for: .seconds(4))
+                growing.accept(text: "Full-page transcript words.", start: 90, end: 91, final: true)
+                growing.accept(text: "Newest transcript words.", start: 95, end: 96, final: false)
+                await snapshot(growing)
+            }
+            return
+        }
         var value = LocalTranscript()
         for index in 0..<16 {
             value.accept(text: "Transcript card \(index + 1). Words from the active session remain on this device.",

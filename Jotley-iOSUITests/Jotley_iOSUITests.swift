@@ -159,6 +159,49 @@ final class Jotley_iOSUITests: XCTestCase {
     }
     #endif
 
+    @MainActor func testLiveTranscriptFillsFromTopThenFollowsBottom() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "layout"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] =
+            ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"]?.hasPrefix("iPad") == true ? "Light" : "Dark"
+        app.launch()
+        let plus = app.buttons["notesListNewNoteButton"]
+        XCTAssertTrue(plus.waitForExistence(timeout: 15)); plus.tap()
+        let viewport = app.scrollViews["liveTranscript"]
+        XCTAssertTrue(viewport.waitForExistence(timeout: 10))
+        let first = viewport.staticTexts["First spoken words."].firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        XCTAssertGreaterThan(viewport.frame.height, 100)
+        let firstY = first.frame.minY
+        XCTAssertGreaterThanOrEqual(firstY, viewport.frame.minY)
+        XCTAssertLessThan(firstY - viewport.frame.minY, 60, "A new transcript must start near the top, with blank space below")
+        let beginning = XCTAttachment(screenshot: app.screenshot())
+        beginning.name = "New transcript starts at the top"; beginning.lifetime = .keepAlways; add(beginning)
+        let second = viewport.staticTexts["Second spoken words."].firstMatch
+        XCTAssertTrue(second.waitForExistence(timeout: 12))
+        XCTAssertEqual(first.frame.minY, firstY, accuracy: 2, "The first card must not shift while the short transcript grows")
+        XCTAssertGreaterThan(second.frame.minY, first.frame.maxY)
+        XCTAssertTrue(second.isHittable)
+        let growing = XCTAttachment(screenshot: app.screenshot())
+        growing.name = "Short transcript grows downward"; growing.lifetime = .keepAlways; add(growing)
+        for text in ["Full-page transcript words.", "Newest transcript words."] {
+            let latest = viewport.staticTexts[text].firstMatch
+            XCTAssertTrue(latest.waitForExistence(timeout: 12))
+            let follows = expectation(for: NSPredicate(format: "hittable == YES"), evaluatedWith: latest)
+            wait(for: [follows], timeout: 5)
+            XCTAssertLessThanOrEqual(latest.frame.maxY, viewport.frame.maxY + 1)
+            XCTAssertGreaterThan(latest.frame.maxY, viewport.frame.maxY - 90, "Once the page fills, the newest words should remain near the bottom")
+            XCTAssertFalse(first.isHittable, "Earlier cards should scroll off the page once the transcript overflows")
+        }
+        let full = XCTAttachment(screenshot: app.screenshot())
+        full.name = "Full transcript follows new words at the bottom"; full.lifetime = .keepAlways; add(full)
+        app.buttons["transcriptionCloseButton"].tap()
+        XCTAssertTrue(app.staticTexts["Completed transcript."].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["transcriptionStopButton"].exists)
+    }
+
     @MainActor func testStopAndCloseSaveWithoutConfirmationAndRejectLateWords() throws {
         for action in ["transcriptionStopButton", "transcriptionCloseButton"] {
             let app = XCUIApplication()
