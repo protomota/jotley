@@ -67,7 +67,7 @@ final class Jotley_iOSUITests: XCTestCase {
 
     #if DEBUG
 
-    @MainActor func testSummaryAskAIAndTranscriptFooterWithLargeAnswerActions() throws {
+    @MainActor func testSummaryAskAIAndTranscriptFooterWithReadableAnswerActions() throws {
         guard case .available = SystemLanguageModel.default.availability else {
             throw XCTSkip("Apple model is not ready in this simulator")
         }
@@ -102,10 +102,12 @@ final class Jotley_iOSUITests: XCTestCase {
         for button in [copy, share] {
             XCTAssertTrue(button.isHittable)
             XCTAssertGreaterThanOrEqual(button.frame.height, 44)
-            XCTAssertGreaterThanOrEqual(button.frame.width, 104)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 80)
+            XCTAssertLessThan(button.frame.height, 56, "Answer controls should be compact at the standard text size")
+            XCTAssertLessThan(button.frame.width, 128)
         }
         let actions = XCTAttachment(screenshot: app.screenshot())
-        actions.name = "Larger Ask AI Copy and Share controls"; actions.lifetime = .keepAlways; add(actions)
+        actions.name = "Compact Ask AI Copy and Share controls"; actions.lifetime = .keepAlways; add(actions)
         copy.tap()
         XCTAssertTrue(share.isHittable)
         XCTAssertTrue(app.buttons["askAIDoneButton"].waitForExistence(timeout: 5))
