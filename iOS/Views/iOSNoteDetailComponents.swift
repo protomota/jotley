@@ -371,21 +371,28 @@ struct LocalAskNoteView: View {
                 if message.role == "assistant" { MarkdownContentView(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
                 if message.role == "assistant" {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 14) {
                         Button { UIPasteboard.general.string = message.content } label: {
-                            Label("Copy", systemImage: "doc.on.doc")
-                                .frame(minWidth: 80, minHeight: 32)
+                            answerActionLabel("Copy", systemImage: "doc.on.doc")
                         }.accessibilityIdentifier("askAICopyAnswerButton")
                         Button { share = LocalSharePayload(items: [message.content]) } label: {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                                .frame(minWidth: 80, minHeight: 32)
+                            answerActionLabel("Share", systemImage: "square.and.arrow.up")
                         }.accessibilityIdentifier("askAIShareAnswerButton")
-                    }.font(.subheadline.weight(.medium)).buttonStyle(.bordered)
+                    }.buttonStyle(.plain)
                         .padding(.top, 4)
                 }
             }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
+    }
+    private func answerActionLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(Color.themePrimaryAccent)
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            // Keep the invisible touch area comfortable without enlarging the visible chip.
+            .frame(minHeight: 44).contentShape(Rectangle())
     }
     private func send() {
         guard generation == nil, let id = note.id, !note.isDeleted else { return }

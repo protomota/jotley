@@ -102,12 +102,12 @@ final class Jotley_iOSUITests: XCTestCase {
         for button in [copy, share] {
             XCTAssertTrue(button.isHittable)
             XCTAssertGreaterThanOrEqual(button.frame.height, 44)
-            XCTAssertGreaterThanOrEqual(button.frame.width, 80)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 44)
             XCTAssertLessThan(button.frame.height, 56, "Answer controls should be compact at the standard text size")
-            XCTAssertLessThan(button.frame.width, 128)
+            XCTAssertLessThan(button.frame.width, 85)
         }
         let actions = XCTAttachment(screenshot: app.screenshot())
-        actions.name = "Compact Ask AI Copy and Share controls"; actions.lifetime = .keepAlways; add(actions)
+        actions.name = "Small Ask AI action chips - approval preview"; actions.lifetime = .keepAlways; add(actions)
         copy.tap()
         XCTAssertTrue(share.isHittable)
         XCTAssertTrue(app.buttons["askAIDoneButton"].waitForExistence(timeout: 5))
