@@ -34,3 +34,12 @@ The public snapshot contains no earlier private Git history, private release wor
 
 
 Summary progress and immediate regeneration were checked with the actual Apple model. The iPhone simulator reviewed six sections of a 64-paragraph transcript, produced four final-summary snapshots and finished in 12.9 seconds. The native Mac view model regenerated a long transcript in 11.2 seconds with nine snapshots, preserving the title. Tests confirm preparation progress, writing, successful persistence and termination. The real iPhone UI also completed long-note generation with the section indicator visible; separate iPhone/iPad checks cover pinned progress/Cancel, streamed bottom-follow, direct template regeneration and preservation on cancellation. Simulator/model timings do not establish physical-device speed.
+
+
+## Current distribution — October 15, 2026
+
+The iPhone/iPad build 2.0 (361) was re-verified as VALID / IN_BETA_TESTING in the existing internal TestFlight group. No newer mobile application code was pending. The standalone Mac build 2.0 (362) was built from the same current application source, signed with Developer ID, notarized by Apple, and published at https://jotley.ai/download with a signed Sparkle update feed. All 157 tracked application files compared with this public main snapshot matched byte for byte (excluding reference-only Shared/Docs).
+
+The mounted Mac app passed deep/strict signature and Gatekeeper checks; its original bundle identity, version, enabled Sparkle feed and notarization ticket were verified. The installer layout checks passed. DMG SHA-256: `70ccf1efa21404cac3e939707d7af4f58177cca00542006e2f3085eb9a808930` (4,715,624 bytes). The website production build and all three focused download checks passed locally and on production, including real downloaded bytes and the Ed25519 update signature. Website release commit: [1824a68](https://github.com/protomota/jotley-site/commit/1824a68643dc6b39166be358895b34e06f518f3e).
+
+The shared Swift package passed 25 tests, with seven opt-in model checks skipped and zero failures. This release audit did not repeat physical-device microphone/background or model-performance tests, and did not submit or replace an App Store review build.
