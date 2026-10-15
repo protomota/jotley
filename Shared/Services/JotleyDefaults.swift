@@ -316,6 +316,9 @@ struct JotleySupportLinks: View {
                 .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+        #if os(iOS)
+        .tint(Color.themeActionText)
+        #endif
         .modifier(JotleySupportCardPresentation(isPresented: $showingSupport))
     }
 }

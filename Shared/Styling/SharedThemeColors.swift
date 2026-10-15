@@ -265,6 +265,16 @@ extension Color {
         ThemeManager.shared.currentThemeColor.color
     }
 
+    /// Text actions must remain readable against dark sheets and tinted cards.
+    /// Icons and filled controls continue to use the user's accent color.
+    static var themeActionText: Color {
+        #if os(iOS)
+        return shouldUseDarkTheme() ? themeTextPrimary : themePrimaryAccent
+        #else
+        return themePrimaryAccent
+        #endif
+    }
+
     // iOS specific colors that adapt to light/dark mode
 }
 
@@ -293,3 +303,49 @@ extension View {
         modifier(ThemeObserver())
     }
 }
+
+#if os(iOS)
+/// The same neutral Liquid Glass dismissal control in toolbars and custom sheets.
+struct MobileDoneButton: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    var inToolbar = false
+    let action: () -> Void
+
+    var body: some View {
+        if inToolbar {
+            // Navigation bars supply Liquid Glass themselves. Applying .glass
+            // here as well would draw a second capsule inside the native one.
+            doneButton
+        } else {
+            doneButton.buttonStyle(.glass).buttonBorderShape(.capsule)
+        }
+    }
+
+    private var doneButton: some View {
+        Button("Done", action: action)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(Color.themeTextPrimary)
+            .frame(minHeight: 44)
+    }
+}
+
+/// Keep accent icons separate from readable action text.
+struct MobileActionLabel: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label {
+            Text(title).foregroundStyle(Color.themeActionText)
+        } icon: {
+            Image(systemName: systemImage).foregroundStyle(Color.themePrimaryAccent)
+        }
+    }
+}
+#endif

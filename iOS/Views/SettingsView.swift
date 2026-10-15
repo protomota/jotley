@@ -26,26 +26,31 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Appearance Mode", selection: $themeManager.currentAppearanceMode) {
-                    Text("Light").tag(AppearanceMode.light)
-                    Text("Dark").tag(AppearanceMode.dark)
-                    Text("System").tag(AppearanceMode.system)
+                Menu {
+                    Picker("Appearance Mode", selection: $themeManager.currentAppearanceMode) {
+                        Text("Light").tag(AppearanceMode.light)
+                        Text("Dark").tag(AppearanceMode.dark)
+                        Text("System").tag(AppearanceMode.system)
+                    }
+                } label: {
+                    selectionLabel("Appearance Mode", value: themeManager.currentAppearanceMode.rawValue)
                 }
                 .accessibilityIdentifier("settingsAppearanceModePicker")
                 .onChange(of: themeManager.currentAppearanceMode) { _, newValue in
                     themeManager.setAppearanceMode(newValue)
                 }
 
-                Picker("Theme Color", selection: $themeManager.currentThemeColor) {
-                    ForEach(ThemeColor.allCases, id: \.self) { color in
-                        HStack {
-                            Circle()
-                                .fill(color.previewColor)
-                                .frame(width: 20, height: 20)
-                            Text(color.displayName)
+                Menu {
+                    Picker("Theme Color", selection: $themeManager.currentThemeColor) {
+                        ForEach(ThemeColor.allCases, id: \.self) { color in
+                            HStack {
+                                Circle().fill(color.previewColor).frame(width: 20, height: 20)
+                                Text(color.displayName)
+                            }.tag(color)
                         }
-                        .tag(color)
                     }
+                } label: {
+                    selectionLabel("Theme Color", value: themeManager.currentThemeColor.displayName)
                 }
                 .accessibilityIdentifier("settingsThemeColorPicker")
                 .onChange(of: themeManager.currentThemeColor) { _, newValue in
@@ -74,11 +79,11 @@ struct SettingsView: View {
                 .accessibilityElement(children: .combine)
 
                 Link(destination: macDownloadURL) {
-                    Label("Mac Download & Installation Guide", systemImage: "arrow.down.circle")
+                    MobileActionLabel("Mac Download & Installation Guide", systemImage: "arrow.down.circle")
                 }
                 .accessibilityIdentifier("settingsMacDownloadLink")
                 ShareLink(item: macDownloadURL) {
-                    Label("Send Download Link to Your Mac", systemImage: "square.and.arrow.up")
+                    MobileActionLabel("Send Download Link to Your Mac", systemImage: "square.and.arrow.up")
                 }
                 .accessibilityIdentifier("settingsShareMacDownloadLink")
             } header: {
@@ -89,14 +94,18 @@ struct SettingsView: View {
 
             // Transcription Settings
             Section("Transcription") {
-                Picker("Language", selection: Binding(
-                    get: { speechLanguages.contains(where: { $0.id == transcriptionLanguage }) ? transcriptionLanguage : "" },
-                    set: { transcriptionLanguage = $0 }
-                )) {
-                    if !speechLanguages.contains(where: { $0.id == transcriptionLanguage }) {
-                        Text("Choose a supported language").tag("").disabled(true)
+                Menu {
+                    Picker("Language", selection: Binding(
+                        get: { speechLanguages.contains(where: { $0.id == transcriptionLanguage }) ? transcriptionLanguage : "" },
+                        set: { transcriptionLanguage = $0 }
+                    )) {
+                        if !speechLanguages.contains(where: { $0.id == transcriptionLanguage }) {
+                            Text("Choose a supported language").tag("").disabled(true)
+                        }
+                        ForEach(speechLanguages) { language in Text(language.name).tag(language.id) }
                     }
-                    ForEach(speechLanguages) { language in Text(language.name).tag(language.id) }
+                } label: {
+                    selectionLabel("Language", value: speechLanguages.first(where: { $0.id == transcriptionLanguage })?.name ?? "Choose a supported language")
                 }
                 .accessibilityIdentifier("settingsLanguagePicker")
                 .disabled(isSettingUpSpeech)
@@ -126,6 +135,7 @@ struct SettingsView: View {
             Section("iCloud Sync") {
                 if NoteSyncMode.configuredIdentifier(in: Bundle.main.infoDictionary ?? [:]) != nil {
                     Toggle("Sync notes with iCloud after restarting Jotley", isOn: $iCloudSyncEnabled)
+                        .tint(Color.themePrimaryAccent)
                         .accessibilityIdentifier("settingsICloudSyncToggle")
                 }
                 Text("Sync is on by default in iCloud-enabled builds. You can turn it off here. It sends notes, transcripts, summaries, folders and tags to your private iCloud database. Audio and AI processing stay on this device. Changes take effect after closing and reopening Jotley; disabling does not delete data already in iCloud.")
@@ -144,11 +154,25 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden).background(Color.themeBackground)
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .tint(Color.themeActionText)
+        .toolbar { ToolbarItem(placement: .confirmationAction) { MobileDoneButton(inToolbar: true) { dismiss() }.accessibilityIdentifier("settingsDoneButton") } }
         .task(id: transcriptionLanguage) { await checkModels() }
         .onDisappear { speechSetupTask?.cancel() }
         .preferredColorScheme(themeManager.effectiveColorScheme).observeThemeChanges()
     }
+    /// Native menu selection stays intact; explicit label colors avoid a stale
+    /// selected-value tint when a presented Form changes appearance.
+    private func selectionLabel(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title).foregroundStyle(Color.themeTextPrimary)
+            Spacer()
+            Text(value).foregroundStyle(Color.themeTextSecondary)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private func checkModels() async {
         let locale = Locale(identifier: transcriptionLanguage)
         let speech = await LocalSpeech.readiness(locale: locale)

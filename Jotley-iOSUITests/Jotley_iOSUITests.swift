@@ -8,6 +8,101 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testMobileSheetDonePlacementAndDarkActionContrast() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Readable actions","folder":"Work","tags":["design"],"transcript":"Maya will test the new interface.","summary":"# Next Steps\n- Test the sheets in both appearances."}]"##
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launch()
+
+        func capture(_ name: String) {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+        }
+        func assertTopRightDone(_ id: String) {
+            let done = app.buttons[id]
+            XCTAssertTrue(done.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(done.isHittable)
+            XCTAssertEqual(done.label, "Done")
+            // Sheets may be centered on iPad; compare with their own title/header.
+            let surface = app.windows.firstMatch.frame
+            XCTAssertGreaterThan(done.frame.midX, surface.midX)
+            // Native toolbar accessibility frames describe the glass capsule, not its enclosing touch target.
+            XCTAssertGreaterThanOrEqual(done.frame.height, 32)
+            XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Done'")).count, 1)
+        }
+        func assertLightText(_ id: String, lightText: Bool = true) throws {
+            let element = app.descendants(matching: .any)[id].firstMatch
+            XCTAssertTrue(element.waitForExistence(timeout: 5)); XCTAssertTrue(element.isHittable)
+            let image = try XCTUnwrap(app.screenshot().image.cgImage)
+            let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+            var frame = element.frame.insetBy(dx: 5, dy: 3)
+            if !lightText { frame = CGRect(x: frame.minX + frame.width * 0.7, y: frame.minY, width: frame.width * 0.3, height: frame.height) }
+            let scale = CGFloat(image.width) / app.frame.width
+            var brightNeutralPixels = 0
+            for y in max(0, Int(frame.minY * scale))..<min(image.height, Int(frame.maxY * scale)) {
+                for x in max(0, Int(frame.minX * scale))..<min(image.width, Int(frame.maxX * scale)) {
+                    let offset = y * context.bytesPerRow + x * 4
+                    let r = Int(pixels[offset]), g = Int(pixels[offset + 1]), b = Int(pixels[offset + 2])
+                    if (lightText ? min(r, g, b) > 185 : max(r, g, b) < 120) && max(r, g, b) - min(r, g, b) < 12 { brightNeutralPixels += 1 }
+                }
+            }
+            XCTAssertGreaterThan(brightNeutralPixels, 20, "Action text must have neutral contrast in the selected appearance: \(id)")
+        }
+        for (index, mode) in ["Dark", "Light", "Dark"].enumerated() {
+            app.buttons["notesListSettingsButton"].tap()
+            let picker = app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch
+            XCTAssertTrue(picker.waitForExistence(timeout: 5)); picker.tap(); app.buttons[mode].tap()
+            let themePicker = app.descendants(matching: .any)["settingsThemeColorPicker"].firstMatch
+            themePicker.tap(); app.buttons[index == 2 ? "Orange" : "Purple"].tap()
+            assertTopRightDone("settingsDoneButton")
+            if mode == "Dark" {
+                try assertLightText("settingsMacDownloadLink")
+                try assertLightText("settingsShareMacDownloadLink")
+                try assertLightText("settingsDoneButton")
+            } else {
+                try assertLightText("settingsAppearanceModePicker", lightText: false)
+                try assertLightText("settingsThemeColorPicker", lightText: false)
+            }
+            capture("360 Settings \(mode) \(index == 2 ? "Orange" : "Purple")")
+            app.buttons["settingsDoneButton"].tap()
+
+            app.buttons["notesListFolderDrawerButton"].tap()
+            assertTopRightDone("folderDrawerDoneButton")
+            if mode == "Dark" { try assertLightText("folderDrawerDoneButton") }
+            capture("360 Folders \(mode)")
+            app.buttons["folderDrawerManageButton"].tap()
+            assertTopRightDone("folderManagementDoneButton")
+            capture("360 Manage Folders \(mode)")
+            app.buttons["folderManagementDoneButton"].tap()
+
+            app.buttons["notesListTagFilterButton"].tap()
+            assertTopRightDone("filterSortDoneButton")
+            let done = app.buttons["filterSortDoneButton"]
+            let sort = app.descendants(matching: .any)["filterSortPicker"].firstMatch
+            XCTAssertTrue(sort.waitForExistence(timeout: 5))
+            XCTAssertLessThan(done.frame.maxY, sort.frame.minY)
+            if mode == "Dark" { try assertLightText("filterSortPicker"); try assertLightText("filterSortDoneButton") }
+            capture("360 Filter and Sort \(mode)")
+            done.tap()
+        }
+        let row = app.buttons.containing(.staticText, identifier: "Readable actions").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+        let ask = app.buttons["noteDetailSummaryAskAIButton"]
+        XCTAssertTrue(ask.waitForExistence(timeout: 5)); try assertLightText("noteDetailSummaryAskAIButton")
+        capture("360 Summary actions Dark")
+        ask.tap()
+        assertTopRightDone("askAIDoneButton")
+        capture("360 Ask AI Done Dark")
+        app.buttons["askAIDoneButton"].tap()
+        app.buttons["Transcript"].tap()
+        try assertLightText("noteDetailContinueTranscriptionButton")
+        capture("360 Transcript actions Dark")
+    }
+
     @MainActor func testStreamingSummaryFollowsBottomAndPinsCancelGeneration() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Summary scrolling","folder":"","tags":[],"transcript":"Maya reviews milestones Friday. Sam tests the next steps.","summary":"Existing summary remains after Cancel."}]"##

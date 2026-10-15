@@ -111,6 +111,7 @@ struct AddTagSheetView: View {
                     }
                 }
             }
+            .tint(Color.themeActionText)
             .onAppear {
                 isTextFieldFocused = true
             }
@@ -347,8 +348,8 @@ struct LocalAskNoteView: View {
             .background(Color.themeBackground)
             .navigationTitle("Ask AI").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("askAIDoneButton") }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .confirmationAction) { MobileDoneButton(inToolbar: true) { dismiss() }.accessibilityIdentifier("askAIDoneButton") }
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
                         .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
                         .accessibilityIdentifier("askAIClearButton")
@@ -371,7 +372,7 @@ struct LocalAskNoteView: View {
             .onDisappear { cancel() }
             .onChange(of: scenePhase) { _, phase in if phase == .background { cancel() } }
             .onReceive(NotificationCenter.default.publisher(for: LiveTranscriptionManager.willBeginTranscription)) { _ in cancel() }
-            .tint(.themePrimaryAccent).observeThemeChanges()
+            .tint(.themeActionText).observeThemeChanges()
         }
     }
     private var welcome: some View {
@@ -386,8 +387,10 @@ struct LocalAskNoteView: View {
                     .font(.footnote).foregroundStyle(Color.themeTextSecondary)
             }
             ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
-                Button(suggestion) { input = suggestion; inputFocused = true }
-                    .frame(minHeight: 44).buttonStyle(.bordered)
+                Button { input = suggestion; inputFocused = true } label: {
+                    Text(suggestion).foregroundStyle(Color.themeActionText)
+                }
+                    .frame(minHeight: 44).buttonStyle(.bordered).tint(.themePrimaryAccent)
             }
         }.padding(.vertical, 16)
     }
@@ -414,9 +417,8 @@ struct LocalAskNoteView: View {
         }
     }
     private func answerActionLabel(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
+        MobileActionLabel(title, systemImage: systemImage)
             .font(.caption.weight(.medium))
-            .foregroundStyle(Color.themePrimaryAccent)
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             // Keep the invisible touch area comfortable without enlarging the visible chip.

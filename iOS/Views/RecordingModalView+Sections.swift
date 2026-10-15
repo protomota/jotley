@@ -5,23 +5,13 @@ extension LiveTranscriptionView {
 
     var header: some View {
         HStack {
-            Button("Close") {
-                finishAndClose()
-            }
-            .foregroundColor(.themePrimaryAccent)
-            .disabled(isFinishing)
-            .accessibilityIdentifier("transcriptionCloseButton")
-
-            Spacer()
-
             Text(isResuming ? "Continue Transcription" : "Live Transcription")
                 .font(.headline)
                 .foregroundColor(.themeTextPrimary)
-
             Spacer()
-
-            // Placeholder for symmetry
-            Text("Close").opacity(0)
+            MobileDoneButton { finishAndClose() }
+                .disabled(isFinishing)
+                .accessibilityIdentifier("transcriptionCloseButton")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

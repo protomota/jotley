@@ -118,6 +118,7 @@ struct MobileNoteTextEditor: View {
                     Button("OK", role: .cancel) { error = nil }
                 } message: { Text(error ?? "") }
         }
+        .tint(Color.themeActionText)
         .preferredColorScheme(ThemeManager.shared.effectiveColorScheme)
         .observeThemeChanges()
         .interactiveDismissDisabled(text != original)

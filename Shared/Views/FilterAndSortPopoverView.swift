@@ -11,10 +11,16 @@ struct FilterAndSortPopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            #if os(iOS)
+            header.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 12)
+            Divider()
+            #endif
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    #if os(macOS)
                     header
                     Divider()
+                    #endif
                     sortSection
                     Divider()
                     matchModeSection
@@ -30,14 +36,17 @@ struct FilterAndSortPopoverView: View {
             .frame(maxHeight: 480)
             #endif
 
+            #if os(macOS)
             Divider()
 
             footer
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(Color.themeContentBackground)
+            #endif
         }
         .background(Color.themeContentBackground)
+        .observeThemeChanges()
         #if os(macOS)
         .frame(width: 280)
         .cornerRadius(8)
@@ -56,11 +65,15 @@ struct FilterAndSortPopoverView: View {
                 state.clearAll()
             }
             .font(.subheadline)
-            .foregroundColor(Color.themePrimaryAccent)
+            .foregroundColor(Color.themeActionText)
             .buttonStyle(.plain)
             .opacity(state.isActive ? 1 : 0)
             .disabled(!state.isActive)
             .accessibilityHidden(!state.isActive)
+            #if os(iOS)
+            MobileDoneButton(action: onDone)
+                .accessibilityIdentifier("filterSortDoneButton")
+            #endif
         }
     }
 
@@ -78,7 +91,8 @@ struct FilterAndSortPopoverView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .tint(Color.themePrimaryAccent)
+            .tint(Color.themeActionText)
+            .accessibilityIdentifier("filterSortPicker")
         }
     }
 
@@ -116,7 +130,7 @@ struct FilterAndSortPopoverView: View {
                     state.selectedTags.removeAll()
                 }
                 .font(.subheadline)
-                .foregroundColor(Color.themePrimaryAccent)
+                .foregroundColor(Color.themeActionText)
                 .buttonStyle(.plain)
                 .opacity(state.selectedTags.isEmpty ? 0 : 1)
                 .disabled(state.selectedTags.isEmpty)

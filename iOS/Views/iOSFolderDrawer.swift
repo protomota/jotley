@@ -92,14 +92,7 @@ struct iOSFolderDrawer: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(Color.themeTextPrimary)
             Spacer()
-            Button {
-                onDone()
-            } label: {
-                Text("Done")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Color.themePrimaryAccent)
-            }
-            .buttonStyle(.plain)
+            MobileDoneButton(action: onDone)
             .accessibilityIdentifier("folderDrawerDoneButton")
         }
         .padding(.horizontal, 20)

@@ -1,5 +1,11 @@
 # Source snapshot verification
 
+## Mobile glass controls and readable actions — October 15, 2026
+
+Native UI checks passed on iPhone 17 Pro Max and iPad Pro 13-inch (M5), iOS/iPadOS 27: Done placement and dismissal across Settings, folders, folder management, Filter & Sort and Ask AI; actual rendered contrast in dark appearance; readable selected Settings values after switching to light; and Purple/Orange theme changes. The version/build line remained visible and correctly formatted after scrolling. Native screenshots were inspected. A stale selected-value tint discovered during Light/Dark switching was reproduced by a pixel assertion and fixed with explicit theme-aware labels around native selection menus.
+
+Actual Apple model Ask AI answers and compact Copy/Share controls passed on both simulators. Stop/Done completion and rejection of late transcript updates also passed on both. The summary modal/Markdown regression passed in both appearances. These are simulator checks; physical microphone and locked-device behavior were not retested. The unsigned Mac build passed for the shared files.
+
 ## Summary editor and Markdown lists — October 15, 2026
 
 Three UI scenarios passed on both the iPhone 17 Pro Max and iPad Pro 13-inch (M5), iOS/iPadOS 27 simulators: summary modal Save/Cancel and reopening in light/dark appearance; transcript editing and conditional menu availability; and repeated template switching with a 500-item summary. Three focused unit cases also passed on both devices for summary persistence and stale-draft rejection, transcript/timestamp preservation, and Markdown bullet/numbered/nested-list parsing with inline bold formatting. No failures or skips. Native screenshots were visually inspected. These checks do not establish physical-device behavior.

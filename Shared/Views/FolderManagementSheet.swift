@@ -30,9 +30,14 @@ struct FolderManagementSheet: View {
                     .fontWeight(.semibold)
                     .foregroundColor(Color.themeTextPrimary)
                 Spacer()
+                #if os(iOS)
+                MobileDoneButton { dismiss() }
+                    .accessibilityIdentifier("folderManagementDoneButton")
+                #else
                 Button("Done") { dismiss() }
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("folderManagementDoneButton")
+                #endif
             }
 
             createRow
@@ -79,6 +84,10 @@ struct FolderManagementSheet: View {
         .frame(maxWidth: .infinity, minHeight: 360)
         #endif
         .background(Color.themeContentBackground)
+        #if os(iOS)
+        .tint(Color.themeActionText)
+        #endif
+        .observeThemeChanges()
         .alert(
             "Delete Folder?",
             isPresented: Binding(

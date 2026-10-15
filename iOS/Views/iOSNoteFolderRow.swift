@@ -103,6 +103,7 @@ private struct NewFolderInlineSheetiOS: View {
                 }
             }
         }
+        .tint(Color.themeActionText)
         .presentationDetents([.medium])
     }
 

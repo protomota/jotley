@@ -53,10 +53,10 @@ extension NoteDetailView {
                         ProgressView(value: fraction).tint(.themePrimaryAccent)
                     }
                     Button { transcriptionManager.cancelProcessing() } label: {
-                        Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                        MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 48)
-                    }.buttonStyle(.bordered)
+                    }.buttonStyle(.bordered).tint(.themePrimaryAccent)
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
                 }
                     .padding(.horizontal,16).padding(.vertical,8).background(Color.themeBackground)
@@ -87,7 +87,9 @@ extension NoteDetailView {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    Button("Ask AI", systemImage: "bubble.left.and.bubble.right") { showingAskAI = true }
+                    Button { showingAskAI = true } label: {
+                    MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
+                }
                         .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                         .accessibilityIdentifier("noteDetailAskAIButton")
                     if hasTranscript {
@@ -127,7 +129,7 @@ extension NoteDetailView {
         .onChange(of: isTitleFieldFocused) { _, focused in if !focused { isEditingTitle = false } }
         .onChange(of: hasSummary) { _, available in if !available { selectedTab = "Transcript" } }
         .onChange(of: summaryIsRunning) { _, running in if running { selectedTab = "Summary" } }
-        .tint(.themePrimaryAccent)
+        .tint(.themeActionText)
         .observeThemeChanges()
     }
     private var noteHeaderSection: some View {
@@ -188,15 +190,19 @@ extension NoteDetailView {
     private var transcriptionAndSummaryFooter: some View {
         VStack(spacing: 8) {
             if selectedTab == "Summary" {
-                Button("Ask AI", systemImage: "bubble.left.and.bubble.right") { showingAskAI = true }
+                Button { showingAskAI = true } label: {
+                    MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
+                }
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.bordered).tint(.themePrimaryAccent)
                     .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                     .accessibilityIdentifier("noteDetailSummaryAskAIButton")
             } else {
-                Button("Continue Transcription", systemImage: "waveform") { showingTranscription = true }
+                Button { showingTranscription = true } label: {
+                    MobileActionLabel("Continue Transcription", systemImage: "waveform")
+                }
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.bordered).tint(.themePrimaryAccent)
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
             }
@@ -210,11 +216,11 @@ extension NoteDetailView {
                             }.accessibilityIdentifier("noteTemplate-\(template.key)")
                         }
                     } label: {
-                        Label(selectedTemplate.title, systemImage: "sparkles")
+                        MobileActionLabel(selectedTemplate.title, systemImage: "sparkles")
                             .font(.system(size: 15, weight: .medium))
                             .lineLimit(1).truncationMode(.tail)
                             .frame(width: 136, height: 44)
-                    }.buttonStyle(.bordered).disabled(!transcriptionManager.canStart)
+                    }.buttonStyle(.bordered).tint(.themePrimaryAccent).disabled(!transcriptionManager.canStart)
                         .accessibilityLabel("Templates: \(selectedTemplate.title)")
                         .accessibilityIdentifier("noteDetailTemplatesButton")
                     Button {
@@ -224,7 +230,7 @@ extension NoteDetailView {
                             .lineLimit(1).minimumScaleFactor(0.8)
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity, minHeight: 44)
-                    }.buttonStyle(.borderedProminent)
+                    }.buttonStyle(.borderedProminent).tint(.themePrimaryAccent)
                         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
                 }

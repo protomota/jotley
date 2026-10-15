@@ -82,7 +82,7 @@ struct NotesListView: View {
                                 isSearchFocused = false
                             }
                         }
-                        .foregroundColor(Color.themePrimaryAccent)
+                        .foregroundColor(Color.themeActionText)
                         .accessibilityIdentifier("cancelSearchButton")
                         .transition(.opacity.combined(with: .scale))
                     }
@@ -342,7 +342,7 @@ struct NotesListView: View {
                 .presentationBackground(Color.themeBackground)
         }
         .observeThemeChanges()
-        .tint(.themePrimaryAccent)
+        .tint(.themeActionText)
     }
     func ensureStableNoteID(for note: Note) -> UUID {
         if let id = note.id { return id }
