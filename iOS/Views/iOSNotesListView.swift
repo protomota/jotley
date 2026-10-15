@@ -33,25 +33,11 @@ struct NotesListView: View {
         let isSearching = isSearchFocused || !searchText.isEmpty
         ZStack {
             VStack(spacing: 0) {
-                // Pinned header with settings button, search, and sidebar toggle
+                // iPad keeps Settings in the footer, clear of system window controls.
                 HStack(spacing: 12) {
-                        // Settings button
-                        if !isSearching {
-                            Button(action: { showingSettings = true }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.themePrimaryAccent)
-                                        .frame(width: 44, height: 44)
-                                    Image(systemName: "gearshape.fill")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Settings")
-                            .accessibilityIdentifier("notesListSettingsButton")
-                            .transition(.opacity.combined(with: .scale))
-                        }
+                    if !isSearching && !usesIPadLayout {
+                        settingsButton.transition(.opacity.combined(with: .scale))
+                    }
 
                     // Search field
                     HStack(spacing: 8) {
@@ -129,30 +115,6 @@ struct NotesListView: View {
                             .presentationDragIndicator(.visible)
                             .presentationBackground(Color.themeContentBackground)
                         }
-                    }
-
-                    // Sidebar toggle button - only show on iPad (regular size class)
-                    if !isSearching && horizontalSizeClass == .regular {
-                        Button(action: {
-                            withAnimation {
-                                if columnVisibility == .all {
-                                    columnVisibility = .detailOnly
-                                } else {
-                                    columnVisibility = .all
-                                }
-                            }
-                        }) {
-                            Image(systemName: "sidebar.left")
-                                .font(.system(size: 20))
-                                .foregroundColor(Color.themePrimaryAccent)
-                                .frame(width: 44, height: 44)
-                                .background(Color.themeBackground)
-                                .contentShape(Rectangle())
-                        }
-                        .frame(width: 44, height: 44)
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("notesListSidebarToggle")
-                        .transition(.opacity.combined(with: .scale))
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: isSearching)
@@ -301,13 +263,17 @@ struct NotesListView: View {
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .background(Color.themeBackground)
-            .navigationBarHidden(true)
+            .navigationBarHidden(!usesIPadLayout)
+            .navigationBarTitleDisplayMode(.inline)
             } // End of VStack
 
-            // Floating New button
+            // Floating bottom controls
             VStack {
                 Spacer()
-                HStack {
+                HStack(alignment: .center) {
+                    if usesIPadLayout {
+                        settingsButton.padding(.leading, 20).padding(.bottom, 8)
+                    }
                     Spacer()
                     Button(action: {
                         handleCreateNewNoteTapped()
@@ -344,6 +310,23 @@ struct NotesListView: View {
         .observeThemeChanges()
         .tint(.themeActionText)
     }
+    // Hardware idiom is intentional: a narrow iPad window still has window
+    // controls, even when its horizontal size class becomes compact.
+    private var usesIPadLayout: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    private var settingsButton: some View {
+        Button(action: { showingSettings = true }) {
+            ZStack {
+                Circle().fill(Color.themePrimaryAccent).frame(width: 44, height: 44)
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("notesListSettingsButton")
+    }
+
     func ensureStableNoteID(for note: Note) -> UUID {
         if let id = note.id { return id }
         let id = UUID(); note.id = id; transcriptionManager.saveEdits(); return id

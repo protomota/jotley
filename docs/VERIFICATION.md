@@ -1,5 +1,9 @@
 # Source snapshot verification
 
+## iPad Settings placement preview — October 15, 2026
+
+The iPad Settings gear moves to the bottom-left of the notes column, opposite +. Native navigation chrome keeps window controls above Search, including compact iPad layouts; the iPhone header position is unchanged. Local iPad Pro 13-inch (M5), iPadOS 27 checks passed for portrait/landscape, Light/Dark, alignment and opening/dismissing Settings. An actual resized Simulator window passed Settings/Search interaction checks, and the test restored full screen afterward. The final iPhone 17 Pro Max regression passed in both appearances. No failures/skips in the final runs. Native screenshots were inspected; physical iPad testing was not performed. This is a preview awaiting screenshot review; no new store upload was performed for it.
+
 ## Mobile glass controls and readable actions — October 15, 2026
 
 Native UI checks passed on iPhone 17 Pro Max and iPad Pro 13-inch (M5), iOS/iPadOS 27: Done placement and dismissal across Settings, folders, folder management, Filter & Sort and Ask AI; actual rendered contrast in dark appearance; readable selected Settings values after switching to light; and Purple/Orange theme changes. The version/build line remained visible and correctly formatted after scrolling. Native screenshots were inspected. A stale selected-value tint discovered during Light/Dark switching was reproduced by a pixel assertion and fixed with explicit theme-aware labels around native selection menus.

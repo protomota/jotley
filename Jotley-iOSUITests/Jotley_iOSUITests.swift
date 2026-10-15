@@ -8,6 +8,101 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testSettingsPlacementKeepsIPadWindowControlsClear() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Weekly Design Review","folder":"Work","tags":["design","meeting"],"transcript":"Keep live transcription simple. Maya will test the next build on Friday.","summary":"## Key Decisions\n- Keep live transcription simple.\n- Make Settings easy to reach in every iPad window.\n\n## Next Steps\n- Maya: test the transcription flow.\n- Alex: review the summary templates.\n\n## Next Check-in\nFriday at 10:00. Bring one useful summary and one idea to simplify the experience."},{"title":"Lecture: Working Memory","folder":"Study","tags":[],"transcript":"Group related ideas and write down the next step.","summary":"## Main Ideas\n- Group related ideas.\n- Write down the next step."},{"title":"Weekend Ideas","folder":"Personal","tags":[],"transcript":"Walk the river trail. Try a new recipe.","summary":""}]"###
+        let orientations: [UIDeviceOrientation] = isPad ? [.landscapeLeft, .portrait] : [.portrait]
+        for orientation in orientations {
+            XCUIDevice.shared.orientation = orientation
+            for mode in ["Dark", "Light"] {
+                app.terminate()
+                app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+                app.launch()
+                let settings = app.buttons["notesListSettingsButton"]
+                let search = app.textFields["notesListSearchField"]
+                let plus = app.buttons["notesListNewNoteButton"]
+                XCTAssertTrue(settings.waitForExistence(timeout: 15))
+                XCTAssertTrue(search.isHittable && plus.isHittable && settings.isHittable)
+                XCTAssertEqual(app.buttons.matching(identifier: "notesListSettingsButton").count, 1)
+                if isPad {
+                    XCTAssertGreaterThan(settings.frame.minY, search.frame.maxY + 200)
+                    XCTAssertEqual(settings.frame.midY, plus.frame.midY, accuracy: 1)
+                    XCTAssertLessThan(settings.frame.maxX, plus.frame.minX)
+                    let navigationBar = app.navigationBars.firstMatch
+                    XCTAssertTrue(navigationBar.exists, "Native navigation chrome must reserve space for iPad window controls")
+                    XCTAssertGreaterThanOrEqual(search.frame.minY + 1, navigationBar.frame.maxY)
+                    let row = app.buttons.containing(.staticText, identifier: "Weekly Design Review").firstMatch
+                    XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+                    XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 5))
+                    XCTAssertTrue(settings.isHittable)
+                } else {
+                    XCTAssertEqual(settings.frame.midY, search.frame.midY, accuracy: 1)
+                    XCTAssertLessThan(settings.frame.maxX, search.frame.minX)
+                }
+                let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                attachment.name = "iPad Settings placement \(orientation == .portrait ? "portrait" : "landscape") \(mode)"
+                attachment.lifetime = .keepAlways; add(attachment)
+                settings.tap()
+                let done = app.buttons["settingsDoneButton"]
+                XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
+                XCTAssertTrue(settings.waitForExistence(timeout: 5)); XCTAssertTrue(settings.isHittable)
+            }
+        }
+    }
+
+    @MainActor func testIPadSettingsInResizedWindowPreview() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
+            throw XCTSkip("iPad window management only")
+        }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Weekly Design Review","folder":"Work","tags":["design"],"transcript":"Keep live transcription simple.","summary":"## Key Decisions\n- Keep live transcription simple.\n- Make Settings easy to reach in every iPad window.\n\n## Next Steps\n- Maya: test the transcription flow.\n- Alex: review the summary templates."}]"###
+        app.launch()
+        let settings = app.buttons["notesListSettingsButton"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 15))
+        let fullScreenWidth = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
+        func maximizeWindow() {
+            guard app.windows.firstMatch.frame.width < fullScreenWidth - 40 else { return }
+            app.navigationBars.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).doubleTap()
+            let expanded = expectation(for: NSPredicate { _, _ in app.windows.firstMatch.frame.width > fullScreenWidth - 40 }, evaluatedWith: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [expanded], timeout: 5), .completed, "Return the simulator to full screen after window testing")
+        }
+        maximizeWindow()
+        defer { maximizeWindow() }
+        let row = app.buttons.containing(.staticText, identifier: "Weekly Design Review").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+        let before = app.windows.firstMatch.frame
+        // The iPad window manager owns the curved resize handle at this corner.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.993, dy: 0.993))
+            .press(forDuration: 0.5, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.88)))
+        let resized = expectation(for: NSPredicate { _, _ in app.windows.firstMatch.frame.width < before.width - 40 }, evaluatedWith: nil)
+        guard XCTWaiter.wait(for: [resized], timeout: 5) == .completed else {
+            let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            attachment.name = "Window resize unavailable in Simulator"; attachment.lifetime = .keepAlways; add(attachment)
+            throw XCTSkip("Simulator window manager did not expose a resizable app window")
+        }
+        app.activate()
+        let search = app.textFields["notesListSearchField"]
+        if !search.isHittable {
+            let sidebar = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+            if sidebar.exists { sidebar.tap() }
+        }
+        let ready = expectation(for: NSPredicate { _, _ in settings.isHittable && search.isHittable }, evaluatedWith: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, app.debugDescription)
+        XCTAssertGreaterThan(settings.frame.minY, search.frame.maxY + 100)
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "iPad Settings resized window Dark"; attachment.lifetime = .keepAlways; add(attachment)
+        settings.tap()
+        XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
+        app.buttons["settingsDoneButton"].tap()
+    }
+
     @MainActor func testMobileSheetDonePlacementAndDarkActionContrast() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Readable actions","folder":"Work","tags":["design"],"transcript":"Maya will test the new interface.","summary":"# Next Steps\n- Test the sheets in both appearances."}]"##
