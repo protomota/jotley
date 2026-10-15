@@ -30,7 +30,7 @@ struct NoteDetailView: View {
     @State var newTagText = ""
     @State var currentTags: [String] = []
     @State var showingTranscriptEditor = false
-    @State var editingSummary = false
+    @State var showingSummaryEditor = false
     @State var showingAskAI = false
     var selectedTemplate: LocalSummaryTemplate { .resolve(note.summaryType) }
     func selectTemplate(_ template: LocalSummaryTemplate) {
@@ -40,7 +40,6 @@ struct NoteDetailView: View {
     }
 
     func generateSummary() {
-        editingSummary = false
         selectedTab = "Summary"
         transcriptionManager.summarize(note, template: selectedTemplate)
     }
@@ -67,17 +66,24 @@ struct NoteDetailView: View {
     }
 }
 
-struct MobileTranscriptEditor: View {
+struct MobileNoteTextEditor: View {
+    enum Field {
+        case transcript, summary
+        var title: String { self == .transcript ? "Transcript" : "Summary" }
+        var key: String { self == .transcript ? "transcript" : "summary" }
+    }
     @ObservedObject var note: Note
+    let field: Field
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @EnvironmentObject var store: SharedPersistenceController
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
     @State private var error: String?
     private let original: String
-    init(note: Note) {
+    init(note: Note, field: Field) {
         self.note = note
-        original = note.transcription ?? ""
+        self.field = field
+        original = (field == .transcript ? note.transcription : note.summary) ?? ""
         _text = State(initialValue: original)
     }
     var body: some View {
@@ -86,25 +92,29 @@ struct MobileTranscriptEditor: View {
                 .font(.body).foregroundStyle(Color.themeTextPrimary)
                 .scrollContentBackground(.hidden).padding()
                 .background(Color.themeBackground)
-                .accessibilityIdentifier("transcriptEditorText")
-                .navigationTitle("Edit Transcript")
+                .accessibilityLabel(field.title)
+                .accessibilityIdentifier("\(field.key)EditorText")
+                .navigationTitle("Edit \(field.title)")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.accessibilityIdentifier("transcriptEditorCancelButton")
+                        Button("Cancel") { dismiss() }.accessibilityIdentifier("\(field.key)EditorCancelButton")
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             do {
                                 guard transcriptionManager.canStart else { throw LocalError.message("Finish transcribing or processing before saving edits.") }
-                                try note.saveEditedTranscript(text, original: original, in: store)
+                                switch field {
+                                case .transcript: try note.saveEditedTranscript(text, original: original, in: store)
+                                case .summary: try note.saveEditedSummary(text, original: original, in: store)
+                                }
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
                         }.disabled(!transcriptionManager.canStart || note.isDeleted)
-                            .accessibilityIdentifier("transcriptEditorSaveButton")
+                            .accessibilityIdentifier("\(field.key)EditorSaveButton")
                     }
                 }
-                .alert("Couldn’t Save Transcript", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+                .alert("Couldn’t Save \(field.title)", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                     Button("OK", role: .cancel) { error = nil }
                 } message: { Text(error ?? "") }
         }

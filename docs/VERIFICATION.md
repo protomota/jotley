@@ -1,5 +1,11 @@
 # Source snapshot verification
 
+## Summary editor and Markdown lists — October 15, 2026
+
+Three UI scenarios passed on both the iPhone 17 Pro Max and iPad Pro 13-inch (M5), iOS/iPadOS 27 simulators: summary modal Save/Cancel and reopening in light/dark appearance; transcript editing and conditional menu availability; and repeated template switching with a 500-item summary. Three focused unit cases also passed on both devices for summary persistence and stale-draft rejection, transcript/timestamp preservation, and Markdown bullet/numbered/nested-list parsing with inline bold formatting. No failures or skips. Native screenshots were visually inspected. These checks do not establish physical-device behavior.
+
+## Initial snapshot
+
 The clean public snapshot was checked on macOS 27 with Xcode 27.
 
 - The exported shared Swift package passed 25 tests with seven explicitly skipped opt-in model checks.

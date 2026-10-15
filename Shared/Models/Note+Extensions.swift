@@ -276,6 +276,14 @@ public extension Note {
 // Manual edits replace speech timing metadata only when the text changes.
 // Save the text and its display paragraphs together, preserving summaries/audio.
 extension Note {
+    @MainActor func saveEditedSummary(_ text: String, original: String, in store: SharedPersistenceController) throws {
+        guard (summary ?? "") == original else {
+            throw LocalError.message("This summary changed while you were editing. Close the editor and reopen it to edit the latest text.")
+        }
+        guard text != original else { return }
+        try store.saveNoteChanges(self, values: ["summary": text])
+    }
+
     @MainActor func saveEditedTranscript(_ text: String, original: String, in store: SharedPersistenceController) throws {
         guard (transcription ?? "") == original else {
             throw LocalError.message("This transcript changed while you were editing. Close the editor and reopen it to edit the latest text.")

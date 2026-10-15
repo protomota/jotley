@@ -8,18 +8,13 @@ extension NoteDetailView {
                 noteHeaderSection
                 if hasTranscript || hasSummary { noteTabPickerSection }
                 if selectedTab == "Summary", hasSummary {
-                    if editingSummary && !summaryIsRunning {
-                        TextEditor(text: Binding(get: { note.summary ?? "" }, set: { note.summary = $0; transcriptionManager.saveEdits() }))
-                            .frame(minHeight: 320).scrollContentBackground(.hidden).padding(.horizontal)
+                    if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
+                        Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
+                            .font(.body).foregroundColor(.themeTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding()
                     } else {
-                        if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
-                            Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
-                                .font(.body).foregroundColor(.themeTextSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading).padding()
-                        } else {
-                            MarkdownContentView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
-                                .padding(.horizontal).accessibilityIdentifier("noteDetailSummaryContent")
-                        }
+                        MarkdownContentView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
+                            .padding(.horizontal).accessibilityIdentifier("noteDetailSummaryContent")
                     }
                 } else if hasTranscript || noteIsTranscribing {
                     transcriptContent.padding(.horizontal)
@@ -101,7 +96,7 @@ extension NoteDetailView {
                             .accessibilityIdentifier("noteDetailEditTranscriptButton")
                     }
                     if Note.isMeaningfulSummaryText(note.summary) {
-                        Button(editingSummary ? "Finish Editing Summary" : "Edit Summary", systemImage: editingSummary ? "checkmark" : "pencil") { editingSummary.toggle(); selectedTab = "Summary" }
+                        Button("Edit Summary", systemImage: "pencil") { showingSummaryEditor = true }
                             .disabled(!transcriptionManager.canStart)
                             .accessibilityIdentifier("noteDetailEditSummaryButton")
                     }
@@ -114,9 +109,10 @@ extension NoteDetailView {
                 .accessibilityIdentifier("noteDetailMoreActionsButton")
             }
         }
-        .sheet(isPresented: $showingTranscriptEditor, onDismiss: { selectedTab = "Transcript"; editingSummary = false }) { MobileTranscriptEditor(note: note) }
+        .sheet(isPresented: $showingTranscriptEditor, onDismiss: { selectedTab = "Transcript" }) { MobileNoteTextEditor(note: note, field: .transcript) }
+        .sheet(isPresented: $showingSummaryEditor, onDismiss: { selectedTab = hasSummary ? "Summary" : "Transcript" }) { MobileNoteTextEditor(note: note, field: .summary) }
         .sheet(isPresented: $showingAskAI) { LocalAskNoteView(note: note) }
-        .sheet(isPresented: $showingTranscription, onDismiss: { selectedTab = "Transcript"; editingSummary = false }) { LiveTranscriptionView(isPresented: $showingTranscription, existingNote: note) }
+        .sheet(isPresented: $showingTranscription, onDismiss: { selectedTab = "Transcript" }) { LiveTranscriptionView(isPresented: $showingTranscription, existingNote: note) }
         .sheet(isPresented: $showingAddTag) {
             AddTagSheetView(note: note, isPresented: $showingAddTag, newTagText: $newTagText, currentTags: $currentTags, onSave: transcriptionManager.saveEdits)
         }

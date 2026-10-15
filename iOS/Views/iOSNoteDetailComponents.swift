@@ -199,6 +199,8 @@ final class ParsedNoteMarkdown: NSObject {
     struct Line: Identifiable {
         let id: Int
         let heading: Bool
+        let marker: String?
+        let indentation: Int
         let text: AttributedString
     }
     let lines: [Line]
@@ -208,11 +210,23 @@ final class ParsedNoteMarkdown: NSObject {
         cache.totalCostLimit = 8 * 1024 * 1024
         return cache
     }()
+    private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
     private init(content: String) {
         lines = LocalSummary.markdownForDisplay(content).components(separatedBy: "\n").enumerated().map { index, line in
             let heading = line.hasPrefix("#")
-            let text = heading ? String(line.drop(while: { $0 == "#" || $0 == " " })) : line
-            return Line(id: index, heading: heading,
+            var text = heading ? String(line.drop(while: { $0 == "#" || $0 == " " })) : line
+            var marker: String?
+            var indentation = 0
+            if let match = Self.listPattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+               let whitespace = Range(match.range(at: 1), in: line),
+               let prefix = Range(match.range(at: 2), in: line),
+               let body = Range(match.range(at: 3), in: line) {
+                let token = String(line[prefix])
+                marker = ["-", "+", "*"].contains(token) ? "•" : String(token.dropLast()) + "."
+                indentation = line[whitespace].reduce(0) { $0 + ($1 == "\t" ? 4 : 1) }
+                text = String(line[body])
+            }
+            return Line(id: index, heading: heading, marker: marker, indentation: indentation,
                 text: (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
         }
     }
@@ -237,10 +251,24 @@ struct MarkdownContentView: View {
         let textColor = Color.themeTextPrimary
         return LazyVStack(alignment: .leading, spacing: 8) {
             ForEach(ParsedNoteMarkdown.rendering(content).lines) { line in
-                Text(line.text)
-                    .font(line.heading ? .headline : .body)
-                    .foregroundColor(textColor)
-                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                if let marker = line.marker {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(marker).frame(minWidth: 16, alignment: .trailing)
+                            .accessibilityHidden(true)
+                        Text(line.text).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .font(.body).foregroundColor(textColor)
+                    .padding(.leading, CGFloat(line.indentation) * 8)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(marker) \(String(line.text.characters))")
+                    .accessibilityIdentifier("markdownListItem-\(line.id)")
+                } else {
+                    Text(line.text)
+                        .font(line.heading ? .headline : .body)
+                        .foregroundColor(textColor)
+                        .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
     }

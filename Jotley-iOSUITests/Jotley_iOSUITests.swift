@@ -745,7 +745,7 @@ final class Jotley_iOSUITests: XCTestCase {
             }
             print("Long-note template selection \(title): \(Date().timeIntervalSince(start))s")
             XCTAssertTrue(app.staticTexts["Long recording summary"].exists)
-            XCTAssertTrue(app.staticTexts["- Point 0: decisions and action items from the recorded meeting."].exists)
+            XCTAssertTrue(app.descendants(matching: .any)["markdownListItem-1"].firstMatch.exists)
             XCTAssertFalse(app.textViews.firstMatch.exists, "Template selection must not enter editing")
             XCTAssertEqual(app.buttons["noteDetailGenerateSummaryButton"].label, "Regenerate Summary")
         }
@@ -755,13 +755,63 @@ final class Jotley_iOSUITests: XCTestCase {
         let menu = XCTAttachment(screenshot: app.screenshot())
         menu.name = "Summary menu with pencil icon"; menu.lifetime = .keepAlways; add(menu)
         edit.tap()
-        XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
-        app.buttons["noteDetailMoreActionsButton"].tap()
-        XCTAssertEqual(edit.label, "Finish Editing Summary")
-        let finishMenu = XCTAttachment(screenshot: app.screenshot())
-        finishMenu.name = "Finish Editing Summary with checkmark icon"; finishMenu.lifetime = .keepAlways; add(finishMenu)
-        edit.tap()
+        XCTAssertTrue(app.textViews["summaryEditorText"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["summaryEditorCancelButton"].exists)
+        XCTAssertTrue(app.buttons["summaryEditorSaveButton"].exists)
+        app.buttons["summaryEditorCancelButton"].tap()
         XCTAssertTrue(app.staticTexts["Long recording summary"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testSummaryModalEditingAndMarkdownLists() throws {
+        for appearance in ["Dark", "Light"] {
+            let app = XCUIApplication()
+            app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = appearance
+            app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Summary editing verification","folder":"Work","tags":[],"transcript":"Original spoken words.","summary":"# Decisions\n- **Keep** the transcript.\n  - Follow up Friday.\n* Review the plan.\n+ Share the checklist.\n1. First step.\n2) Second step."}]"##
+            app.launch()
+            let row = app.buttons.containing(.staticText, identifier: "Summary editing verification").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            let bullet = app.descendants(matching: .any)["markdownListItem-1"].firstMatch
+            XCTAssertTrue(bullet.waitForExistence(timeout: 5))
+            XCTAssertEqual(bullet.label, "• Keep the transcript.")
+            let nested = app.descendants(matching: .any)["markdownListItem-2"].firstMatch
+            XCTAssertEqual(nested.label, "• Follow up Friday.")
+            XCTAssertGreaterThan(nested.frame.minX, bullet.frame.minX)
+            XCTAssertEqual(app.descendants(matching: .any)["markdownListItem-5"].firstMatch.label, "1. First step.")
+            XCTAssertEqual(app.descendants(matching: .any)["markdownListItem-6"].firstMatch.label, "2. Second step.")
+            let rendered = XCTAttachment(screenshot: app.screenshot())
+            rendered.name = "Rendered summary Markdown lists - \(appearance)"; rendered.lifetime = .keepAlways; add(rendered)
+
+            func openEditor() {
+                app.buttons["noteDetailMoreActionsButton"].tap()
+                let edit = app.buttons["noteDetailEditSummaryButton"]
+                XCTAssertTrue(edit.waitForExistence(timeout: 5)); XCTAssertEqual(edit.label, "Edit Summary"); edit.tap()
+                XCTAssertTrue(app.textViews["summaryEditorText"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.navigationBars["Edit Summary"].exists)
+            }
+            openEditor()
+            let editor = app.textViews["summaryEditorText"]
+            XCTAssertTrue((editor.value as? String ?? "").contains("- **Keep** the transcript."))
+            let modal = XCTAttachment(screenshot: app.screenshot())
+            modal.name = "Summary Save Cancel modal - \(appearance)"; modal.lifetime = .keepAlways; add(modal)
+            editor.tap(); editor.typeText("\n\n- Cancelled summary edit.\n\n")
+            app.buttons["summaryEditorCancelButton"].tap()
+            XCTAssertTrue(bullet.waitForExistence(timeout: 5))
+            XCTAssertEqual(bullet.label, "• Keep the transcript.")
+            openEditor()
+            XCTAssertFalse((editor.value as? String ?? "").contains("Cancelled summary edit."))
+            editor.tap(); editor.typeText("\n\n- Approved summary edit.\n\n")
+            app.buttons["summaryEditorSaveButton"].tap()
+            let saved = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'markdownListItem-' AND label == %@", "• Approved summary edit.")).firstMatch
+            XCTAssertTrue(saved.waitForExistence(timeout: 5))
+            app.buttons["noteDetailTranscriptTab"].tap()
+            XCTAssertTrue(app.staticTexts["Original spoken words."].waitForExistence(timeout: 5))
+            openEditor()
+            XCTAssertTrue((editor.value as? String ?? "").contains("Approved summary edit."))
+            app.buttons["summaryEditorCancelButton"].tap()
+            XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
     }
 
     @MainActor func testOpenNoteHeadingsFollowLiveAppearanceChanges() throws {

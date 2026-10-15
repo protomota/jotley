@@ -10,6 +10,42 @@ import XCTest
 
 @Suite(.serialized)
 struct Jotley_iOSTests {
+    @MainActor @Test func summaryEditsPersistMarkdownWithoutChangingTranscriptAndRejectStaleDrafts() throws {
+        let store = try SharedPersistenceController(root: FileManager.default.temporaryDirectory.appendingPathComponent("JotleySummaryEditing-" + UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let note = try #require(store.create(title: "Edited summary", text: "Original spoken words.") as? Note)
+        let original = "# Decisions\n- Original decision."
+        note.summary = original
+        note.setTranscriptUtterances([TranscriptUtterance(id: "original", text: "Original spoken words.", start: 4, end: 6)])
+        try store.context.save()
+        let timing = note.value(forKey: "transcriptUtterancesJSON") as? String
+        let edited = "# Decisions\n- **Approved** decision.\n  - Follow up Friday."
+        try note.saveEditedSummary(edited, original: original, in: store)
+        #expect(note.summary == edited)
+        #expect(note.transcription == "Original spoken words.")
+        #expect(note.value(forKey: "transcriptUtterancesJSON") as? String == timing)
+        #expect(throws: (any Error).self) { try note.saveEditedSummary("Stale edit", original: original, in: store) }
+        let id = note.objectID
+        store.context.reset()
+        let reloaded = try #require(store.context.existingObject(with: id) as? Note)
+        #expect(reloaded.summary == edited)
+        #expect(reloaded.transcription == "Original spoken words.")
+        #expect(reloaded.value(forKey: "transcriptUtterancesJSON") as? String == timing)
+    }
+
+    @MainActor @Test func summaryMarkdownRendersListsAndPreservesInlineFormatting() throws {
+        let source = "# Decisions\n- **Keep** the transcript.\n  - Nested task.\n* Another task.\n+ Last task.\n1. First step.\n2) Second step.\nA - dash in prose.\n\\- Escaped dash."
+        let parsed = ParsedNoteMarkdown.rendering(source)
+        #expect(parsed.lines[0].heading)
+        #expect(parsed.lines[1...4].allSatisfy { $0.marker == "•" })
+        #expect(parsed.lines[1].text.runs.contains { $0.inlinePresentationIntent?.contains(.stronglyEmphasized) == true })
+        #expect(String(parsed.lines[1].text.characters) == "Keep the transcript.")
+        #expect(parsed.lines[2].indentation == 2)
+        #expect(parsed.lines[5].marker == "1." && parsed.lines[6].marker == "2.")
+        #expect(parsed.lines[7].marker == nil && parsed.lines[8].marker == nil)
+        #expect(ParsedNoteMarkdown.rendering(source) === parsed)
+    }
+
     @MainActor @Test func transcriptEditsPersistWithoutReplacingSummaryAndRejectStaleDrafts() throws {
         let store = try SharedPersistenceController(root: FileManager.default.temporaryDirectory.appendingPathComponent("JotleyTranscriptEditing-" + UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
