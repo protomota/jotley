@@ -98,7 +98,8 @@ struct StructuredSummary {
             } else if let marker = line.marker {
                 // A bare "-" or a "No formulas provided." filler has nothing to show.
                 guard !plain.isEmpty, !Self.isPlaceholder(plain) else { continue }
-                let (label, body) = Self.split(line.text)
+                let (label, splitBody) = Self.split(line.text)
+                let body = label == nil ? Self.sentenceCased(splitBody) : splitBody
                 current.items.append(Item(id: line.id, marker: marker, indentation: line.indentation,
                     label: label, body: body, fullText: plain))
             } else if !plain.isEmpty {
@@ -155,18 +156,26 @@ struct StructuredSummary {
               !prefix.allSatisfy(\.isNumber), !rest.isEmpty, !rest.hasPrefix("//") else { return (nil, text) }
         var body = AttributedString(text[afterColon...])
         while body.characters.first?.isWhitespace == true { body.removeSubrange(body.startIndex..<body.characters.index(after: body.startIndex)) }
-        // "**Sam**: sends the list" reads as a sentence once the name becomes a chip.
-        if let first = body.characters.first, first.isLowercase {
-            let end = body.characters.index(after: body.startIndex)
-            body.replaceSubrange(body.startIndex..<end, with: AttributedString(String(first).uppercased(), attributes: body[body.startIndex..<end].runs.first?.attributes ?? AttributeContainer()))
-        }
-        return (AttributedString(prefix), body)
+        return (AttributedString(prefix), sentenceCased(body))
+    }
+
+    /// "sends the list" or "renew the registration" reads as a sentence once it
+    /// stands alone; words such as "iPad" keep their own capitalization.
+    static func sentenceCased(_ text: AttributedString) -> AttributedString {
+        let firstWord = String(text.characters.prefix { !$0.isWhitespace })
+        guard let first = text.characters.first, first.isLowercase,
+              firstWord.allSatisfy({ !$0.isUppercase }) else { return text }
+        var result = text
+        let end = result.characters.index(after: result.startIndex)
+        let attributes = result[result.startIndex..<end].runs.first?.attributes ?? AttributeContainer()
+        result.replaceSubrange(result.startIndex..<end, with: AttributedString(String(first).uppercased(), attributes: attributes))
+        return result
     }
 
     static func style(for title: String?) -> Style {
         let title = (title ?? "").lowercased()
         func has(_ words: [String]) -> Bool { words.contains { title.contains($0) } }
-        if has(["action", "next step", "to-do", "todo", "task", "follow-up", "follow up", "owner", "assignment"]) { return .checklist }
+        if has(["action", "next step", "to-do", "todo", "task", "follow-up", "follow up", "owner", "assignment", "remind"]) { return .checklist }
         if has(["question", "unresolved", "open item", "unknown"]) { return .questions }
         if has(["risk", "blocker", "concern", "issue", "challenge"]) { return .risks }
         if title.isEmpty { return .plain }

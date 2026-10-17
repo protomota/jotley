@@ -3,7 +3,7 @@ import FoundationModels
 
 /// Bundled versions of Jotley's original transcript templates. No catalog request is needed.
 public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
-    case auto = "Auto", lecture = "Lecture"
+    case auto = "Auto", personalNote = "Personal Note", brainDump = "Brain Dump", lecture = "Lecture"
     case meeting = "Meeting", oneToOne = "1:1 Meeting", allHands = "All-Hands Meeting"
     case brainstorming = "Brainstorming Session", networking = "Networking Event"
     case projectKickoff = "Project Kickoff", sprintPlanning = "Sprint Planning"
@@ -14,6 +14,8 @@ public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
     public var key: String {
         switch self {
         case .auto: return "default-summary"
+        case .personalNote: return "personal-note"
+        case .brainDump: return "brain-dump"
         case .lecture: return "lecture"
         case .meeting: return "meetings/general"
         case .oneToOne: return "meetings/1-1"
@@ -36,6 +38,8 @@ public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
     public var prompt: String {
         switch self {
         case .auto: return "Write a Markdown summary. Choose headings that fit this content, such as Key Points, Decisions, Action Items, Risks and Open Questions."
+        case .personalNote: return "Write Markdown notes from a voice note someone recorded for themselves. Write plainly, as their own notes; never say \"the user\" or \"the speaker\". Headings to choose from: Key Points, Ideas, To-Dos. Put every task or reminder only under To-Dos, as a plain item without a bold label."
+        case .brainDump: return "Write Markdown notes that organize one person's free-form thinking out loud. Write plainly, as their own notes; never say \"the user\" or \"the speaker\". Group related thoughts and keep unfinished ideas. Headings to choose from: Main Themes, Ideas, Questions, Next Steps."
         case .lecture: return "Write Markdown lecture notes. Headings to choose from: Key Concepts, Definitions, Examples, Formulas (only when the lecturer gives one), Review Questions. Preserve concrete facts and the lecturer's reasoning."
         case .concise: return "Write a short Markdown summary: the overview, then a single Key Points section of at most six items."
         case .meeting: return "Write Markdown meeting notes. Headings to choose from: Key Points, Decisions, Action Items, Open Questions."

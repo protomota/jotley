@@ -81,12 +81,30 @@ Decision: we ship Mac and iPhone on the same day.
 Next steps: submit for review on Monday and update the website download.
 """
 
+let personal = """
+Okay, quick note to myself. I need to call the dentist on Monday to move my cleaning.
+Also, idea for the garden: put the tomatoes by the south fence this year, they got too much shade last summer.
+Don't forget Mom's birthday is the 28th, order flowers by the 24th.
+And I want to start running again, maybe three mornings a week before work.
+Remember to renew the car registration before November.
+"""
+let dump = """
+Just thinking out loud about the app. People love live transcription but the summaries feel long.
+Maybe a shorter default template would help. Or the summary could highlight decisions first.
+Another thought, a widget that starts recording with one tap. Not sure if that's worth it yet.
+Pricing doesn't matter, it's free, but I keep wondering how to get more people to try it.
+Maybe short videos on social. Or partnering with schools for lecture notes.
+Next I should look at which templates people actually use, and sketch the widget idea.
+"""
+
 func source(for template: LocalSummaryTemplate) -> String {
     switch template {
     case .lecture, .study: return lecture
     case .standUp: return standUp
     case .networking: return networking
     case .brainstorming: return brainstorm
+    case .personalNote: return personal
+    case .brainDump: return dump
     case .oneToOne: return oneToOne
     case .allHands: return allHands
     case .sprintPlanning: return sprint
