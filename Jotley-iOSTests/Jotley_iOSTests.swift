@@ -80,6 +80,8 @@ struct Jotley_iOSTests {
         #expect(String(owner.sections[0].items[0].body.characters) == "Sends the list.")
         let time = StructuredSummary(ParsedNoteMarkdown.rendering("## Milestones\n- Launch Friday at 10:00."))
         #expect(time.sections[0].items[0].label == nil)
+        let casing = StructuredSummary(ParsedNoteMarkdown.rendering("## To-Dos\n- renew the registration.\n- iPad testing on Friday."))
+        #expect(casing.sections[0].items.map { String($0.body.characters) } == ["Renew the registration.", "iPad testing on Friday."])
         let untitled = StructuredSummary(ParsedNoteMarkdown.rendering("# Decisions\n- Keep it."))
         #expect(untitled.overview == nil && untitled.sections.count == 1)
     }
