@@ -55,6 +55,15 @@ final class ParsedNoteMarkdown: NSObject {
     }
     static func awaitingStructure(_ line: String) -> Bool {
         let text = line.trimmingCharacters(in: .whitespaces)
+        if let match = listPattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+           let range = Range(match.range(at: 3), in: line) {
+            let body = line[range].trimmingCharacters(in: .whitespaces).lowercased()
+            // Filler such as "No decisions are mentioned" is removed by the
+            // finished parser. Hold its prefixes too, rather than building a
+            // card for "No decisions are" and then collapsing it on "mentioned".
+            if body == "n" || body == "n/" || body == "n/a" || body == "na"
+                || body == "no" || body.hasPrefix("no ") || body.hasPrefix("none") || body.hasPrefix("nothing") { return true }
+        }
         return text.hasPrefix("#") || text.hasPrefix("**") || text.hasPrefix("__")
             || text.hasPrefix("```") || ["-", "+", "*"].contains(text)
             || text.range(of: #"^[0-9]{1,9}[.)]?$"#, options: .regularExpression) != nil

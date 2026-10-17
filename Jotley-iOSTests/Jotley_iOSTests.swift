@@ -13,7 +13,8 @@ struct Jotley_iOSTests {
     @MainActor @Test func streamingSummaryDoesNotCreateTemporaryMarkdownCards() throws {
         let base = "## Summary\nA short overview.\n\n## Key Points\n- First point.\n"
         let initial = StructuredSummary(ParsedNoteMarkdown.rendering(base, isStreaming: true))
-        for tail in ["-", "  -", "##", "## Action Items", "**Action", "**Action Items**", "1", "1."] {
+        for tail in ["-", "  -", "##", "## Action Items", "**Action", "**Action Items**", "1", "1.",
+                     "- N", "- No", "- No decisions are", "- No decisions are mentioned.", "- None"] {
             let parsed = ParsedNoteMarkdown.rendering(base + tail, isStreaming: true)
             let result = StructuredSummary(parsed)
             #expect(result.blocks.map(\.id) == initial.blocks.map(\.id))
@@ -39,6 +40,10 @@ struct Jotley_iOSTests {
         let after = StructuredSummary(ParsedNoteMarkdown.rendering(lead + "## Decisions\n- Ship Friday."))
         #expect(before.blocks.first?.id == after.blocks.first?.id)
         #expect(ParsedNoteMarkdown.rendering("## Action Items").lines[0].heading)
+        // A real point starting with No is delayed for one line, never dropped.
+        let deadline = base + "- No later than Friday."
+        #expect(StructuredSummary(ParsedNoteMarkdown.rendering(deadline)).sections[0].items.count == 2)
+        #expect(StructuredSummary(ParsedNoteMarkdown.rendering(deadline + "\n", isStreaming: true)).sections[0].items.count == 2)
     }
 
     @MainActor @Test func summaryEditsPersistMarkdownWithoutChangingTranscriptAndRejectStaleDrafts() throws {

@@ -71,3 +71,5 @@ The shared summary renderer now measures its cards eagerly while output grows, i
 - The iPad Simulator UI test for following new summary content with Cancel Generation pinned passed.
 - A development-signed build for My Mac (Designed for iPad) passed. The installed TestFlight app was accessible on this Mac and a real summary completed, but the short baseline run did not capture the transient defect. Do not treat Simulator checks as proof of the corrected Mac rendering under real model output.
 - App display names are already Jotley. macOS had named the second local installation Jotley 2 to avoid a filename collision. The iPad copy was moved into its own Applications subfolder and renamed Jotley; the native Mac app was preserved. No source bundle identity was changed.
+
+Follow-up: streaming filler prefixes (for example `- No decisions are…`) are held until the line ends, so the existing completed-summary filler filter does not first create and then remove a card. Legitimate points starting with No are retained once complete. Both the expanded streaming-prefix regression and the structured-summary grouping test passed on iPad Simulator.
