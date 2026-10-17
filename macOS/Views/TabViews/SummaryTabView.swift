@@ -183,7 +183,7 @@ struct SummaryTabView: View {
                                 .padding(compactContentPadding)
                                 .frame(maxWidth: .infinity, minHeight: ContentLayoutConstants.standardMinHeight, alignment: .center)
                         } else {
-                            StructuredSummaryView(content: summaryTextToRender)
+                            StructuredSummaryView(content: summaryTextToRender, isStreaming: isGeneratingSummary)
                                 .padding(compactContentPadding)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .contentShape(Rectangle())
