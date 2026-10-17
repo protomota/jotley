@@ -73,3 +73,5 @@ The shared summary renderer now measures its cards eagerly while output grows, i
 - App display names are already Jotley. macOS had named the second local installation Jotley 2 to avoid a filename collision. The iPad copy was moved into its own Applications subfolder and renamed Jotley; the native Mac app was preserved. No source bundle identity was changed.
 
 Follow-up: streaming filler prefixes (for example `- No decisions are…`) are held until the line ends, so the existing completed-summary filler filter does not first create and then remove a card. Legitimate points starting with No are retained once complete. Both the expanded streaming-prefix regression and the structured-summary grouping test passed on iPad Simulator.
+
+The streaming regression now checks every character prefix of None, Nothing, N/A and a complete No-decisions filler sentence, including intermediate Non/Noth fragments. This exhaustive prefix test passed on iPad Simulator.
