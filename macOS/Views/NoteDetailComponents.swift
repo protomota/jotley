@@ -75,11 +75,20 @@ struct LocalMacAskNoteView: View {
     private var unavailable: String? {
         LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
+    private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
                 Text("Ask AI").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
                 Spacer()
+                Button("Copy Conversation", systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents(); NSPasteboard.general.setString(conversation, forType: .string)
+                }
+                    .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                    .help("Copy Conversation").accessibilityIdentifier("askAICopyConversationButton")
+                ShareLink(item: conversation) { Label("Share Conversation", systemImage: "square.and.arrow.up") }
+                    .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                    .help("Share Conversation").accessibilityIdentifier("askAIShareConversationButton")
                 Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
                     .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
                     .accessibilityIdentifier("askAIClearButton")
@@ -180,22 +189,9 @@ struct LocalMacAskNoteView: View {
                 Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { MacChatAnswerText(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-                if message.role == "assistant" {
-                    HStack {
-                        Button("Copy", systemImage: "doc.on.doc") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(message.content, forType: .string) }
-                        Button("Save Answer", systemImage: "square.and.arrow.up") { saveAnswer(message.content) }
-                    }.font(.caption).buttonStyle(.borderless)
-                }
             }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
-    }
-    private func saveAnswer(_ text: String) {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Jotley Answer.md"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try text.write(to: url, atomically: true, encoding: .utf8) }
-        catch { self.error = "The answer could not be saved: \(error.localizedDescription). Your conversation remains in Jotley." }
     }
     private func send() {
         guard generation == nil, let id = note.id, !note.isDeleted else { return }

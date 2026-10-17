@@ -32,7 +32,6 @@
 		A2EA917C307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9146307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift */; };
 		A2EA917D307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9144307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift */; };
 		A2EA917E307B452800AAB201 /* TagView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA915F307B452800AAB201 /* TagView.swift */; };
-		A2EA917F307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */; };
 		A2EA9180307B452800AAB201 /* PersistenceControllerCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA910C307B452800AAB201 /* PersistenceControllerCompat.swift */; };
 		A2EA9181307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913A307B452800AAB201 /* NoteDetailPlaceholderView+Body.swift */; };
 		A2EA9182307B452800AAB201 /* MeetingRecordingSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911A307B452800AAB201 /* MeetingRecordingSettings.swift */; };
@@ -65,7 +64,6 @@
 		A2EA919E307B452800AAB201 /* ContentLayoutConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA912A307B452800AAB201 /* ContentLayoutConstants.swift */; };
 		A2EA919F307B452800AAB201 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9169307B452800AAB201 /* WindowAccessor.swift */; };
 		A2EA91A0307B452800AAB201 /* TemplateSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9160307B452800AAB201 /* TemplateSelectionView.swift */; };
-		A2EA91A1307B452800AAB201 /* SummaryTabView+SelectableTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */; };
 		A2EA91A3307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9143307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift */; };
 		A2EA91A4307B452800AAB201 /* PointerCursorModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9126307B452800AAB201 /* PointerCursorModifier.swift */; };
 		A2EA91A5307B452800AAB201 /* ThemeColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9118307B452800AAB201 /* ThemeColors.swift */; };
@@ -95,6 +93,7 @@
 		A2EA91BD307B452800AAB201 /* NotesListView+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914E307B452800AAB201 /* NotesListView+Layout.swift */; };
 		A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91C9307B453D00AAB201 /* Comfortaa-Bold.ttf */; };
 		A2EA91E5307B453D00AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */; };
+		A2F10001307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10003307E000100AAB201 /* StructuredSummaryView.swift */; };
 		A2EA91E6307B453D00AAB201 /* RecordingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */; };
 		A2EA91E7307B453D00AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */; };
 		A2EA91E8307B453D00AAB201 /* RecordingMarker+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C6307B453D00AAB201 /* RecordingMarker+Extensions.swift */; };
@@ -154,6 +153,7 @@
 		A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA926F307B532700AAB201 /* ServiceConstants.swift */; };
 		A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9264307B532700AAB201 /* FilterAndSortState.swift */; };
 		A2EA9293307B532700AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */; };
+		A2F10002307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10004307E000100AAB201 /* StructuredSummaryView.swift */; };
 		A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9270307B532700AAB201 /* SharedPersistence.swift */; };
 		A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9266307B532700AAB201 /* JotleyNotes.xcdatamodeld */; };
 		A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9271307B532700AAB201 /* SummarizationService.swift */; };
@@ -255,8 +255,6 @@
 		A2EA911F307B452800AAB201 /* DescriptionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescriptionTabView.swift; sourceTree = "<group>"; };
 		A2EA9120307B452800AAB201 /* SummaryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTabView.swift; sourceTree = "<group>"; };
 		A2EA9121307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+InlineEditableTextView.swift"; sourceTree = "<group>"; };
-		A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+MarkdownRendering.swift"; sourceTree = "<group>"; };
-		A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SummaryTabView+SelectableTextView.swift"; sourceTree = "<group>"; };
 		A2EA9124307B452800AAB201 /* TranscriptionTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionTabView.swift; sourceTree = "<group>"; };
 		A2EA9126307B452800AAB201 /* PointerCursorModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerCursorModifier.swift; sourceTree = "<group>"; };
 		A2EA9128307B452800AAB201 /* AddTagPopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTagPopoverView.swift; sourceTree = "<group>"; };
@@ -345,6 +343,7 @@
 		A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
 		A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
 		A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
+		A2F10003307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		A2EA91DD307B453D00AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
 		A2EA91DE307B453D00AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA91DF307B453D00AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
@@ -401,6 +400,7 @@
 		A2EA927A307B532700AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
 		A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
 		A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
+		A2F10004307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		A2EA927E307B532700AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
 		A2EA927F307B532700AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9280307B532700AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
@@ -638,8 +638,6 @@
 				A2EA911F307B452800AAB201 /* DescriptionTabView.swift */,
 				A2EA9120307B452800AAB201 /* SummaryTabView.swift */,
 				A2EA9121307B452800AAB201 /* SummaryTabView+InlineEditableTextView.swift */,
-				A2EA9122307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift */,
-				A2EA9123307B452800AAB201 /* SummaryTabView+SelectableTextView.swift */,
 				A2EA9124307B452800AAB201 /* TranscriptionTabView.swift */,
 			);
 			path = TabViews;
@@ -818,6 +816,7 @@
 				A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */,
 				A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */,
 				A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */,
+				A2F10003307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -980,6 +979,7 @@
 				A2EA927A307B532700AAB201 /* RecordingIndicator.swift */,
 				A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */,
 				A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */,
+				A2F10004307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
 			name = Views;
 			path = Shared/Views;
@@ -1329,6 +1329,7 @@
 				A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */,
 				A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */,
 				A2EA9293307B532700AAB201 /* SummaryStreamingDots.swift in Sources */,
+				A2F10002307E000100AAB201 /* StructuredSummaryView.swift in Sources */,
 				A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */,
 				A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */,
 				A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */,
@@ -1379,8 +1380,8 @@
 				A2EA917C307B452800AAB201 /* NoteDetailPlaceholderViewActions.swift in Sources */,
 				A2EA917D307B452800AAB201 /* NoteDetailPlaceholderView+Tags.swift in Sources */,
 				A2EA917E307B452800AAB201 /* TagView.swift in Sources */,
-				A2EA917F307B452800AAB201 /* SummaryTabView+MarkdownRendering.swift in Sources */,
 				A2EA91E5307B453D00AAB201 /* SummaryStreamingDots.swift in Sources */,
+				A2F10001307E000100AAB201 /* StructuredSummaryView.swift in Sources */,
 				A2EA91E6307B453D00AAB201 /* RecordingIndicator.swift in Sources */,
 				A2EA91E7307B453D00AAB201 /* ServiceConstants.swift in Sources */,
 				A2EA91E8307B453D00AAB201 /* RecordingMarker+Extensions.swift in Sources */,
@@ -1431,7 +1432,6 @@
 				A2EA919E307B452800AAB201 /* ContentLayoutConstants.swift in Sources */,
 				A2EA919F307B452800AAB201 /* WindowAccessor.swift in Sources */,
 				A2EA91A0307B452800AAB201 /* TemplateSelectionView.swift in Sources */,
-				A2EA91A1307B452800AAB201 /* SummaryTabView+SelectableTextView.swift in Sources */,
 				A2EA91A3307B452800AAB201 /* NoteDetailPlaceholderView+SummaryRecording.swift in Sources */,
 				A2EA91A4307B452800AAB201 /* PointerCursorModifier.swift in Sources */,
 				A2EA91A5307B452800AAB201 /* ThemeColors.swift in Sources */,
@@ -1549,7 +1549,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1581,7 +1581,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1622,7 +1622,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1667,7 +1667,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1939,7 +1939,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1983,7 +1983,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

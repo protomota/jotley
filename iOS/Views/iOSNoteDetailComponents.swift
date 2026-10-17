@@ -193,54 +193,6 @@ struct TranscriptBubbleView: View {
     }
 }
 
-/// Cache syntax only: appearance and fonts stay reactive in the SwiftUI view.
-/// Template changes must not parse the whole unchanged summary on the main thread.
-@MainActor
-final class ParsedNoteMarkdown: NSObject {
-    struct Line: Identifiable {
-        let id: Int
-        let heading: Bool
-        let marker: String?
-        let indentation: Int
-        let text: AttributedString
-    }
-    let lines: [Line]
-    private static let cache: NSCache<NSString, ParsedNoteMarkdown> = {
-        let cache = NSCache<NSString, ParsedNoteMarkdown>()
-        cache.countLimit = 16
-        cache.totalCostLimit = 8 * 1024 * 1024
-        return cache
-    }()
-    private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
-    private init(content: String) {
-        lines = LocalSummary.markdownForDisplay(content).components(separatedBy: "\n").enumerated().map { index, line in
-            let heading = line.hasPrefix("#")
-            var text = heading ? String(line.drop(while: { $0 == "#" || $0 == " " })) : line
-            var marker: String?
-            var indentation = 0
-            if let match = Self.listPattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
-               let whitespace = Range(match.range(at: 1), in: line),
-               let prefix = Range(match.range(at: 2), in: line),
-               let body = Range(match.range(at: 3), in: line) {
-                let token = String(line[prefix])
-                marker = ["-", "+", "*"].contains(token) ? "•" : String(token.dropLast()) + "."
-                indentation = line[whitespace].reduce(0) { $0 + ($1 == "\t" ? 4 : 1) }
-                text = String(line[body])
-            }
-            return Line(id: index, heading: heading, marker: marker, indentation: indentation,
-                text: (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
-        }
-    }
-    static func rendering(_ content: String) -> ParsedNoteMarkdown {
-        let key = content as NSString
-        if let saved = cache.object(forKey: key) { return saved }
-        let result = ParsedNoteMarkdown(content: content)
-        // Account for both the source key and the attributed-text/line storage.
-        cache.setObject(result, forKey: key, cost: content.utf8.count * 8 + result.lines.count * 128)
-        return result
-    }
-}
-
 struct MarkdownContentView: View {
     // The shared color helpers return concrete colors, so this renderer must
     // observe appearance updates even when its note text has not changed.
@@ -298,6 +250,7 @@ struct LocalAskNoteView: View {
     private var unavailable: String? {
         LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
+    private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -349,10 +302,18 @@ struct LocalAskNoteView: View {
             .navigationTitle("Ask AI").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { MobileDoneButton(inToolbar: true) { dismiss() }.accessibilityIdentifier("askAIDoneButton") }
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
                         .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
                         .accessibilityIdentifier("askAIClearButton")
+                }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Copy Conversation", systemImage: "doc.on.doc") { UIPasteboard.general.string = conversation }
+                        .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                        .accessibilityIdentifier("askAICopyConversationButton")
+                    Button("Share Conversation", systemImage: "square.and.arrow.up") { share = LocalSharePayload(items: [conversation]) }
+                        .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                        .accessibilityIdentifier("askAIShareConversationButton")
                 }
             }
             .alert("Clear Chat History?", isPresented: $showingClear) {
@@ -401,28 +362,9 @@ struct LocalAskNoteView: View {
                 Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { MarkdownContentView(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-                if message.role == "assistant" {
-                    HStack(spacing: 14) {
-                        Button { UIPasteboard.general.string = message.content } label: {
-                            answerActionLabel("Copy", systemImage: "doc.on.doc")
-                        }.accessibilityIdentifier("askAICopyAnswerButton")
-                        Button { share = LocalSharePayload(items: [message.content]) } label: {
-                            answerActionLabel("Share", systemImage: "square.and.arrow.up")
-                        }.accessibilityIdentifier("askAIShareAnswerButton")
-                    }.buttonStyle(.plain)
-                        .padding(.top, 4)
-                }
             }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
-    }
-    private func answerActionLabel(_ title: String, systemImage: String) -> some View {
-        MobileActionLabel(title, systemImage: systemImage)
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            // Keep the invisible touch area comfortable without enlarging the visible chip.
-            .frame(minHeight: 44).contentShape(Rectangle())
     }
     private func send() {
         guard generation == nil, let id = note.id, !note.isDeleted else { return }

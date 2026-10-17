@@ -27,7 +27,7 @@ struct JotleyiOSApp: App {
                         let object = try fixtureStore.create(title: sample.title, text: sample.transcript, noteType: "voice")
                         if let note = object as? Note {
                             note.summary = sample.summary
-                            note.summaryType = sample.summary.isEmpty ? "default-summary" : "Concise"
+                            note.summaryType = sample.template ?? (sample.summary.isEmpty ? "default-summary" : "Concise")
                             note.timestamp = Date().addingTimeInterval(Double(-index * 3600))
                             note.folder = Folder.getOrCreate(named: sample.folder, in: fixtureStore.context)
                             for tag in sample.tags { try note.addTagByName(tag, in: fixtureStore.context) }
@@ -103,6 +103,7 @@ private struct ScreenshotNote: Decodable {
     let tags: [String]
     let transcript: String
     let summary: String
+    var template: String?
 }
 #endif
 

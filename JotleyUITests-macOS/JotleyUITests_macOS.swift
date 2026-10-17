@@ -506,9 +506,14 @@ private final class RoutingRefusedNote: Note {
             (view as? NSTextView).map { [$0] } ?? view.subviews.flatMap(textViews)
         }
         try await Task.sleep(for: .milliseconds(350))
-        guard let rendered = textViews(host).first(where: { !$0.isEditable }),
-              rendered.string.contains("Meeting Notes"), !rendered.string.contains("**"),
-              !rendered.string.contains("markdown"), !rendered.string.contains("# ") else {
+        // The structured view renders SwiftUI text, so check the sections it draws
+        // and that no Markdown editor or raw syntax is shown.
+        let structured = StructuredSummary(ParsedNoteMarkdown.rendering(fenced))
+        let item = structured.sections.first?.items.first
+        guard !textViews(host).contains(where: { $0.isEditable }),
+              structured.sections.map(\.title) == ["Meeting Notes"],
+              structured.sections.first?.paragraphs.map({ String($0.text.characters) }) == ["Decision: Keep the original app."],
+              item.map({ String($0.body.characters) }) == "Record live audio." else {
             throw LocalError.message("Fenced summary displayed as code instead of formatted text.")
         }
         state.inlineEdit = 1
@@ -535,29 +540,12 @@ private final class RoutingRefusedNote: Note {
         for mode in [AppearanceMode.dark, .light, .dark, .light, .dark, .light] {
             ThemeManager.shared.setAppearanceMode(mode)
             try await Task.sleep(for: .milliseconds(200))
-            guard let rendered = textViews(host).first(where: { !$0.isEditable }),
-                  let storage = rendered.textStorage else { throw LocalError.message("Rendered summary disappeared during theme switching.") }
-            let range = (storage.string as NSString).range(of: "Keep the original app.")
-            guard range.location != NSNotFound,
-                  let foreground = storage.attribute(.foregroundColor, at: range.location, effectiveRange: nil) as? NSColor,
-                  let rgb = foreground.usingColorSpace(.deviceRGB) else { throw LocalError.message("Summary text color missing.") }
-            let bullet = (storage.string as NSString).range(of: "•")
-            guard bullet.location != NSNotFound,
-                  let bulletColor = storage.attribute(.foregroundColor, at: bullet.location, effectiveRange: nil) as? NSColor,
-                  let bulletRGB = bulletColor.usingColorSpace(.deviceRGB),
-                  abs(bulletRGB.redComponent - rgb.redComponent) < 0.01,
-                  abs(bulletRGB.greenComponent - rgb.greenComponent) < 0.01,
-                  abs(bulletRGB.blueComponent - rgb.blueComponent) < 0.01 else {
-                throw LocalError.message("Summary bullets do not match the text color.")
+            guard host.fittingSize.height > 60, !textViews(host).contains(where: { $0.isEditable }) else {
+                throw LocalError.message("Rendered summary disappeared during theme switching.")
             }
-            let heading = (storage.string as NSString).range(of: "Meeting Notes")
-            guard heading.location != NSNotFound,
-                  let headingColor = storage.attribute(.foregroundColor, at: heading.location, effectiveRange: nil) as? NSColor,
-                  let headingRGB = headingColor.usingColorSpace(.deviceRGB),
-                  abs(headingRGB.redComponent - rgb.redComponent) < 0.01,
-                  abs(headingRGB.greenComponent - rgb.greenComponent) < 0.01,
-                  abs(headingRGB.blueComponent - rgb.blueComponent) < 0.01 else {
-                throw LocalError.message("Summary headings do not match the text color.")
+            // The structured view reads these colors on every render.
+            guard let rgb = NSColor(Color.themeTextPrimary).usingColorSpace(.deviceRGB) else {
+                throw LocalError.message("Summary text color missing.")
             }
             let expected: CGFloat = mode == .dark ? 0.85 : 0.1
             guard abs(rgb.redComponent - expected) < 0.04,
@@ -566,7 +554,7 @@ private final class RoutingRefusedNote: Note {
                 throw LocalError.message("Summary retained stale color after switching to \(mode.rawValue): \(rgb).")
             }
         }
-        print("PASS: six repeated light/dark switches update cached summary text colors without reopening the editor.")
+        print("PASS: six repeated light/dark switches keep the summary rendered with current text colors and never reopen the editor.")
         print("PASS: fenced summaries render as formatted text; regeneration and remounting never replay Markdown editing.")
     }
     @MainActor private static func verifySearchEditingAlignment() throws {

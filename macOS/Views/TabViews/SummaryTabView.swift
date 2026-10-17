@@ -15,7 +15,6 @@ struct SummaryTabView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var inlineEditRequested = false
     @State private var previousRawMarkdownMode = false
-    @State private var renderedSummaryHeight: CGFloat = ContentLayoutConstants.standardMinHeight
     @State private var inlineEditorHeight: CGFloat = ContentLayoutConstants.standardMinHeight
 
     // Optional callback for generating summary
@@ -35,7 +34,6 @@ struct SummaryTabView: View {
         .white
     }
 
-    // Render markdown as one styled attributed text block so macOS selection can span the entire summary.
     private var summaryTextToRender: String {
         if isGeneratingSummary {
             return streamingSummaryViewModel.displayedText
@@ -55,60 +53,6 @@ struct SummaryTabView: View {
     private var shouldShowSummaryLoader: Bool {
         isGeneratingSummary && !hasSummaryTextToRender
     }
-
-    private var renderedSummary: NSAttributedString {
-        // Memoize. Parsing markdown into an NSAttributedString plus the inline/block
-        // regex styling passes is expensive, and this property was recomputed on EVERY
-        // SwiftUI body evaluation (scroll, hover, theme, selection) — the summary
-        // main-thread hangs (JOTLEY-MACOS-16/17/19). Key by the inputs that determine
-        // the output so an unchanged re-render is a dictionary lookup, and return a
-        // stable instance so the text view's updateNSView can skip re-typesetting too.
-        let cacheKey = "\(isGeneratingSummary)|\(Color.shouldUseDarkTheme())|\(themeManager.currentThemeColor.rawValue)|\(summaryTextToRender)" as NSString
-        if let cached = Self.renderedSummaryCache.object(forKey: cacheKey) {
-            return cached
-        }
-
-        let sanitizedSummary = sanitizeMarkdownForRendering(summaryTextToRender)
-        let data = Data(sanitizedSummary.utf8)
-        let bodyFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        let textColor = NSColor(Color.themeTextPrimary)
-
-        let parsedBase = (try? NSAttributedString(
-            markdown: data,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace),
-            baseURL: nil
-        )) ?? NSAttributedString(string: sanitizedSummary)
-
-        let styled = NSMutableAttributedString(attributedString: parsedBase)
-        let fullRange = NSRange(location: 0, length: styled.length)
-        styled.addAttributes(
-            [
-                .font: bodyFont,
-                .foregroundColor: textColor
-            ],
-            range: fullRange
-        )
-
-        applyInlineMarkdownStyles(to: styled, baseFont: bodyFont)
-        // Skip expensive regex-based block styling during streaming for smooth animation;
-        // full styling applies automatically once streaming completes.
-        if !isGeneratingSummary {
-            applyBlockMarkdownStyles(to: styled, bodyFont: bodyFont, textColor: textColor)
-        }
-        applyParagraphSpacing(to: styled)
-
-        let result = NSAttributedString(attributedString: styled)
-        Self.renderedSummaryCache.setObject(result, forKey: cacheKey)
-        return result
-    }
-
-    /// Cache of rendered summary attributed strings, keyed by the inputs that determine
-    /// the output. Bounded so it can't grow without limit as content streams in.
-    private static let renderedSummaryCache: NSCache<NSString, NSAttributedString> = {
-        let cache = NSCache<NSString, NSAttributedString>()
-        cache.countLimit = 50
-        return cache
-    }()
 
     private func beginInlineEditing() {
         guard !isInlineEditing else { return }
@@ -239,20 +183,13 @@ struct SummaryTabView: View {
                                 .padding(compactContentPadding)
                                 .frame(maxWidth: .infinity, minHeight: ContentLayoutConstants.standardMinHeight, alignment: .center)
                         } else {
-                            VStack(alignment: .leading, spacing: 2) {
-                                SelectableSummaryTextView(
-                                    attributedString: renderedSummary,
-                                    accentColor: NSColor(themeManager.currentThemeColor.color),
-                                    textColor: NSColor(Color.themeTextPrimary),
-                                    measuredHeight: $renderedSummaryHeight,
-                                    onDoubleClick: beginInlineEditing
-                                )
+                            StructuredSummaryView(content: summaryTextToRender)
                                 .padding(compactContentPadding)
-                                .frame(maxWidth: .infinity, minHeight: renderedSummaryHeight, alignment: .topLeading)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2, perform: beginInlineEditing)
                                 .accessibilityIdentifier("noteDetailSummaryContent")
                                 .help("Double-click to edit summary")
-
-                            }
                         }
                     }
                 }

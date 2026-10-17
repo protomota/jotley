@@ -286,18 +286,18 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.textFields["askAIQuestionField"].waitForExistence(timeout: 10))
         app.buttons["List any action items"].tap()
         app.buttons["askAISendButton"].tap()
-        let copy = app.buttons["askAICopyAnswerButton"].firstMatch
-        let share = app.buttons["askAIShareAnswerButton"].firstMatch
-        XCTAssertTrue(copy.waitForExistence(timeout: 90), app.debugDescription)
+        let copy = app.buttons["askAICopyConversationButton"]
+        let share = app.buttons["askAIShareConversationButton"]
+        let answered = expectation(for: NSPredicate(format: "enabled == YES"), evaluatedWith: copy)
+        wait(for: [answered], timeout: 90)
+        XCTAssertFalse(app.buttons["askAICopyAnswerButton"].exists, "Answers no longer carry their own Copy/Share")
         for button in [copy, share] {
             XCTAssertTrue(button.isHittable)
             XCTAssertGreaterThanOrEqual(button.frame.height, 44)
             XCTAssertGreaterThanOrEqual(button.frame.width, 44)
-            XCTAssertLessThan(button.frame.height, 56, "Answer controls should be compact at the standard text size")
-            XCTAssertLessThan(button.frame.width, 85)
         }
         let actions = XCTAttachment(screenshot: app.screenshot())
-        actions.name = "Small Ask AI action chips - approval preview"; actions.lifetime = .keepAlways; add(actions)
+        actions.name = "Ask AI conversation Copy and Share"; actions.lifetime = .keepAlways; add(actions)
         copy.tap()
         XCTAssertTrue(share.isHittable)
         XCTAssertTrue(app.buttons["askAIDoneButton"].waitForExistence(timeout: 5))

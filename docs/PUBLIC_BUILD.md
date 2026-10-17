@@ -35,6 +35,10 @@ JOTLEY_MAC_BUILD_PRODUCTS=/tmp/jotley-mac-build/Build/Products/Debug \
   zsh scripts/test-mac-routing.sh
 JOTLEY_MAC_BUILD_PRODUCTS=/tmp/jotley-mac-build/Build/Products/Debug \
   zsh scripts/test-mac-routing.sh --summary-scroll-only
+
+# Real Apple model: every summary template renders as a structured summary.
+JOTLEY_MAC_BUILD_PRODUCTS=/tmp/jotley-mac-build/Build/Products/Debug \
+  zsh scripts/check-summary-templates.sh
 ```
 
 The Mac harness uses a separate sandboxed identity and does not change the official app's recording permissions. For mobile tests, select your installed iPhone/iPad simulator in Xcode and run the Jotley-iOSTests and Jotley-iOSUITests targets. Actual model checks explicitly skip if Apple does not expose a usable model; deterministic UI fixtures are not recognition tests.

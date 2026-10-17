@@ -35,6 +35,8 @@ private final class MarkdownPreviewSnippetCache {
 
     private static func stripToPlainText(_ markdown: String) -> String {
         var text = LocalSummary.markdownForDisplay(markdown)
+        // Structured summaries open with a "Summary" heading; previews start with its words.
+        text = text.replacingOccurrences(of: "^\\s{0,3}#{1,6}\\s*(?i:summary|overview|résumé|resumen|resumo|riassunto|zusammenfassung|概要|要約|摘要|요약)\\s*\n", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s{0,3}#{1,6}\\s*", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s*>\\s*", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s*(?:[-*+]\\s+|\\d+\\.\\s+)", with: "", options: .regularExpression)
