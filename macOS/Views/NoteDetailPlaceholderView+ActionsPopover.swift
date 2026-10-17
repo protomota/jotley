@@ -193,6 +193,15 @@ extension NoteDetailPlaceholderView {
                                 isPresented = false
                             }
                             .accessibilityIdentifier("exportSummaryButton")
+
+                            MenuItemView(
+                                icon: "doc.richtext",
+                                title: "Summary as PDF"
+                            ) {
+                                parent.exportSummaryPDF()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportSummaryPDFButton")
                         }
 
                         if let transcription = note.transcription,

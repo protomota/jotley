@@ -51,6 +51,19 @@ struct LocalSharePayload: Identifiable {
         return output
     }
     static func file(note: Note, format: Format, temporaryRoot: URL = FileManager.default.temporaryDirectory) throws -> URL {
+        let suffix = format == .summary ? " - Summary" : format == .transcript ? " - Transcript" : ""
+        let url = try exportURL(note: note, suffix: suffix, extension: format == .plainText ? "txt" : "md", temporaryRoot: temporaryRoot)
+        do { try content(note: note, format: format).write(to: url, atomically: true, encoding: .utf8); return url }
+        catch { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()); throw error }
+    }
+    /// The summary rendered in Jotley's structured layout, ready to share.
+    static func summaryPDF(note: Note, temporaryRoot: URL = FileManager.default.temporaryDirectory) throws -> URL {
+        let url = try exportURL(note: note, suffix: " - Summary", extension: "pdf", temporaryRoot: temporaryRoot)
+        let title = (note.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        do { try SummaryPDF.write(title: title.isEmpty ? "Untitled Note" : title, date: note.timestamp, markdown: note.summary ?? "", to: url); return url }
+        catch { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()); throw error }
+    }
+    private static func exportURL(note: Note, suffix: String, extension ext: String, temporaryRoot: URL) throws -> URL {
         guard note.managedObjectContext != nil, !note.isDeleted else { throw LocalError.message("This note is unavailable.") }
         let title = (note.title ?? "Untitled").trimmingCharacters(in: .whitespacesAndNewlines)
         let invalid = CharacterSet(charactersIn: "/\\?%*|\"<>:").union(.controlCharacters)
@@ -62,13 +75,9 @@ struct LocalSharePayload: Identifiable {
             safe.unicodeScalars.append(scalar); bytes += size
         }
         let name = safe.isEmpty || safe == "." || safe == ".." ? "Untitled" : safe
-        let suffix = format == .summary ? " - Summary" : format == .transcript ? " - Transcript" : ""
-        let ext = format == .plainText ? "txt" : "md"
         let directory = temporaryRoot.appendingPathComponent("JotleyExport-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent(name + suffix + "." + ext)
-        do { try content(note: note, format: format).write(to: url, atomically: true, encoding: .utf8); return url }
-        catch { try? FileManager.default.removeItem(at: directory); throw error }
+        return directory.appendingPathComponent(name + suffix + "." + ext)
     }
 }
 

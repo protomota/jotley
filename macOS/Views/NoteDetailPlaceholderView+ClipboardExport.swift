@@ -34,6 +34,26 @@ extension NoteDetailPlaceholderView {
         saveExportFile(content: content, extension: "md", filenameSuffix: " - Summary")
     }
 
+    /// Saves the summary in Jotley's structured layout as a PDF.
+    func exportSummaryPDF() {
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.pdf]
+        savePanel.nameFieldStringValue = "\(safeFilename) - Summary.pdf"
+        savePanel.title = "Export Summary as PDF"
+        savePanel.canCreateDirectories = true
+        let title = note.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let date = note.timestamp, markdown = note.summary ?? ""
+        savePanel.begin { response in
+            guard response == .OK, let url = savePanel.url else { return }
+            do { try SummaryPDF.write(title: title.isEmpty ? "Untitled Note" : title, date: date, markdown: markdown, to: url) }
+            catch {
+                obsidianAlertTitle = "Export Failed"
+                obsidianAlertMessage = "The PDF could not be created: \(error.localizedDescription). Your note remains saved in Jotley."
+                showObsidianSaveAlert = true
+            }
+        }
+    }
+
     func exportTranscript() {
         let content = generateSectionContent(section: "Transcript", text: note.transcription)
         saveExportFile(content: content, extension: "md", filenameSuffix: " - Transcript")

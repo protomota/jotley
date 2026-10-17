@@ -34,7 +34,7 @@ import BackgroundTasks
                     task.setTaskCompleted(success: false); return
                 }
                 self.continuedTask = task
-                task.progress.totalUnitCount = 2
+                task.progress.totalUnitCount = 2 * Self.unit
                 task.progress.completedUnitCount = 0
                 task.expirationHandler = { [weak self] in Task { @MainActor in self?.expire() } }
                 self.update(self.currentProgress)
@@ -55,23 +55,32 @@ import BackgroundTasks
     @concurrent private static func submit(_ request: BGContinuedProcessingTaskRequest) async throws {
         try await BGTaskScheduler.shared.submitTaskRequest(request)
     }
+    /// Apple can stop a continued-processing task whose progress stops moving,
+    /// so progress also advances while the final summary streams in.
+    private var streamedSnapshots: Int64 = 0
+    private static let unit: Int64 = 100
     func update(_ progress: LocalSummaryProgress) {
         currentProgress = progress
         guard let task = continuedTask else { return }
         task.updateTitle("Summarizing your note", subtitle: [progress.title, progress.detail].compactMap { $0 }.joined(separator: " · "))
+        let unit = Self.unit
         switch progress {
         case .reading(let completed, let total, let pass):
             if pass != lastPass { priorSections += Int64(lastTotal); lastPass = pass }
             lastTotal = total
-            task.progress.totalUnitCount = priorSections + Int64(total) + 2
-            task.progress.completedUnitCount = priorSections + Int64(completed)
+            task.progress.totalUnitCount = (priorSections + Int64(total)) * unit + 2 * unit
+            task.progress.completedUnitCount = (priorSections + Int64(completed)) * unit
         case .writing:
-            task.progress.totalUnitCount = priorSections + Int64(lastTotal) + 2
-            task.progress.completedUnitCount = priorSections + Int64(lastTotal)
+            task.progress.totalUnitCount = (priorSections + Int64(lastTotal)) * unit + 2 * unit
+            task.progress.completedUnitCount = (priorSections + Int64(lastTotal)) * unit + min(unit * 2 - 20, streamedSnapshots / 3)
         case .finishing:
-            task.progress.completedUnitCount = task.progress.totalUnitCount - 1
+            task.progress.completedUnitCount = task.progress.totalUnitCount - 10
         default: break
         }
+    }
+    func streamed() {
+        streamedSnapshots += 1
+        if case .writing = currentProgress { update(.writing) }
     }
     private func expire() {
         guard !finished else { return }
@@ -680,7 +689,10 @@ final class LiveTranscriptionManager: ObservableObject {
                     await MainActor.run { [weak self] in
                         guard self?.summaryNoteID == id else { return }
                         self?.summaryPreview = value
-                        if !value.isEmpty { self?.summaryProgress = .writing }
+                        if !value.isEmpty {
+                            if self?.summaryProgress != .writing { self?.summaryRuntime?.update(.writing) }
+                            self?.summaryProgress = .writing; self?.summaryRuntime?.streamed()
+                        }
                     }
                 }
                 let progress: @Sendable (LocalSummaryProgress) async -> Void = { [weak self] value in

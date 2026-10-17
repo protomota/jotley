@@ -150,7 +150,8 @@ struct StructuredSummary {
         let afterColon = text.characters.index(after: colon)
         let rest = String(text.characters[afterColon...]).trimmingCharacters(in: .whitespaces)
         // Times ("10:30") and bare URLs ("https://") are not labels.
-        guard !prefix.isEmpty, prefix.count <= 40, prefix.split(separator: " ").count <= 5,
+        let isTime = prefix.last?.isNumber == true && rest.first?.isNumber == true
+        guard !prefix.isEmpty, prefix.count <= 40, prefix.split(separator: " ").count <= 5, !isTime,
               !prefix.allSatisfy(\.isNumber), !rest.isEmpty, !rest.hasPrefix("//") else { return (nil, text) }
         var body = AttributedString(text[afterColon...])
         while body.characters.first?.isWhitespace == true { body.removeSubrange(body.startIndex..<body.characters.index(after: body.startIndex)) }
@@ -193,164 +194,43 @@ struct StructuredSummary {
     }
 }
 
+/// Colors for one rendering. The app follows the current theme; a shared PDF
+/// always prints on white.
+struct SummaryPalette {
+    var accent: Color
+    var text: Color
+    var secondary: Color
+    var card: Color
+
+    static var current: SummaryPalette {
+        // Supporting text stays close to the primary color so it remains easy to read.
+        SummaryPalette(accent: .themePrimaryAccent, text: .themeTextPrimary,
+                       secondary: Color.themeTextPrimary.opacity(0.78), card: .themeContentBackground)
+    }
+    static var print: SummaryPalette {
+        SummaryPalette(accent: .themePrimaryAccent, text: .themeLightTextPrimary,
+                       secondary: Color.themeLightTextPrimary.opacity(0.78), card: .themeLightContentBackground)
+    }
+}
+
+extension StructuredSummary {
+    enum Block: Identifiable {
+        case overview(Section), section(Section)
+        var id: Int { switch self { case .overview: return Int.min; case .section(let section): return section.id } }
+    }
+    var blocks: [Block] { (overview.map { [.overview($0)] } ?? []) + sections.map { .section($0) } }
+}
+
 struct StructuredSummaryView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     let content: String
 
     var body: some View {
         let summary = StructuredSummary(ParsedNoteMarkdown.rendering(content))
-        let accent = Color.themePrimaryAccent
-        let textColor = Color.themeTextPrimary
-        let secondary = Color.themeTextSecondary
-        let card = Color.themeContentBackground
-        return LazyVStack(alignment: .leading, spacing: 20) {
-            if let overview = summary.overview {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Summary", systemImage: "sparkles")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(accent)
-                    sectionBody(overview, accent: accent, textColor: textColor, secondary: secondary)
-                }
-                .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                .background(accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(accent.opacity(0.25), lineWidth: 1))
-                .accessibilityIdentifier("structuredSummaryOverview")
-            }
-            ForEach(summary.sections) { section in
-                VStack(alignment: .leading, spacing: 10) {
-                    if let title = section.title {
-                        HStack(spacing: 10) {
-                            Image(systemName: section.systemImage)
-                                .font(.system(size: 15, weight: .semibold)).foregroundStyle(accent)
-                                .frame(width: 32, height: 32)
-                                .background(accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                .accessibilityHidden(true)
-                            Text(title).font(.headline).foregroundStyle(textColor)
-                                .accessibilityAddTraits(.isHeader)
-                            Spacer(minLength: 0)
-                            if section.items.count > 1 {
-                                Text("\(section.items.filter { $0.indentation == 0 }.count)")
-                                    .font(.caption.weight(.semibold)).foregroundStyle(secondary)
-                                    .padding(.horizontal, 8).padding(.vertical, 3)
-                                    .background(Capsule().fill(Color.themeTextSecondary.opacity(0.15)))
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                    }
-                    if !section.paragraphs.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(section.paragraphs) { line in
-                                Text(line.text).font(.body).foregroundStyle(textColor).textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }.padding(16).background(card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    if !section.items.isEmpty {
-                        itemsView(section, accent: accent, textColor: textColor, secondary: secondary, card: card)
-                    }
-                }
-            }
+        let palette = SummaryPalette.current
+        return LazyVStack(alignment: .leading, spacing: 22) {
+            ForEach(summary.blocks) { block in StructuredSummaryBlockView(block: block, palette: palette) }
         }
-    }
-
-    @ViewBuilder
-    private func sectionBody(_ section: StructuredSummary.Section, accent: Color, textColor: Color, secondary: Color) -> some View {
-        ForEach(section.paragraphs) { line in
-            Text(line.text).font(.body).foregroundStyle(textColor).textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        ForEach(section.items) { item in
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(item.marker).foregroundStyle(accent).accessibilityHidden(true)
-                itemText(item, textColor: textColor)
-            }
-            .padding(.leading, CGFloat(item.indentation) * 8)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(item.marker) \(item.fullText)")
-            .accessibilityIdentifier("markdownListItem-\(item.id)")
-        }
-    }
-
-    @ViewBuilder
-    private func itemsView(_ section: StructuredSummary.Section, accent: Color, textColor: Color, secondary: Color, card: Color) -> some View {
-        let groups = Self.groups(section.items)
-        switch section.style {
-        case .numbered:
-            VStack(spacing: 10) {
-                ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.subheadline.weight(.bold).monospacedDigit()).foregroundStyle(.white)
-                            .frame(width: 28, height: 28).background(Circle().fill(accent))
-                            .accessibilityHidden(true)
-                        groupText(group, accent: accent, textColor: textColor, secondary: secondary, emphasizeLabel: true)
-                    }
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-            }
-        default:
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
-                    if index > 0 { Divider().padding(.leading, 44) }
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: Self.rowImage(section.style))
-                            .font(.system(size: 18, weight: .medium)).foregroundStyle(section.style == .risks ? Color.orange : accent)
-                            .frame(width: 22).padding(.top, 1).accessibilityHidden(true)
-                        groupText(group, accent: accent, textColor: textColor, secondary: secondary, emphasizeLabel: false)
-                    }.padding(.vertical, 12)
-                }
-            }
-            .padding(.horizontal, 14)
-            .background(card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-    }
-
-    private func groupText(_ group: [StructuredSummary.Item], accent: Color, textColor: Color, secondary: Color, emphasizeLabel: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(group) { item in
-                Group {
-                    if item.id == group.first?.id {
-                        if let label = item.label, emphasizeLabel {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(label).font(.body.weight(.semibold)).foregroundStyle(textColor)
-                                Text(item.body).font(.subheadline).foregroundStyle(secondary)
-                                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        } else {
-                            // Owners and short labels read as a chip beside the task.
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(item.body).font(.body).foregroundStyle(textColor)
-                                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                                if let label = item.label {
-                                    Text(label).font(.caption.weight(.semibold)).foregroundStyle(accent)
-                                        .lineLimit(1).fixedSize()
-                                        .padding(.horizontal, 8).padding(.vertical, 3)
-                                        .background(Capsule().fill(accent.opacity(0.14)))
-                                }
-                            }
-                        }
-                    } else {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text("•").foregroundStyle(accent).accessibilityHidden(true)
-                            itemText(item, textColor: secondary)
-                        }.font(.subheadline).padding(.leading, 6 + CGFloat(max(0, item.indentation - 2)) * 6)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(item.marker) \(item.fullText)")
-                .accessibilityIdentifier("markdownListItem-\(item.id)")
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func itemText(_ item: StructuredSummary.Item, textColor: Color) -> some View {
-        var text = AttributedString()
-        if let label = item.label {
-            var bold = label; bold.inlinePresentationIntent = .stronglyEmphasized
-            text = bold + AttributedString(": ") + item.body
-        } else { text = item.body }
-        return Text(text).foregroundStyle(textColor).textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// A top-level item and the nested items under it share one card or row.
@@ -363,6 +243,163 @@ struct StructuredSummaryView: View {
         }
         return result
     }
+}
+
+/// One overview card or section. Text uses Dynamic Type styles, so it follows
+/// the person's text size setting.
+struct StructuredSummaryBlockView: View {
+    let block: StructuredSummary.Block
+    let palette: SummaryPalette
+    @ScaledMetric(relativeTo: .headline) private var iconBox: CGFloat = 34
+    @ScaledMetric(relativeTo: .body) private var numberSize: CGFloat = 30
+
+    var body: some View {
+        switch block {
+        case .overview(let overview):
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Summary", systemImage: "sparkles")
+                    .font(.headline).foregroundStyle(palette.accent)
+                overviewBody(overview)
+            }
+            .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+            .background(palette.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(palette.accent.opacity(0.25), lineWidth: 1))
+            .accessibilityIdentifier("structuredSummaryOverview")
+        case .section(let section):
+            VStack(alignment: .leading, spacing: 12) {
+                if let title = section.title {
+                    HStack(spacing: 12) {
+                        Image(systemName: section.systemImage)
+                            .font(.headline).foregroundStyle(palette.accent)
+                            .frame(width: iconBox, height: iconBox)
+                            .background(palette.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .accessibilityHidden(true)
+                        Text(title).font(.title3.weight(.semibold)).foregroundStyle(palette.text)
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer(minLength: 0)
+                        if section.items.count > 1 {
+                            Text("\(section.items.filter { $0.indentation == 0 }.count)")
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(palette.secondary)
+                                .padding(.horizontal, 9).padding(.vertical, 3)
+                                .background(Capsule().fill(palette.text.opacity(0.08)))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                if !section.paragraphs.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(section.paragraphs) { line in
+                            Text(line.text).font(.body).foregroundStyle(palette.text).textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }.padding(16).background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                if !section.items.isEmpty { itemsView(section) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func overviewBody(_ section: StructuredSummary.Section) -> some View {
+        ForEach(section.paragraphs) { line in
+            Text(line.text).font(.body).foregroundStyle(palette.text).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        ForEach(section.items) { item in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(item.marker).foregroundStyle(palette.accent).accessibilityHidden(true)
+                itemText(item, color: palette.text)
+            }
+            .font(.body)
+            .padding(.leading, CGFloat(item.indentation) * 8)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(item.marker) \(item.fullText)")
+            .accessibilityIdentifier("markdownListItem-\(item.id)")
+        }
+    }
+
+    @ViewBuilder
+    private func itemsView(_ section: StructuredSummary.Section) -> some View {
+        let groups = StructuredSummaryView.groups(section.items)
+        switch section.style {
+        case .numbered:
+            VStack(spacing: 10) {
+                ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(index + 1)")
+                            .font(.callout.weight(.bold).monospacedDigit()).foregroundStyle(.white)
+                            .frame(width: numberSize, height: numberSize).background(Circle().fill(palette.accent))
+                            .accessibilityHidden(true)
+                        groupText(group, emphasizeLabel: true)
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+        default:
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
+                    if index > 0 { Divider().padding(.leading, 44) }
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: Self.rowImage(section.style))
+                            .font(.title3).foregroundStyle(section.style == .risks ? Color.orange : palette.accent)
+                            .frame(width: 26).padding(.top, 1).accessibilityHidden(true)
+                        groupText(group, emphasizeLabel: false)
+                    }.padding(.vertical, 12)
+                }
+            }
+            .padding(.horizontal, 14)
+            .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private func groupText(_ group: [StructuredSummary.Item], emphasizeLabel: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(group) { item in
+                Group {
+                    if item.id == group.first?.id {
+                        if let label = item.label, emphasizeLabel {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(label).font(.headline).foregroundStyle(palette.text)
+                                Text(item.body).font(.body).foregroundStyle(palette.secondary)
+                                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            // Owners and short labels read as a chip beside the task.
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(item.body).font(.body).foregroundStyle(palette.text)
+                                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                if let label = item.label {
+                                    Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(palette.accent)
+                                        .lineLimit(1).fixedSize()
+                                        .padding(.horizontal, 10).padding(.vertical, 4)
+                                        .background(Capsule().fill(palette.accent.opacity(0.14)))
+                                }
+                            }
+                        }
+                    } else {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("•").foregroundStyle(palette.accent).accessibilityHidden(true)
+                            itemText(item, color: palette.secondary)
+                        }.font(.body).padding(.leading, 6 + CGFloat(max(0, item.indentation - 2)) * 6)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(item.marker) \(item.fullText)")
+                .accessibilityIdentifier("markdownListItem-\(item.id)")
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func itemText(_ item: StructuredSummary.Item, color: Color) -> some View {
+        var text = AttributedString()
+        if let label = item.label {
+            var bold = label; bold.inlinePresentationIntent = .stronglyEmphasized
+            text = bold + AttributedString(": ") + item.body
+        } else { text = item.body }
+        return Text(text).foregroundStyle(color).textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
     private static func rowImage(_ style: StructuredSummary.Style) -> String {
         switch style {
@@ -371,5 +408,58 @@ struct StructuredSummaryView: View {
         case .risks: return "exclamationmark.triangle.fill"
         default: return "smallcircle.filled.circle"
         }
+    }
+}
+
+/// Renders a summary as a paginated PDF that matches the in-app layout.
+@MainActor enum SummaryPDF {
+    static func write(title: String, date: Date?, markdown: String, to url: URL) throws {
+        let page = CGSize(width: 612, height: 792), margin: CGFloat = 42, width = page.width - margin * 2
+        var box = CGRect(origin: .zero, size: page)
+        guard let pdf = CGContext(url as CFURL, mediaBox: &box, [kCGPDFContextTitle as String: title, kCGPDFContextCreator as String: "Jotley"] as CFDictionary) else {
+            throw LocalError.message("The PDF could not be created.")
+        }
+        let palette = SummaryPalette.print
+        let header = VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.title.bold()).foregroundStyle(palette.text)
+            if let date {
+                Text(date, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
+                    .font(.subheadline).foregroundStyle(palette.secondary)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+        var views = [AnyView(header)]
+        views += StructuredSummary(ParsedNoteMarkdown.rendering(markdown)).blocks.map { AnyView(StructuredSummaryBlockView(block: $0, palette: palette)) }
+        var y = margin
+        var pageOpen = false
+        func newPage() {
+            if pageOpen { pdf.endPDFPage() }
+            pdf.beginPDFPage(nil); pageOpen = true; y = margin
+        }
+        newPage()
+        for view in views {
+            let renderer = ImageRenderer(content: view.frame(width: width)
+                .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .small))
+            renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+            renderer.render { size, draw in
+                // Keep a block on one page when it fits; slice only taller blocks.
+                if y + size.height > page.height - margin, y > margin, size.height <= page.height - margin * 2 { newPage() }
+                var shown: CGFloat = 0
+                while true {
+                    let available = page.height - margin - y
+                    pdf.saveGState()
+                    pdf.clip(to: CGRect(x: margin, y: margin, width: width, height: available))
+                    pdf.translateBy(x: margin, y: page.height - y - size.height + shown)
+                    draw(pdf)
+                    pdf.restoreGState()
+                    let used = min(available, size.height - shown)
+                    shown += used; y += used
+                    if shown >= size.height { break }
+                    newPage()
+                }
+                y += 18
+            }
+        }
+        if pageOpen { pdf.endPDFPage() }
+        pdf.closePDF()
     }
 }
