@@ -59,6 +59,13 @@ struct NoteDetailView: View {
             exportPayload = LocalSharePayload(items: [file])
         } catch { transcriptionManager.errorMessage = "Export failed: \(error.localizedDescription). Your note remains saved in Jotley." }
     }
+    func shareSummaryPDF() {
+        do {
+            let file = try LocalNoteExport.summaryPDF(note: note)
+            exportDirectory = file.deletingLastPathComponent()
+            exportPayload = LocalSharePayload(items: [file])
+        } catch { transcriptionManager.errorMessage = "The PDF could not be created: \(error.localizedDescription). Your note remains saved in Jotley." }
+    }
     func clearExport() {
         exportPayload = nil
         if let exportDirectory { try? FileManager.default.removeItem(at: exportDirectory) }

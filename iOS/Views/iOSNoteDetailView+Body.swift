@@ -9,7 +9,7 @@ extension NoteDetailView {
                 if hasTranscript || hasSummary { noteTabPickerSection }
                 if selectedTab == "Summary", hasSummary {
                     if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
-                        Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
+                        Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written. You can leave this note or lock your phone; the summary keeps going and is saved when it finishes.")
                             .font(.body).foregroundColor(.themeTextSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading).padding()
                     } else {
@@ -69,6 +69,11 @@ extension NoteDetailView {
                         .accessibilityIdentifier("copyCurrentTabButton")
                     Button("Share as Text", systemImage: "square.and.arrow.up", action: shareAsText)
                         .accessibilityIdentifier("shareNoteButton")
+                    if Note.isMeaningfulSummaryText(note.summary) {
+                        Button("Share Summary as PDF", systemImage: "doc.richtext", action: shareSummaryPDF)
+                            .disabled(summaryIsRunning)
+                            .accessibilityIdentifier("shareSummaryPDFButton")
+                    }
                     Divider()
                     Menu("More Export Options", systemImage: "ellipsis.circle") {
                         Button("Full Note (Plain Text)") { export(.plainText) }.accessibilityIdentifier("exportPlainTextButton")

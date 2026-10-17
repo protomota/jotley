@@ -91,7 +91,7 @@ struct SummaryTabView: View {
     var body: some View {
         Group {
             if shouldShowSummaryLoader {
-                Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written.")
+                Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written. You can open other notes while it finishes; it is saved automatically.")
                     .font(.system(size: 15)).foregroundColor(.themeTextSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(16)
                     .accessibilityIdentifier("noteDetailSummaryLoading")
