@@ -39,7 +39,7 @@ struct LocalMacTranscriptEditor: View {
                     .accessibilityIdentifier("transcriptEditorCancelButton")
                 Button("Save") {
                     do {
-                        guard canSave else { throw LocalError.message("Finish recording or processing before saving edits.") }
+                        guard canSave else { throw LocalError.message("Finish transcription or processing before saving edits.") }
                         try note.saveEditedTranscript(text, original: original, in: store)
                         dismiss()
                     } catch { self.error = error.localizedDescription }

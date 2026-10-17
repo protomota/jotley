@@ -3,7 +3,8 @@ import AppKit
 
 extension NotesListView {
     var canCreateNewNote: Bool {
-        !viewModel.recorder.isRecording && !viewModel.isTranscriptionPaused
+        !viewModel.recorder.isRecording && !viewModel.isTranscriptionPaused &&
+        !viewModel.recorder.isBusy && !viewModel.operationInProgress && !LocalAppModel.shared.busy
     }
 
     var activeRecordingNote: Note? {

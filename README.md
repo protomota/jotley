@@ -16,7 +16,7 @@ Long transcripts are reviewed in full, using sections sized for Apple's on-devic
 
 On iPhone and iPad, tap **+** and start live transcription immediately. Watch timestamped words fill the page from the top, then follow the newest words as the transcript grows. Pause when you need to, then stop or close to save. **Continue Transcription** adds to the same note. Mobile sessions save transcript text, without saving an audio file.
 
-On Mac, capture your microphone and audio from your apps or system. Keep the recording, transcript and summary together in one familiar native workspace.
+On Mac, capture your microphone and audio from your apps or system. Tap + to start live transcription immediately, then keep your transcript and summary together in one familiar native workspace.
 
 ![Jotley on Mac: searchable notes and a summarized voice note](docs/readme/mac-summary.webp)
 
@@ -85,7 +85,7 @@ Choose **Jotley** for Mac or **Jotley-iOS** for iPhone/iPad. Local builds use se
 
 ## Free to use. Source available.
 
-Use Jotley for personal work, school or paid work. Your notes, recordings, transcripts and summaries are yours.
+Use Jotley for personal work, school or paid work. Your notes, transcripts and summaries are yours.
 
 The original code and artwork are © 2026 Protomota, LLC and use the [Jotley Source-Available License 1.0](LICENSE). You may inspect, build, modify and redistribute them noncommercially. Commercial distribution requires written permission from Protomota, LLC. This is a source-available license, rather than an OSI open-source license. Third-party code, fonts and dependencies retain their own terms.
 

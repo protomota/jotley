@@ -152,7 +152,7 @@ extension NoteDetailPlaceholderView {
                             viewModel.retrySavedAudio(note: note)
                         }
                         .accessibilityIdentifier("retrySavedAudioButton")
-                        .help("Reprocess audio already recorded on this Mac to recover its transcript.")
+                        .help("Recover the transcript from audio captured on this Mac.")
                     }
 
                     // Save to File — inline-expanding submenu

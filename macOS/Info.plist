@@ -45,9 +45,9 @@
 	<key>LSMultipleInstancesProhibited</key>
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Jotley needs access to record system audio for transcription.</string>
+	<string>Jotley uses system audio for live, on-device transcription.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Jotley needs microphone access to record audio input alongside system audio.</string>
+	<string>Jotley uses your microphone for live, on-device transcription alongside system audio.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Jotley transcribes saved audio using installed on-device speech models.</string>
 </dict>

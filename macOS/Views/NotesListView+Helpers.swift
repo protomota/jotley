@@ -88,7 +88,7 @@ extension NotesListView {
                     .padding(.trailing, 16)
                     .offset(x: 4, y: 4)
                     .zIndex(10)
-                        .help("Active recording")
+                        .help("Active transcription")
                         .accessibilityIdentifier("activeRecordingRowIcon")
                 }
             }

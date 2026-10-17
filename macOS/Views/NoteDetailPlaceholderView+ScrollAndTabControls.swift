@@ -139,7 +139,7 @@ extension NoteDetailPlaceholderView {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color.themePrimaryAccent)
-                Text("Recording")
+                Text("Transcribing")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color.themePrimaryAccent)
             }
@@ -155,7 +155,7 @@ extension NoteDetailPlaceholderView {
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .floatingTooltip("Jump to active recording")
+        .floatingTooltip("Jump to active transcription")
         .accessibilityIdentifier("noteDetailJumpToRecordingTab")
     }
 

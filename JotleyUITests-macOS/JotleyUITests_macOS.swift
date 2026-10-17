@@ -183,10 +183,39 @@ private final class RoutingRefusedNote: Note {
         try verifySearchEditingAlignment()
         try verifyGeneratedTitlePersistence(note: created, store: store)
         try await verifyAutomaticTags(note: created, store: store, viewModel: viewModel)
+        try await verifyPlusStartsCaptureImmediately(store: store)
         try await verifyRecordingControlLayout()
         if ProcessInfo.processInfo.environment["JOTLEY_RUN_TITLE_TESTS"] == "1" {
             try await verifyOnDeviceTitle(note: created, viewModel: viewModel)
         }
+    }
+    @MainActor private static func verifyPlusStartsCaptureImmediately(store: SharedPersistenceController) async throws {
+        _ = NSApplication.shared
+        let recorder = ProcessTapRecorder()
+        var calls: [UUID] = []
+        recorder.simulatedStart = { _, id, _ in
+            calls.append(id)
+            try await Task.sleep(for: .milliseconds(150))
+            throw LocalError.message("Injected capture-start rejection; no microphone was accessed.")
+        }
+        defer { recorder.simulatedStart = nil }
+        let before = try store.notes().map(\.objectID)
+        let viewModel = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
+        let start = Task { await viewModel.startNewNote() }
+        for _ in 0..<30 { if !calls.isEmpty { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard calls.count == 1 else { throw LocalError.message("New transcription must immediately call capture start.") }
+        await viewModel.startNewNote()
+        await start.value
+        let created = try store.notes().filter { !before.contains($0.objectID) }
+        guard calls.count == 1, created.count == 1, created.first?.localNoteID == calls.first,
+              !recorder.starting, !recorder.isRecording else {
+            throw LocalError.message("Repeated + taps created duplicate notes or left capture busy after failure.")
+        }
+        guard let newNote = created.first else { throw LocalError.message("New transcription note is missing.") }
+        defer { try? store.deleteNoteAndAudio(newNote) }
+        // The failure path must release its note lease, allowing a retry.
+        let lease = try store.beginRecording(newNote); store.endRecording(lease: lease)
+        print("PASS: Mac new-transcription route starts capture on a fresh note immediately, blocks duplicate starts and releases a failed start.")
     }
     @MainActor private static func verifyAutomaticTags(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
         let other = try store.create(title: "Other tag bucket", text: "Related note")

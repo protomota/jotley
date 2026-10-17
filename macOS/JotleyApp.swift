@@ -30,7 +30,7 @@ import FoundationModels
                 }
             }
             CommandGroup(replacing: .newItem) {
-            Button("New Note") { appDelegate.activeNotesViewModel?.createBlankNote() }.keyboardShortcut("n")
+            Button("New Transcription") { Task { await appDelegate.activeNotesViewModel?.startNewNote() } }.keyboardShortcut("n")
         } }
     }
 }
@@ -135,7 +135,7 @@ final class LocalAppModel: ObservableObject {
             }
         }
         try reload()
-        if recovered > 0 { message = "Recovered \(recovered) interrupted recording(s). Select a note to retry transcription." }
+        if recovered > 0 { message = "Recovered \(recovered) interrupted transcription session(s). Select a note to continue." }
     }
     func transcribe() {
         guard let note = current, !busy, !recorder.recording, !recorder.isBusy else { return }

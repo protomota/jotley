@@ -286,7 +286,7 @@ extension NoteDetailPlaceholderView {
     @ViewBuilder var detailOverlay5: some View {
 
             // Transcript action footer — pinned to bottom of window, outside the ScrollView
-            if selectedTab == DetailTab.transcript.rawValue && !isRecordingThisNote && !isGeneratingThisSummary {
+            if selectedTab == DetailTab.transcript.rawValue && !isRecordingThisNote && !isGeneratingThisSummary && !viewModel.operationInProgress {
                 let transcript = editableTranscript
                 // Per-note saved-audio loading flag (not a persisted placeholder) so the
                 // action footer stays hidden while saved audio is being transcribed.
@@ -303,7 +303,7 @@ extension NoteDetailPlaceholderView {
                                     await viewModel.resumeTranscriptionOnNote(note: note)
                                 }
                             } label: {
-                                Label("Record Audio", systemImage: "mic.fill")
+                                Label("Continue Transcription", systemImage: "mic.fill")
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 14)
@@ -418,7 +418,7 @@ struct NoteRecordingControls: View {
                 Image(systemName: isPaused ? "play.fill" : "pause.fill")
                     .foregroundColor(Color.themeTextPrimary)
                     .frame(width: 28, height: 32)
-            }.buttonStyle(.plain).help(isPaused ? "Resume recording" : "Pause recording")
+            }.buttonStyle(.plain).help(isPaused ? "Resume transcription" : "Pause transcription")
             .accessibilityIdentifier("recordingPauseButton")
             // Stop button
             Button(action: onStop) {

@@ -71,7 +71,7 @@ struct SettingsView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Your voice notes. Now on Mac.").font(.headline)
-                        Text("Jotley for Mac is completely free. Record your microphone and audio from meetings, apps and your browser, then transcribe and summarize on-device.")
+                        Text("Jotley for Mac is completely free. Transcribe your microphone, meetings, apps and browser audio live, then summarize on-device.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }

@@ -22,7 +22,7 @@ struct iOSNotesListEmptyStateView: View {
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.themeTextPrimary)
 
-                Text("Record a thought or capture a conversation to get started.")
+                Text("Transcribe a thought or conversation to get started.")
                     .font(.subheadline)
                     .foregroundColor(.themeTextSecondary)
                     .multilineTextAlignment(.center)

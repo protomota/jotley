@@ -38,7 +38,7 @@ public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
     public var prompt: String {
         switch self {
         case .auto: return "Write a Markdown summary. Choose headings that fit this content, such as Key Points, Decisions, Action Items, Risks and Open Questions."
-        case .personalNote: return "Write Markdown notes from a voice note someone recorded for themselves. Write plainly, as their own notes; never say \"the user\" or \"the speaker\". Headings to choose from: Key Points, Ideas, To-Dos. Put every task or reminder only under To-Dos, as a plain item without a bold label."
+        case .personalNote: return "Write Markdown notes from a voice note someone spoke for themselves. Write plainly, as their own notes; never say \"the user\" or \"the speaker\". Headings to choose from: Key Points, Ideas, To-Dos. Put every task or reminder only under To-Dos, as a plain item without a bold label."
         case .brainDump: return "Write Markdown notes that organize one person's free-form thinking out loud. Write plainly, as their own notes; never say \"the user\" or \"the speaker\". Group related thoughts and keep unfinished ideas. Headings to choose from: Main Themes, Ideas, Questions, Next Steps."
         case .lecture: return "Write Markdown lecture notes. Headings to choose from: Key Concepts, Definitions, Examples, Formulas (only when the lecturer gives one), Review Questions. Preserve concrete facts and the lecturer's reasoning."
         case .concise: return "Write a short Markdown summary: the overview, then a single Key Points section of at most six items."
@@ -319,7 +319,7 @@ public enum LocalSummary {
         let model = SystemLanguageModel.default
         switch model.availability {
         case .available: break
-        case .unavailable(let reason): return "On-device summaries unavailable: \(reason). Notes and recordings remain available."
+        case .unavailable(let reason): return "On-device summaries unavailable: \(reason). Your notes and transcripts remain available."
         }
         guard model.supportsLocale(locale) else { return "The on-device summary model does not support this language." }
         return nil

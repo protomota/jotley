@@ -31,7 +31,7 @@ struct RecordingLiveActivity: Widget {
                 RecordingControls(context: context)
             }.padding(20).foregroundStyle(.white)
                 .activityBackgroundTint(Color(red: 0.08, green: 0.08, blue: 0.1))
-                .widgetURL(recordingURL("recording", id: context.attributes.recordingId))
+                .widgetURL(recordingURL("transcription", id: context.attributes.recordingId))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -51,7 +51,7 @@ struct RecordingLiveActivity: Widget {
             } minimal: {
                 Image(systemName: context.state.isRecording ? "mic.fill" : "pause.fill").foregroundStyle(recordingAccent)
             }
-            .widgetURL(recordingURL("recording", id: context.attributes.recordingId))
+            .widgetURL(recordingURL("transcription", id: context.attributes.recordingId))
             .keylineTint(recordingAccent)
         }
     }
@@ -69,11 +69,11 @@ private struct RecordingControls: View {
     let context: ActivityViewContext<RecordingActivityAttributes>
     var body: some View {
         HStack(spacing: 12) {
-            Link(destination: recordingURL("pauserecording", id: context.attributes.recordingId)) {
+            Link(destination: recordingURL("pausetranscription", id: context.attributes.recordingId)) {
                 Image(systemName: context.state.isRecording ? "pause.fill" : "play.fill")
                     .frame(width: 44, height: 44).background(recordingAccent, in: Circle())
             }.accessibilityLabel(context.state.isRecording ? "Pause Transcription" : "Resume Transcription")
-            Link(destination: recordingURL("stoprecording", id: context.attributes.recordingId)) {
+            Link(destination: recordingURL("stoptranscription", id: context.attributes.recordingId)) {
                 Image(systemName: "stop.fill").frame(width: 44, height: 44).background(recordingAccent, in: Circle())
             }.accessibilityLabel("Stop Transcription")
         }.foregroundStyle(.white)

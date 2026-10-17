@@ -128,7 +128,7 @@ public final class SharedPersistenceController: ObservableObject {
         guard ready, note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
         }
-        guard activeRecording == nil else { throw LocalError.message("Finish the current recording first.") }
+        guard activeRecording == nil else { throw LocalError.message("Finish the current transcription first.") }
         if note.objectID.isTemporaryID { try context.obtainPermanentIDs(for: [note]) }
         let lease = UUID()
         activeRecording = (note.objectID, lease)
@@ -145,7 +145,7 @@ public final class SharedPersistenceController: ObservableObject {
             throw LocalError.message("This note is unavailable.")
         }
         guard activeRecording?.noteID != note.objectID else {
-            throw LocalError.message("Stop this recording before deleting its note.")
+            throw LocalError.message("Stop this transcription before deleting its note.")
         }
         try save() // Rollback below must not discard unrelated pending edits.
         let id = note.localNoteID
@@ -191,7 +191,7 @@ public final class SharedPersistenceController: ObservableObject {
             } else {
                 let source = root.appendingPathComponent("Recordings/\(id.uuidString)")
                 guard !FileManager.default.fileExists(atPath: source.path) else {
-                    throw LocalError.message("Recording recovery found two copies for one note. Both were preserved for review.")
+                    throw LocalError.message("Transcription recovery found two audio copies for one note. Both were preserved for review.")
                 }
                 try FileManager.default.createDirectory(at: source.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try FileManager.default.moveItem(at: pending, to: source)
@@ -384,7 +384,7 @@ public final class DurableAudioWriter: @unchecked Sendable {
         let raw = directory.appendingPathComponent("audio.float32")
         // Never truncate an existing recording.
         guard !FileManager.default.fileExists(atPath: raw.path) else {
-            throw LocalError.message("Recording already exists; it was preserved.")
+            throw LocalError.message("Transcription audio already exists; it was preserved.")
         }
         try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("recording.json"), options: .atomic)
         guard FileManager.default.createFile(atPath: raw.path, contents: nil) else {
@@ -394,7 +394,7 @@ public final class DurableAudioWriter: @unchecked Sendable {
     }
     public func append(_ data: Data) throws {
         lock.lock(); defer { lock.unlock() }
-        guard let handle else { throw LocalError.message("Recording is closed.") }
+        guard let handle else { throw LocalError.message("Transcription audio capture is closed.") }
         try handle.write(contentsOf: data)
         if Date().timeIntervalSince(lastSync) >= 1 { try handle.synchronize(); lastSync = Date() }
     }
@@ -422,7 +422,7 @@ public final class DurableAudioWriter: @unchecked Sendable {
             guard FileManager.default.fileExists(atPath: segment.appendingPathComponent("recording.json").path) else { return duration }
             let info = try manifest(at: segment)
             guard info.sampleRate.isFinite, info.sampleRate > 0 else {
-                throw LocalError.message("Recording has an invalid audio format; raw audio was preserved.")
+                throw LocalError.message("Transcription audio has an invalid format; the original audio was preserved.")
             }
             return duration + Double(try frameCount(at: segment)) / info.sampleRate
         }
@@ -447,7 +447,7 @@ public final class DurableAudioWriter: @unchecked Sendable {
         guard info.sampleRate.isFinite, info.sampleRate > 0,
               let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
                                          sampleRate: info.sampleRate, channels: 1, interleaved: false) else {
-            throw LocalError.message("Recording has an invalid audio format; raw audio was preserved.")
+            throw LocalError.message("Transcription audio has an invalid format; the original audio was preserved.")
         }
         let raw = try FileHandle(forReadingFrom: directory.appendingPathComponent("audio.float32"))
         defer { try? raw.close() }

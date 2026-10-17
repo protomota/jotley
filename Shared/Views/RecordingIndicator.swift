@@ -360,7 +360,7 @@ struct RecordingIndicatorPreview: View {
                     audioLevel: previewAudioLevel
                 )
 
-                Text(isRecording ? "Recording (Level: \(String(format: "%.2f", previewAudioLevel)))" : "Ready to Record")
+                Text(isRecording ? "Transcribing (Level: \(String(format: "%.2f", previewAudioLevel)))" : "Ready to Transcribe")
                     .font(.headline)
                     .contentTransition(.identity)
             }
@@ -382,7 +382,7 @@ struct RecordingIndicatorPreview: View {
         }
     }
 }
-#Preview("Recording Indicator") {
+#Preview("Transcription Indicator") {
     RecordingIndicatorPreview()
 }
 #endif

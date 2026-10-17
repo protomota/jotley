@@ -200,7 +200,7 @@ extension NotesListView {
                 .accessibilityLabel("Settings")
                 .accessibilityIdentifier("notesListSettingsButton")
                 Spacer()
-                Button { viewModel.createBlankNote() } label: {
+                Button { Task { await viewModel.startNewNote() } } label: {
                     ZStack {
                         Circle().fill(Color.themePrimaryAccent).frame(width: 48, height: 48)
                         Image(systemName: "plus")
@@ -209,8 +209,8 @@ extension NotesListView {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canCreateNewNote)
-                .help("New Note")
-                .accessibilityLabel("New Note")
+                .help("New Transcription")
+                .accessibilityLabel("New Transcription")
                 .accessibilityIdentifier("notesListNewNoteButton")
             }
             .padding(.horizontal, 20)
@@ -412,7 +412,7 @@ extension NotesListView {
             )
         }
         .buttonStyle(.plain)
-        .help(isSelected ? "Recording is active on this note" : "Jump back to active recording")
+        .help(isSelected ? "Transcription is active on this note" : "Jump back to active transcription")
         .accessibilityIdentifier("activeRecordingJumpBanner")
     }
 

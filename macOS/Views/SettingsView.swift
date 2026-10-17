@@ -74,7 +74,7 @@ struct SettingsView: View {
                     await MainActor.run { speechSetupProgress = value }
                 }
             } catch is CancellationError {
-                speechSetupError = "Speech setup was canceled. Your notes and recordings are unchanged."
+                speechSetupError = "Speech setup was canceled. Your notes and transcripts are unchanged."
             } catch {
                 speechSetupError = Task.isCancelled ? "Speech setup was canceled." : "Speech setup failed: \(error.localizedDescription) Connect to the internet and try again."
             }

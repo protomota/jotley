@@ -32,7 +32,7 @@ public final class ProcessTapRecorder: ObservableObject {
     public var isRecording: Bool { recording }
     public var isRecordingNewNote: Bool { recording }
     public var elapsedTime: Double { elapsed }
-    public var icon: NSImage? { NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Recording") }
+    public var icon: NSImage? { NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Transcribing") }
     public var existingTranscript = ""
     public private(set) var transcriptTimeOffset: TimeInterval = 0
     public var latestTranscriptDelta: String {
@@ -51,6 +51,10 @@ public final class ProcessTapRecorder: ObservableObject {
     }
     public var onTranscript: ((LocalTranscript) -> Void)?
     public var speechLocale = Locale(identifier: "en-US")
+    #if DEBUG && !SWIFT_PACKAGE
+    // Exercise the real start route without requesting microphone access in UI tests.
+    var simulatedStart: (@MainActor (URL, UUID, Bool) async throws -> Void)?
+    #endif
     public init() {}
     private func accept(_ value: LocalTranscript) {
         transcription = value.displayText
@@ -61,9 +65,12 @@ public final class ProcessTapRecorder: ObservableObject {
     }
 
     public func start(root: URL, noteID: UUID, systemAudio: Bool) async throws {
-        guard !recording, !isBusy else { throw LocalError.message("A recording operation is already in progress.") }
+        guard !recording, !isBusy else { throw LocalError.message("A transcription session is already in progress.") }
         starting = true
         defer { starting = false }
+        #if DEBUG && !SWIFT_PACKAGE
+        if let simulatedStart { try await simulatedStart(root, noteID, systemAudio); return }
+        #endif
         guard await Self.authorizeMicrophone(status: AVCaptureDevice.authorizationStatus(for: .audio), request: {
             await AVCaptureDevice.requestAccess(for: .audio)
         }) else {
@@ -108,7 +115,7 @@ public final class ProcessTapRecorder: ObservableObject {
         }
     }
     private func startSegment() throws {
-        guard let root, let noteID else { throw LocalError.message("No recording session.") }
+        guard let root, let noteID else { throw LocalError.message("No transcription session.") }
         let directory = root.appendingPathComponent("Recordings", isDirectory: true)
             .appendingPathComponent(noteID.uuidString, isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

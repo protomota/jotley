@@ -35,7 +35,7 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
 
         if let button = statusItem.button {
             button.image = statusItemImage()
-            button.toolTip = "Jotley Quick Record"
+            button.toolTip = "Jotley — Start Transcription"
             button.target = self
             button.action = #selector(handleStatusItemButtonClick(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -43,7 +43,7 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
 
         let menu = NSMenu()
 
-        let primaryRecordingItem = NSMenuItem(title: "Quick Record", action: #selector(handlePrimaryRecordingActionFromStatusItem), keyEquivalent: "")
+        let primaryRecordingItem = NSMenuItem(title: "Start Transcription", action: #selector(handlePrimaryRecordingActionFromStatusItem), keyEquivalent: "")
         primaryRecordingItem.target = self
         menu.addItem(primaryRecordingItem)
         primaryRecordingMenuItem = primaryRecordingItem
@@ -121,15 +121,15 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
 
     func refreshStatusItemState() {
         let isRecording = LocalAppModel.shared.recorder.isRecording
-        primaryRecordingMenuItem?.title = isRecording ? "Stop Recording" : "Quick Record"
+        primaryRecordingMenuItem?.title = isRecording ? "Stop Transcription" : "Start Transcription"
 
         guard let button = statusItem?.button else { return }
         // Keep the Jotley brand mark in the menu bar at all times. It used to morph
         // into a generic "stop" glyph while recording, which read as a bug. Stopping
-        // is still available via the menu's "Stop Recording" item and the in-app
+        // is still available via the menu's "Stop Transcription" item and the in-app
         // controls; the menu-bar icon stays consistent.
         button.image = statusItemImage()
-        button.toolTip = isRecording ? "Jotley — Recording (open menu to stop)" : "Jotley Quick Record"
+        button.toolTip = isRecording ? "Jotley — Transcribing (open menu to stop)" : "Jotley — Start Transcription"
     }
 
     /// The menu-bar icon: the Jotley brand mark, template-rendered so it adapts to
@@ -141,7 +141,7 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
             return brand
         }
 
-        let fallback = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Jotley Quick Record")
+        let fallback = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Jotley — Start Transcription")
         fallback?.isTemplate = true
         return fallback
     }
@@ -184,7 +184,7 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
     func check() { guard isIdle else { return }; controller?.updater.checkForUpdates() }
     func setAutomaticChecks(_ enabled: Bool) { controller?.updater.automaticallyChecksForUpdates = enabled }
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
-        guard isIdle else { throw LocalError.message("Finish recording or processing your note before checking for updates.") }
+        guard isIdle else { throw LocalError.message("Finish transcription or processing your note before checking for updates.") }
     }
     func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem, untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
         guard !isIdle else { return false }

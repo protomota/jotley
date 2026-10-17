@@ -74,10 +74,10 @@ public struct TranscriptTabView: View {
     }
 
     // Get loading message based on note type
-    private var loadingMessage: String { "Transcribing saved recording…" }
+    private var loadingMessage: String { "Recovering transcript…" }
     private var loadingDetailMessage: String? { "Processing audio stored on this Mac." }
     private func getEmptyStateMessage() -> String {
-        "Click Record Audio to start recording and see your transcript here."
+        "Your transcript appears here as you speak. Use + to start a new transcription."
     }
 
     // Check if transcript has actual content (not just whitespace)

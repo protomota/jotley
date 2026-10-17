@@ -41,7 +41,7 @@ import SwiftUI
 
                             VStack(alignment: .leading, spacing: 12) {
                                 Label {
-                                    Text("Create your first note to get started")
+                                    Text("Tap + to start your first transcription")
                                         .foregroundColor(Color.themeTextSecondary)
                                 } icon: {
                                     Image(systemName: "circle.fill")
@@ -50,7 +50,7 @@ import SwiftUI
                                 }
 
                                 Label {
-                                    Text("Record audio with AI transcription")
+                                    Text("Transcribe your voice live with Apple Intelligence")
                                         .foregroundColor(Color.themeTextSecondary)
                                 } icon: {
                                     Image(systemName: "circle.fill")
@@ -83,7 +83,7 @@ import SwiftUI
                             HStack(spacing: 8) {
                                 Image(systemName: "plus")
                                     .font(.system(size: 14, weight: .semibold))
-                                Text(hasNotes ? "New Note" : "Create Your First Note")
+                                Text(hasNotes ? "New Transcription" : "Start Your First Transcription")
                                     .font(.system(size: 15, weight: .semibold))
                             }
                             .foregroundColor(.white)
@@ -123,6 +123,6 @@ import SwiftUI
 
     private func handleCreateNewNoteTapped() {
         guard canCreateNewNote else { return }
-        viewModel.createBlankNote()
+        Task { await viewModel.startNewNote() }
     }
 }

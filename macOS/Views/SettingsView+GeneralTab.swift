@@ -55,7 +55,7 @@ extension SettingsView {
                             Toggle("Show Live Captions", isOn: $showLiveCaptions)
                                 .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Toggle("Show Floating Recording Widget", isOn: $showRecordingWidget)
+                            Toggle("Show Floating Transcription Indicator", isOn: $showRecordingWidget)
                                 .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -89,7 +89,7 @@ extension SettingsView {
                             Text("Select the language for audio transcription. Availability depends on installed Apple speech assets.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Toggle("Record microphone and system audio", isOn: $recordSystemAudio)
+                            Toggle("Transcribe microphone and system audio", isOn: $recordSystemAudio)
                                 .toggleStyle(.switch)
                             Text(speechStatus).font(.caption).foregroundColor(.secondary)
                             if isSettingUpSpeech {
@@ -100,7 +100,7 @@ extension SettingsView {
                                     .accessibilityIdentifier("settingsSpeechSetupButton")
                             }
                             if let speechSetupError { Text(speechSetupError).font(.caption) }
-                            Text("Speech setup installs the selected language's model from Apple once and requires internet access. After setup, recording, transcription and summaries run on-device and work offline. Audio and notes are never sent to an AI service.")
+                            Text("Speech setup installs the selected language's model from Apple once and requires internet access. After setup, transcription and summaries run on-device and work offline. Audio and notes are never sent to an AI service.")
                                 .font(.caption).foregroundColor(.secondary)
 
                         }
@@ -128,7 +128,7 @@ extension SettingsView {
                             )).toggleStyle(.switch)
                             Button("Check for Updates…") { updates.check() }
                                 .disabled(!updates.canCheck || !updates.isIdle)
-                            Text("Sparkle checks jotley.ai for signed app updates. Updates require internet access; recording, transcription and summaries continue to work offline. Your notes and audio are never included in update checks.")
+                            Text("Sparkle checks jotley.ai for signed app updates. Updates require internet access; transcription and summaries continue to work offline. Your notes and audio are never included in update checks.")
                                 .font(.caption).foregroundColor(.secondary)
                         }
                     }

@@ -276,7 +276,7 @@ public final class LiveSpeechSession: @unchecked Sendable {
         do {
             (analyzer, format) = try await LocalSpeech.prepare(configuration: config)
         } catch {
-            LocalSpeech.recordFailure(error, locale: locale, details: "Recording: \(config.engine.rawValue) \(config.locale.identifier(.bcp47))")
+            LocalSpeech.recordFailure(error, locale: locale, details: "Transcription: \(config.engine.rawValue) \(config.locale.identifier(.bcp47))")
             throw error
         }
         UserDefaults.standard.removeObject(forKey: LocalSpeech.lastFailureDefaultsKey)

@@ -101,3 +101,11 @@ Released as iPhone/iPad 2.1 (381) and native Mac 2.1 (382), from public source `
 
 
 After release, TestFlight 381 was installed on this Mac. Browsing older date groups, selecting a note and scrolling in both directions kept titles/previews sharp where 379 had shown blurred rows. The installed native Mac 382 was also launched and its floating sidebar controls were visually confirmed. New Note and Settings were functionally checked in the identical development layout. Proof images remain local; no private note content was added to the repository.
+
+## Direct Mac transcription and terminology — 2026-10-17
+
+Mac sidebar +, welcome action and Command-N now call the existing new-transcription start route immediately. Startup disables duplicate entry and hides the secondary Continue Transcription action. User-facing recording terminology was replaced across both apps, including accessibility labels, menus, Settings, permissions and errors. Persisted storage paths, widget identifiers, serialized activity attributes and legacy inbound URLs remain compatible. Native Mac audio recovery is unchanged; iPhone/iPad sessions remain transcript-only.
+
+Verification: signed development Mac build passed; shared package executed 36 tests with eight opt-in skips and zero failures (28 passed). Mac routing harness passed, including a simulated capture-start rejection that verifies immediate dispatch, one new note, duplicate-start protection and lease cleanup. iPad Simulator Settings placement/appearance test passed. Source credential-pattern scan: 198 tracked files, zero findings. No tutorial changes.
+
+The initial hosted-sidebar test failed because its copied Core Data model made global entity lookup ambiguous; it was replaced with the real view-model lifecycle regression above. Manual development-app UI confirmed one + press creates the note and enters startup with the second action hidden; this environment remained waiting during hardware authorization, so actual microphone recognition was not verified in this turn. Existing speech tests were not rerun on physical iPhone hardware.

@@ -149,7 +149,7 @@ struct LocalMacAskNoteView: View {
                     do { try store.clearChat(noteID: id); messages = []; error = nil }
                     catch { self.error = error.localizedDescription }
                 }
-            } message: { Text("Clear the conversation for this note? Its recording, transcript and summary stay saved.") }
+            } message: { Text("Clear the conversation for this note? Its transcript and summary stay saved.") }
             .task {
                 guard let id = note.id else { error = "This note is unavailable."; return }
                 do { messages = try store.chatMessages(noteID: id) }
