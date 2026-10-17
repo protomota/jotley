@@ -262,7 +262,15 @@ public final class SharedPersistenceController: ObservableObject {
     }
     /// Commit generated content together, restoring all affected values if the
     /// store rejects the save. Preserve other pending edits in the context.
-    public func saveNoteChanges(_ note: NSManagedObject, values: [String: Any]) throws {
+    public func tagLibrary() throws -> [LocalTagCandidate] {
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Tag")
+        request.relationshipKeyPathsForPrefetching = ["notes"]
+        return try context.fetch(request).compactMap { tag in
+            guard let name = tag.value(forKey: "name") as? String, !name.isEmpty else { return nil }
+            return LocalTagCandidate(name: name, usageCount: (tag.value(forKey: "notes") as? NSSet)?.count ?? 0)
+        }
+    }
+    public func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]? = nil) throws {
         guard ready, note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
         }
@@ -270,10 +278,43 @@ public final class SharedPersistenceController: ObservableObject {
             throw LocalError.message("Generated content contains an unsupported note field.")
         }
         let previous = values.keys.map { ($0, note.value(forKey: $0)) }
-        for (key, value) in values { note.setValue(value, forKey: key) }
-        do { try save() }
-        catch {
+        var previousTags: NSSet?
+        var createdTags: [NSManagedObject] = []
+        do {
+            if let replacingTags {
+                let request = NSFetchRequest<NSManagedObject>(entityName: "Tag")
+                request.relationshipKeyPathsForPrefetching = ["notes"]
+                let existing = try context.fetch(request).sorted {
+                    let lhs = ($0.value(forKey: "notes") as? NSSet)?.count ?? 0
+                    let rhs = ($1.value(forKey: "notes") as? NSSet)?.count ?? 0
+                    if lhs != rhs { return lhs > rhs }
+                    return $0.objectID.uriRepresentation().absoluteString < $1.objectID.uriRepresentation().absoluteString
+                }
+                let library = existing.compactMap { tag -> LocalTagCandidate? in
+                    guard let name = tag.value(forKey: "name") as? String else { return nil }
+                    return LocalTagCandidate(name: name, usageCount: (tag.value(forKey: "notes") as? NSSet)?.count ?? 0)
+                }
+                var selected: [NSManagedObject] = []
+                for name in LocalNoteTags.resolvedNames(replacingTags, library: library) {
+                    if let tag = existing.first(where: { LocalNoteTags.key($0.text("name")) == LocalNoteTags.key(name) }) {
+                        selected.append(tag)
+                    } else {
+                        let tag = NSEntityDescription.insertNewObject(forEntityName: "Tag", into: context)
+                        tag.setValue(UUID(), forKey: "id"); tag.setValue(name, forKey: "name")
+                        tag.setValue(name.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined(), forKey: "canonicalName")
+                        tag.setValue(Date(), forKey: "createdAt")
+                        createdTags.append(tag); selected.append(tag)
+                    }
+                }
+                previousTags = (note.value(forKey: "tags") as? NSSet)?.copy() as? NSSet ?? NSSet()
+                note.setValue(NSSet(array: selected), forKey: "tags")
+            }
+            for (key, value) in values { note.setValue(value, forKey: key) }
+            try save()
+        } catch {
             for (key, value) in previous { note.setValue(value, forKey: key) }
+            if let previousTags { note.setValue(previousTags, forKey: "tags") }
+            for tag in createdTags { context.delete(tag) }
             throw error
         }
     }

@@ -182,10 +182,32 @@ private final class RoutingRefusedNote: Note {
         try await verifyMacAskPresentation(note: created, store: store)
         try verifySearchEditingAlignment()
         try verifyGeneratedTitlePersistence(note: created, store: store)
+        try await verifyAutomaticTags(note: created, store: store, viewModel: viewModel)
         try await verifyRecordingControlLayout()
         if ProcessInfo.processInfo.environment["JOTLEY_RUN_TITLE_TESTS"] == "1" {
             try await verifyOnDeviceTitle(note: created, viewModel: viewModel)
         }
+    }
+    @MainActor private static func verifyAutomaticTags(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
+        let other = try store.create(title: "Other tag bucket", text: "Related note")
+        try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
+        try store.saveNoteChanges(note, values: [:], replacingTags: ["Outdated"])
+        note.title = "Design review"
+        viewModel.simulatedSummaryGeneration = { _ in "Finished design summary." }
+        viewModel.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "AI Tools", "Design"] }
+        defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedTagGeneration = nil; try? store.deleteNoteAndAudio(other) }
+        await viewModel.generateSummary(note: note, templateKey: "Concise")
+        guard note.summary == "Finished design summary.", note.tagNames == ["AI", "Design"],
+              (other.value(forKey: "tags") as? NSSet)?.count == 2 else {
+            throw LocalError.message("Mac summary must replace old tags and reuse existing library buckets.")
+        }
+        viewModel.simulatedTagGeneration = { _, _ in throw LocalError.message("Injected tagging failure") }
+        await viewModel.generateSummary(note: note, templateKey: "Concise")
+        guard note.tagNames == ["AI", "Design"], note.summary == "Finished design summary." else {
+            throw LocalError.message("Tagging failure must preserve existing tags and save the completed summary.")
+        }
+        viewModel.showSyncError = false
+        print("PASS: Mac summaries replace old tags, reuse library entities and retain tags after tagging failure.")
     }
     @MainActor private static func verifySummaryFollowAndCancel(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
         note.summary = "Previously saved summary."

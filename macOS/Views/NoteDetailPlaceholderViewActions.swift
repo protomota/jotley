@@ -1,5 +1,1 @@
-import SwiftUI
-
-extension NoteDetailPlaceholderView {
-    func handleNewNoteButtonTapped() { viewModel.createBlankNote() }
-}
+// New-note creation is handled by the notes-list action.

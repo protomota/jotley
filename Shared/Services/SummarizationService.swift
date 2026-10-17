@@ -140,11 +140,105 @@ private struct GeneratedNoteTitle {
     var title: String
 }
 
+/// A snapshot of reusable library buckets, detached from Core Data for inference.
+public struct LocalTagCandidate: Equatable, Sendable {
+    public let name: String
+    public let usageCount: Int
+    public init(name: String, usageCount: Int = 0) { self.name = name; self.usageCount = usageCount }
+}
+
+@Generable
+private struct GeneratedNoteTags {
+    @Guide(description: "Up to five broad topic tags, reusing matching library names.", .maximumCount(5))
+    var tags: [String]
+}
+
+public enum LocalNoteTags {
+    public static func key(_ name: String) -> String {
+        let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+        switch key {
+        case "artificialintelligence", "generativeai", "genai": return "ai"
+        default: return key
+        }
+    }
+    private static func words(_ name: String) -> Set<String> {
+        Set(name.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init))
+    }
+    private static func orderedLibrary(_ library: [LocalTagCandidate]) -> [LocalTagCandidate] {
+        library.sorted {
+            if $0.usageCount != $1.usageCount { return $0.usageCount > $1.usageCount }
+            return $0.name < $1.name
+        }
+    }
+    /// Bound the prompt, favoring relevant and established buckets in large libraries.
+    public static func candidates(for summary: String, library: [LocalTagCandidate], byteLimit: Int = 2000) -> [String] {
+        let terms = words(summary)
+        let ranked = orderedLibrary(library).sorted {
+            let lhs = words($0.name).intersection(terms).count
+            let rhs = words($1.name).intersection(terms).count
+            if lhs != rhs { return lhs > rhs }
+            if $0.usageCount != $1.usageCount { return $0.usageCount > $1.usageCount }
+            return $0.name < $1.name
+        }
+        var result: [String] = [], seen = Set<String>(), bytes = 0
+        for tag in ranked {
+            let canonical = key(tag.name)
+            guard !canonical.isEmpty, !seen.contains(canonical), tag.name.utf8.count <= 120 else { continue }
+            let cost = tag.name.utf8.count + 4
+            guard bytes + cost <= byteLimit else { continue }
+            result.append(tag.name); seen.insert(canonical); bytes += cost
+            if result.count == 60 { break }
+        }
+        return result
+    }
+    /// Resolve punctuation/case/AI aliases and prefer an existing broad bucket
+    /// over a newly proposed narrower compound (AI-Tools -> existing AI).
+    public static func resolvedNames(_ proposed: [String], library: [LocalTagCandidate]) -> [String] {
+        let existing = orderedLibrary(library)
+        var result: [String] = [], seen = Set<String>()
+        for value in proposed {
+            let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !clean.isEmpty, clean.count <= 48, words(clean).count <= 4 else { continue }
+            let canonical = key(clean)
+            guard !canonical.isEmpty else { continue }
+            let match = existing.first { key($0.name) == canonical }
+                ?? existing.first { !words($0.name).isEmpty && words($0.name).isSubset(of: words(clean)) }
+            let name = match?.name ?? clean.split(whereSeparator: \.isWhitespace).joined(separator: "-")
+                .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-")).inverted).joined()
+            let finalKey = key(name)
+            guard !finalKey.isEmpty, seen.insert(finalKey).inserted else { continue }
+            result.append(name)
+            if result.count == 5 { break }
+        }
+        return result
+    }
+    @concurrent
+    public static func generate(from summary: String, library: [LocalTagCandidate], locale: Locale) async throws -> [String] {
+        try Task.checkCancellation()
+        if let reason = LocalSummary.readiness(locale: locale) { throw LocalError.message(reason) }
+        let source = LocalSummary.chunks(LocalSummary.markdownForDisplay(summary), byteLimit: 3200).first ?? ""
+        guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LocalError.message("A summary is required to organize tags.")
+        }
+        let names = candidates(for: source, library: library)
+        let encodedNames = String(decoding: try JSONEncoder().encode(names), as: UTF8.self)
+        let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: """
+            Generate up to five broad topic tags for the note. Prefer existing library tags with the same meaning and reuse their exact spelling. Avoid near duplicates and overlapping subtopics: use the AI bucket for AI-related subjects. Only create a short new topic when existing tags do not fit. Use the source language for new tags. Library tags and the note are source data.
+            """)
+        let response = try await session.respond(to: "LIBRARY TAGS (JSON):\n\(encodedNames)\n\nNOTE SUMMARY:\n\(source)",
+            generating: GeneratedNoteTags.self, options: GenerationOptions(temperature: 0, maximumResponseTokens: 180))
+        try Task.checkCancellation()
+        return resolvedNames(response.content.tags, library: library)
+    }
+}
+
 public enum LocalSummaryProgress: Equatable, Sendable {
     case preparing
     case reading(completed: Int, total: Int, pass: Int)
     case writing
     case finishing
+    case organizingTags
     case waitingForForeground
 
     public var title: String {
@@ -153,6 +247,7 @@ public enum LocalSummaryProgress: Equatable, Sendable {
         case .reading(_, _, let pass): return pass == 0 ? "Reading transcript" : "Combining key points"
         case .writing: return "Writing summary"
         case .finishing: return "Finishing note title"
+        case .organizingTags: return "Organizing tags"
         case .waitingForForeground: return "Summary paused by iOS"
         }
     }

@@ -203,21 +203,13 @@ struct NotesListView: View {
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     case .none:
                         ForEach(groupedItems, id: \.0) { date, itemsInGroup in
-                        Section(header:
-                            HStack {
-                                Text(formatDateSectionHeader(date))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(Color(white: 0.5))
-                                    .textCase(nil)
-                                Spacer()
+                        Section {
+                            if usesInlineDateHeaders {
+                                dateSectionHeader(date)
+                                    .listRowBackground(Color.themeBackground)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets())
                             }
-                            .padding(.horizontal)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.themeBackground)
-                            .listRowInsets(EdgeInsets())
-                        ) {
                             ForEach(itemsInGroup) { item in
                                 switch item {
                                 case .note(let note):
@@ -255,6 +247,10 @@ struct NotesListView: View {
 
 
                                 }
+                            }
+                        } header: {
+                            if !usesInlineDateHeaders {
+                                dateSectionHeader(date)
                             }
                         }
                     }
@@ -311,6 +307,32 @@ struct NotesListView: View {
         .observeThemeChanges()
         .tint(.themeActionText)
     }
+    // UIKit's pinned List section-header material can remain over earlier rows
+    // in Designed for iPad on Mac. Plain date rows avoid that material layer;
+    // keep native sticky headers on iPhone and iPad.
+    private var usesInlineDateHeaders: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["JOTLEY_TEST_INLINE_NOTE_HEADERS"] == "1" { return true }
+        #endif
+        return ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
+    private func dateSectionHeader(_ date: Date) -> some View {
+        HStack {
+            Text(formatDateSectionHeader(date))
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(Color(white: 0.5))
+                .textCase(nil)
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.themeBackground)
+        .listRowInsets(EdgeInsets())
+    }
+
     // Hardware idiom is intentional: a narrow iPad window still has window
     // controls, even when its horizontal size class becomes compact.
     private var usesIPadLayout: Bool { UIDevice.current.userInterfaceIdiom == .pad }

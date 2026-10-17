@@ -183,54 +183,38 @@ extension NotesListView {
                 noteList()
             }
 
-            // Bottom toolbar
-            HStack {
-                // Trash button
-                Button {
-                    guard !viewModel.selectedNoteIDs.isEmpty else { return }
-                    Task { @MainActor in await viewModel.deleteSelectedNotes(fetchedNotes: self.notes) }
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14))
-                        .foregroundColor(viewModel.selectedNoteIDs.isEmpty ? Color.themeTextSecondary.opacity(0.5) : Color.themeTextSecondary)
-                }
-                .buttonStyle(.plain)
-                .disabled(viewModel.selectedNoteIDs.isEmpty)
-                .help("Delete selected notes")
-                .accessibilityIdentifier("notesListTrashButton")
+            }
 
-                Spacer()
-
-                // Settings button
-                Button {
-                    showingSettingsSheet = true
-                } label: {
+        }
+        .overlay(alignment: .bottom) {
+            HStack(alignment: .center) {
+                Button { showingSettingsSheet = true } label: {
                     ZStack {
-                        Circle()
-                            .fill(Color.themePrimaryAccent)
-                            .frame(width: 28, height: 28)
+                        Circle().fill(Color.themePrimaryAccent).frame(width: 36, height: 36)
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
                     }
                 }
                 .buttonStyle(.plain)
                 .help("Settings")
                 .accessibilityLabel("Settings")
                 .accessibilityIdentifier("notesListSettingsButton")
+                Spacer()
+                Button { viewModel.createBlankNote() } label: {
+                    ZStack {
+                        Circle().fill(Color.themePrimaryAccent).frame(width: 48, height: 48)
+                        Image(systemName: "plus")
+                            .font(.system(size: 25, weight: .semibold)).foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!canCreateNewNote)
+                .help("New Note")
+                .accessibilityLabel("New Note")
+                .accessibilityIdentifier("notesListNewNoteButton")
             }
-            .frame(height: 29)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.themeContentBackground)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color.gray.opacity(0.2)),
-                alignment: .top
-            )
-            }
-
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
         }
         .overlay {
             ZStack(alignment: .top) {

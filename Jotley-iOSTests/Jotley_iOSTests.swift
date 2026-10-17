@@ -10,6 +10,41 @@ import XCTest
 
 @Suite(.serialized)
 struct Jotley_iOSTests {
+    #if DEBUG && targetEnvironment(simulator)
+    @MainActor @Test func successfulSummaryReplacesTagsAndFailureOrCancelKeepsExistingBuckets() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let manager = LiveTranscriptionManager(store: store)
+        let note = try manager.createNote(text: "AI supports design.", title: "Design review")
+        let other = try manager.createNote(text: "Related work", title: "Related")
+        try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
+        try store.saveNoteChanges(note, values: [:], replacingTags: ["Old topic"])
+        manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
+        manager.simulatedTagGeneration = { _, library in
+            #expect(library.contains { $0.name == "AI" })
+            return ["Artificial Intelligence", "AI Tools", "Design"]
+        }
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(note.summary == "A completed design summary.")
+        #expect(note.tagNames == ["AI", "Design"] && other.tagNames == ["AI", "Design"])
+        #expect(manager.errorMessage == nil)
+        manager.simulatedTagGeneration = { _, _ in throw LocalError.message("Model unavailable") }
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(note.tagNames == ["AI", "Design"])
+        #expect(manager.errorMessage?.contains("Tags were kept") == true)
+        manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
+        manager.simulatedTagGeneration = { _, _ in try await Task.sleep(for: .seconds(5)); return ["Wrong"] }
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryProgress == .organizingTags { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(manager.summaryProgress == .organizingTags)
+        manager.cancelProcessing()
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(note.summary == "A completed design summary." && note.tagNames == ["AI", "Design"])
+    }
+    #endif
+
     @MainActor @Test func streamingSummaryDoesNotCreateTemporaryMarkdownCards() throws {
         let base = "## Summary\nA short overview.\n\n## Key Points\n- First point.\n"
         let initial = StructuredSummary(ParsedNoteMarkdown.rendering(base, isStreaming: true))

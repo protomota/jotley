@@ -6,6 +6,78 @@ import Speech
 @testable import jotley
 
 final class LocalCoreTests: XCTestCase {
+    func testAutoTagsReuseBucketsAndLimitDistinctTopics() {
+        let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20), LocalTagCandidate(name: "Project-Planning", usageCount: 5)]
+        XCTAssertEqual(LocalNoteTags.resolvedNames(["artificial intelligence", "AI Tools", "ai", "Design", "Project Planning", "Research", "Work", "Extra"], library: library),
+                       ["AI", "Design", "Project-Planning", "Research", "Work"])
+        XCTAssertEqual(LocalNoteTags.resolvedNames(["###", "  ", "A sentence with far too many words for a topic", "design"], library: library), ["Design"])
+        let many = (0..<500).map { LocalTagCandidate(name: "Topic-\($0)", usageCount: 500 - $0) }
+            + [LocalTagCandidate(name: "Gardening", usageCount: 1)]
+        let candidates = LocalNoteTags.candidates(for: "Gardening plans", library: many, byteLimit: 400)
+        XCTAssertEqual(candidates.first, "Gardening")
+        XCTAssertLessThanOrEqual(candidates.reduce(0) { $0 + $1.utf8.count + 4 }, 400)
+        XCTAssertEqual(Set(candidates.map(LocalNoteTags.key)).count, candidates.count)
+    }
+
+    @MainActor func testSummaryTagsReplaceRelationshipsReuseEntitiesAndKeepOtherNotes() throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let note = try store.create(title: "Summary", text: "AI and design")
+        let other = try store.create(title: "Other", text: "AI")
+        try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
+        try store.saveNoteChanges(note, values: [:], replacingTags: ["Outdated", "Temporary"])
+        let before = (other.value(forKey: "tags") as? Set<NSManagedObject>) ?? []
+        let ai = try XCTUnwrap(before.first { $0.text("name") == "AI" })
+        try store.saveNoteChanges(note, values: ["summary": "Final summary"], replacingTags: ["Artificial Intelligence", "AI Tools", "Design", "Research", "Planning", "Meetings", "Overflow"])
+        let tags = (note.value(forKey: "tags") as? Set<NSManagedObject>) ?? []
+        XCTAssertEqual(tags.count, 5)
+        XCTAssertTrue(tags.contains(ai))
+        XCTAssertFalse(tags.contains { ["Outdated", "Temporary", "Overflow"].contains($0.text("name")) })
+        XCTAssertEqual((other.value(forKey: "tags") as? Set<NSManagedObject>), before)
+        XCTAssertEqual(try store.tagLibrary().filter { LocalNoteTags.key($0.name) == "ai" }.count, 1)
+        // A tagging failure supplies nil and preserves the old relationships.
+        try store.saveNoteChanges(note, values: ["summary": "Another summary"], replacingTags: nil)
+        XCTAssertEqual((note.value(forKey: "tags") as? Set<NSManagedObject>), tags)
+        try store.saveNoteChanges(note, values: [:], replacingTags: [])
+        XCTAssertEqual((note.value(forKey: "tags") as? NSSet)?.count, 0)
+        XCTAssertEqual((other.value(forKey: "tags") as? Set<NSManagedObject>), before)
+    }
+
+    @MainActor func testRejectedSummaryRestoresTagsWithoutLeavingNewEntities() throws {
+        let seed = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: seed.root) }
+        let model = try XCTUnwrap(seed.container.managedObjectModel.copy() as? NSManagedObjectModel)
+        model.entitiesByName["Note"]?.managedObjectClassName = NSStringFromClass(GeneratedContentRefusedNote.self)
+        let store = try SharedPersistenceController(inMemory: true, model: model)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let note = try store.create(title: "Keep tags", text: "Original")
+        try store.saveNoteChanges(note, values: ["summary": "Original summary"], replacingTags: ["Existing"])
+        let other = try store.create(title: "Other")
+        other.setValue("Unrelated unsaved edit", forKey: "title")
+        XCTAssertThrowsError(try store.saveNoteChanges(note, values: ["summary": "Rejected output"], replacingTags: ["New tag"]))
+        XCTAssertEqual(note.text("summary"), "Original summary")
+        XCTAssertEqual((note.value(forKey: "tags") as? Set<NSManagedObject>)?.map { $0.text("name") }, ["Existing"])
+        XCTAssertEqual(try store.tagLibrary().map(\.name), ["Existing"])
+        XCTAssertEqual(other.text("title"), "Unrelated unsaved edit")
+    }
+
+    func testInstalledTagModelReusesExistingBroadBuckets() async throws {
+        guard ProcessInfo.processInfo.environment["JOTLEY_RUN_TAG_TESTS"] == "1" else { throw XCTSkip("Installed Apple tag model test is opt-in") }
+        let locale = Locale(identifier: "en-US")
+        if let reason = LocalSummary.readiness(locale: locale) { throw XCTSkip(reason) }
+        let library = [LocalTagCandidate(name: "AI", usageCount: 50), LocalTagCandidate(name: "Design", usageCount: 20), LocalTagCandidate(name: "Gardening", usageCount: 5)]
+        let tags = try await LocalNoteTags.generate(from: "The design team adopted artificial intelligence tools. Designers use generative AI to explore interface layouts and prototype product ideas.", library: library, locale: locale)
+        XCTAssertTrue(tags.contains("AI"), tags.description)
+        XCTAssertTrue(tags.contains("Design"), tags.description)
+        XCTAssertFalse(tags.contains("Gardening"), tags.description)
+        XCTAssertLessThanOrEqual(tags.count, 5)
+        XCTAssertEqual(Set(tags.map(LocalNoteTags.key)).count, tags.count)
+        let cancelled = Task { try await LocalNoteTags.generate(from: "AI", library: library, locale: locale) }
+        cancelled.cancel()
+        do { _ = try await cancelled.value; XCTFail("Cancelled tagging must not finish") } catch is CancellationError { }
+        print("Verified installed Apple model tags:", tags)
+    }
+
     @MainActor func testChatHistoryRoundTrip() throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }

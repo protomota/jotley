@@ -8,6 +8,91 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testMacStyleDateRowsStayReadableWhileScrolling() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
+            throw XCTSkip("Sidebar rendering regression requires iPad")
+        }
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_INLINE_NOTE_HEADERS"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        var fixture: [[String: Any]] = []
+        for index in 0..<48 {
+            let dayOffset = index / 3 * 86400
+            let minuteOffset = index % 3 * 600
+            let sample: [String: Any] = [
+                "title": String(format: "Readable note %02d", index), "folder": "", "tags": [String](),
+                "transcript": "Keep every note readable while browsing earlier dates.",
+                "summary": "## Decisions\n- Keep the sidebar sharp.",
+                "timestampOffset": -Double(dayOffset + minuteOffset)
+            ]
+            fixture.append(sample)
+        }
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+
+        func assertVisibleRowsAreSharp(dark: Bool) throws {
+            let screenshot = XCUIScreen.main.screenshot()
+            let normalized = UIGraphicsImageRenderer(size: screenshot.image.size).image { _ in
+                screenshot.image.draw(at: .zero)
+            }
+            let image = try XCTUnwrap(normalized.cgImage)
+            let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+            let appFrame = app.frame
+            let scale = CGFloat(image.width) / appFrame.width
+            let searchBottom = app.textFields["notesListSearchField"].frame.maxY
+            let footerTop = app.buttons["notesListSettingsButton"].frame.minY
+            let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "notesListNoteRow-"))
+            var checked = 0
+            for row in rows.allElementsBoundByIndex {
+                let frame = row.frame
+                guard frame.minY > searchBottom + 8, frame.maxY < footerTop, frame.height > 35 else { continue }
+                // Inspect title glyphs, not accessibility text: a blurred row can
+                // still expose a perfectly readable label to VoiceOver.
+                let title = CGRect(x: frame.minX + 12, y: frame.minY + 8,
+                                   width: min(230, frame.width - 24), height: 20)
+                var contrastingPixels = 0
+                for y in max(0, Int((title.minY - appFrame.minY) * scale))..<min(image.height, Int((title.maxY - appFrame.minY) * scale)) {
+                    for x in max(0, Int((title.minX - appFrame.minX) * scale))..<min(image.width, Int((title.maxX - appFrame.minX) * scale)) {
+                        let offset = y * context.bytesPerRow + x * 4
+                        let r = Int(pixels[offset]), g = Int(pixels[offset + 1]), b = Int(pixels[offset + 2])
+                        if (dark ? min(r, g, b) > 185 : max(r, g, b) < 90) && max(r, g, b) - min(r, g, b) < 15 { contrastingPixels += 1 }
+                    }
+                }
+                if contrastingPixels <= 35 {
+                    let attachment = XCTAttachment(screenshot: screenshot)
+                    attachment.name = "Unreadable sidebar row - \(row.label)"
+                    attachment.lifetime = .keepAlways; add(attachment)
+                }
+                XCTAssertGreaterThan(contrastingPixels, 35, "Visible note title must remain sharp: \(row.label), frame \(frame), app \(appFrame), image \(image.width)x\(image.height), orientation \(screenshot.image.imageOrientation.rawValue)")
+                checked += 1
+            }
+            XCTAssertGreaterThan(checked, 2, "Must inspect several visible note rows")
+        }
+
+        for mode in ["Dark", "Light"] {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+            app.launch()
+            XCTAssertTrue(app.textFields["notesListSearchField"].waitForExistence(timeout: 15))
+            let list = app.collectionViews.firstMatch
+            XCTAssertTrue(list.waitForExistence(timeout: 5))
+            for _ in 0..<4 { list.swipeUp(); try assertVisibleRowsAreSharp(dark: mode == "Dark") }
+            for _ in 0..<3 { list.swipeDown(); try assertVisibleRowsAreSharp(dark: mode == "Dark") }
+            let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "notesListNoteRow-")).allElementsBoundByIndex.first { $0.isHittable }
+            try XCTUnwrap(row).tap()
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 5))
+            try assertVisibleRowsAreSharp(dark: mode == "Dark")
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Mac-style date rows after scrolling - \(mode)"
+            attachment.lifetime = .keepAlways; add(attachment)
+            app.terminate()
+        }
+    }
+
     @MainActor func testSettingsPlacementKeepsIPadWindowControlsClear() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-selectedThemeColor", "Purple"]

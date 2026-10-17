@@ -26,6 +26,7 @@ import Combine
     private var inference: Task<Void, Never>?
     #if DEBUG
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
+    var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
     #endif
     private var recordingLease: UUID?
     private var stopTask: Task<Void, Never>?
@@ -219,11 +220,27 @@ import Combine
                     } catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }
                 }
+                var generatedTags: [String]?
+                var tagError: Error?
+                streamingSummaryViewModel.progress = .organizingTags
+                do {
+                    let library = try persistenceController.tagLibrary()
+                    #if DEBUG
+                    if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
+                    else { generatedTags = try await LocalNoteTags.generate(from: result, library: library,
+                        locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")) }
+                    #else
+                    generatedTags = try await LocalNoteTags.generate(from: result, library: library,
+                        locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
+                    #endif
+                } catch is CancellationError { throw CancellationError() }
+                catch { tagError = error }
                 try Task.checkCancellation(); guard !note.isDeleted else { return }
                 try persistenceController.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle))
+                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
                 JotleyEngagement.shared.completedSummary(result: result)
-                if let titleError { report(LocalError.message("Summary saved, but the title could not be generated: \(titleError.localizedDescription)")) }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
+                if !warnings.isEmpty { report(LocalError.message("Summary saved. " + warnings.joined(separator: " "))) }
                 NotificationCenter.default.post(name: Notification.Name("SummaryGenerationComplete"), object: nil,
                     userInfo: ["noteID": note.objectID, "summary": result])
             } catch is CancellationError { } catch { report(error) }

@@ -75,3 +75,21 @@ The shared summary renderer now measures its cards eagerly while output grows, i
 Follow-up: streaming filler prefixes (for example `- No decisions are…`) are held until the line ends, so the existing completed-summary filler filter does not first create and then remove a card. Legitimate points starting with No are retained once complete. Both the expanded streaming-prefix regression and the structured-summary grouping test passed on iPad Simulator.
 
 The streaming regression now checks every character prefix of None, Nothing, N/A and a complete No-decisions filler sentence, including intermediate Non/Noth fragments. This exhaustive prefix test passed on iPad Simulator.
+
+## Library-aware summary tags and sidebar controls — October 17, 2026
+
+Every successful summary/regeneration now requests up to five broad topic tags from the installed Apple model. A bounded library snapshot prioritizes relevant and established buckets; exact spelling, punctuation/case aliases and common AI aliases resolve to existing Tag entities. A completed save replaces only this note's tag relationships. Other notes and the library remain intact. Cancellation or a tagging error preserves existing tags; a tagging error still saves the completed summary and reports that tags were kept. Summary fields, tag relationships and any new Tag entities roll back together after a rejected save.
+
+The iPad edition on Mac uses ordinary date rows in place of pinned date headers. The installed 379 app reproduced blur over prior date groups while their labels remained readable through accessibility; this workaround removes those header material surfaces. Real iPhone/iPad devices retain native pinned headers. A Simulator-only override exercises the Mac presentation without compiling a test switch into releases.
+
+The native Mac + action moved from the note detail header to the bottom right of the notes list. Settings is at bottom left. Both float over the list without the old toolbar strip, border or trash button; existing menu/keyboard deletion remains available.
+
+Verified before packaging:
+
+- Shared package: 36 tests executed, eight opt-in hardware/model tests skipped, zero failures (28 passed). Covers tag replacement, entity reuse, five-tag cap, aliases, bounded large-library candidates and transactional rollback while preserving unrelated edits.
+- Installed Apple model acceptance test passed separately in 1.46 seconds, selecting the existing AI and Design buckets without Gardening; cancellation passed. An earlier longer instruction triggered an Apple guardrail; simplified classification instructions passed. This is one synthetic acceptance example, not a guarantee for every note or language.
+- iPad Simulator summary-manager integration passed: success replaces tags, failed tagging retains tags and saves the summary, cancellation during tagging preserves the previous summary and tags.
+- Native Mac signed development build passed. The existing Mac routing/UI harness passed with the added real-view-model tagging checks. The actual native Mac window was inspected: gear bottom left, + bottom right, no trash or footer strip, no + in note detail.
+- All 198 tracked public source/assets passed the existing credential-pattern heuristic with zero findings. This is a pattern scan, not a proof of absence.
+
+Simulator visual verification initially hit a runner launch failure and then an incorrectly oriented screenshot measurement. The pixel check was corrected to use a portrait full-screen capture and cached geometry. Final iPad Simulator scrolling check passed in dark and light appearances: 48 fixture notes across 16 dates, repeated scrolling in both directions, note selection and pixel-level title contrast checks. Result: `/tmp/jotley-sidebar-inline-v6.xcresult`. No tutorial changes are part of this update.

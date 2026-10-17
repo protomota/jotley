@@ -28,7 +28,7 @@ struct JotleyiOSApp: App {
                         if let note = object as? Note {
                             note.summary = sample.summary
                             note.summaryType = sample.template ?? (sample.summary.isEmpty ? "default-summary" : "Concise")
-                            note.timestamp = Date().addingTimeInterval(Double(-index * 3600))
+                            note.timestamp = Date().addingTimeInterval(sample.timestampOffset ?? Double(-index * 3600))
                             note.folder = Folder.getOrCreate(named: sample.folder, in: fixtureStore.context)
                             for tag in sample.tags { try note.addTagByName(tag, in: fixtureStore.context) }
                             note.setTranscriptUtterances(sample.transcript.components(separatedBy: "\n\n").enumerated().map { TranscriptUtterance(text: $0.element, start: Double($0.offset * 25), end: Double(($0.offset + 1) * 25)) })
@@ -104,6 +104,7 @@ private struct ScreenshotNote: Decodable {
     let transcript: String
     let summary: String
     var template: String?
+    var timestampOffset: Double?
 }
 #endif
 

@@ -282,6 +282,7 @@ final class LiveTranscriptionManager: ObservableObject {
     var simulatedSpeechStart: (@MainActor (@escaping @Sendable (LocalTranscript) async -> Void) async throws -> any MobileSpeechSession)?
     var simulatedCaptureStart: (@MainActor () async -> Void)?
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
+    var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
     #endif
     private var sessionID: UUID?
     private var endingSession = false
@@ -733,15 +734,29 @@ final class LiveTranscriptionManager: ObservableObject {
                     catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }
                 }
+                var generatedTags: [String]?
+                var tagError: Error?
+                self.summaryProgress = .organizingTags; runtime.update(.organizingTags)
+                do {
+                    let library = try store.tagLibrary()
+                    #if DEBUG && targetEnvironment(simulator)
+                    if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
+                    else { generatedTags = try await LocalNoteTags.generate(from: result, library: library, locale: locale) }
+                    #else
+                    generatedTags = try await LocalNoteTags.generate(from: result, library: library, locale: locale)
+                    #endif
+                } catch is CancellationError { throw CancellationError() }
+                catch { tagError = error }
                 try Task.checkCancellation()
                 guard !note.isDeleted, note.transcription == job.checkpoint.input else {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
                 }
                 try store.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle))
+                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
                 self.removeSummaryJob(); completed = true
                 JotleyEngagement.shared.completedSummary(result: result)
-                if let titleError { self.errorMessage = "Summary saved, but the title could not be generated: \(titleError.localizedDescription)" }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
+                if !warnings.isEmpty { self.errorMessage = "Summary saved. " + warnings.joined(separator: " ") }
             } catch is CancellationError {
                 if !self.summaryPausedBySystem { self.removeSummaryJob() }
             } catch {

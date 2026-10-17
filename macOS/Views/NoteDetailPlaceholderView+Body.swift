@@ -164,32 +164,6 @@ extension NoteDetailPlaceholderView {
 
             // Top toolbar with tab buttons
             HStack(spacing: 0) {
-                    // Left side - New Note button
-                    HStack(spacing: 8) {
-                        if hasActiveRecordingSession {
-                            Color.clear
-                                .frame(width: 40, height: 40)
-                        } else {
-                            Button {
-                                handleNewNoteButtonTapped()
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.themePrimaryAccent)
-                                        .frame(width: 40, height: 40)
-
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .accessibilityIdentifier("noteDetailNewNoteButton")
-                            .help("New Note")
-
-                        }
-                    }
-
                     Spacer()
 
                     // Center - Tab buttons (hidden during recording)
