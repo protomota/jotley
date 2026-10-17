@@ -61,7 +61,7 @@ final class ParsedNoteMarkdown: NSObject {
             // Filler such as "No decisions are mentioned" is removed by the
             // finished parser. Hold its prefixes too, rather than building a
             // card for "No decisions are" and then collapsing it on "mentioned".
-            if body == "n" || body == "n/" || body == "n/a" || body == "na"
+            if ["none", "nothing", "n/a", "na"].contains(where: { $0.hasPrefix(body) })
                 || body == "no" || body.hasPrefix("no ") || body.hasPrefix("none") || body.hasPrefix("nothing") { return true }
         }
         return text.hasPrefix("#") || text.hasPrefix("**") || text.hasPrefix("__")

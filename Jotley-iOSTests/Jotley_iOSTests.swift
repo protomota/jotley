@@ -22,6 +22,13 @@ struct Jotley_iOSTests {
             #expect(result.sections[0].items.count == 1)
         }
         let growing = "- A second point grows word by word."
+        for filler in ["- None", "- Nothing", "- N/A", "- No decisions are mentioned."] {
+            for length in 1...filler.count {
+                let result = StructuredSummary(ParsedNoteMarkdown.rendering(base + filler.prefix(length), isStreaming: true))
+                #expect(result.sections[0].items.count == 1)
+                #expect(result.sections[0].paragraphs.isEmpty)
+            }
+        }
         for length in 3...growing.count {
             let result = StructuredSummary(ParsedNoteMarkdown.rendering(base + growing.prefix(length), isStreaming: true))
             #expect(result.sections[0].paragraphs.isEmpty)
