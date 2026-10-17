@@ -4,7 +4,9 @@ struct LiveTranscriptionView: View {
     @Binding var isPresented: Bool
     var existingNote: Note? = nil
     var isNewTranscription = false
-    @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
+    // Present the same session manager explicitly for new and continued
+    // transcription, without relying on sheet environment inheritance.
+    @ObservedObject var transcriptionManager: LiveTranscriptionManager
     @State var isFinishing = false
     @State private var didAttemptStart = false
     @State private var hasStartedTranscription = false

@@ -119,7 +119,7 @@ extension NoteDetailView {
         .sheet(isPresented: $showingTranscriptEditor, onDismiss: { selectedTab = "Transcript" }) { MobileNoteTextEditor(note: note, field: .transcript) }
         .sheet(isPresented: $showingSummaryEditor, onDismiss: { selectedTab = hasSummary ? "Summary" : "Transcript" }) { MobileNoteTextEditor(note: note, field: .summary) }
         .sheet(isPresented: $showingAskAI) { LocalAskNoteView(note: note) }
-        .sheet(isPresented: $showingTranscription, onDismiss: { selectedTab = "Transcript" }) { LiveTranscriptionView(isPresented: $showingTranscription, existingNote: note) }
+        .sheet(isPresented: $showingTranscription, onDismiss: { selectedTab = "Transcript" }) { LiveTranscriptionView(isPresented: $showingTranscription, existingNote: note, transcriptionManager: transcriptionManager) }
         .sheet(isPresented: $showingAddTag) {
             AddTagSheetView(note: note, isPresented: $showingAddTag, newTagText: $newTagText, currentTags: $currentTags, onSave: transcriptionManager.saveEdits)
         }

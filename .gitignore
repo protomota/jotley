@@ -67,3 +67,6 @@ releases-local/
 *.p8
 *.mobileprovision
 *.provisionprofile
+
+# Local Xcode user state is not part of the source package.
+xcuserdata/

@@ -93,7 +93,6 @@
 		A2EA91BD307B452800AAB201 /* NotesListView+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA914E307B452800AAB201 /* NotesListView+Layout.swift */; };
 		A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91C9307B453D00AAB201 /* Comfortaa-Bold.ttf */; };
 		A2EA91E5307B453D00AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */; };
-		A2F10001307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10003307E000100AAB201 /* StructuredSummaryView.swift */; };
 		A2EA91E6307B453D00AAB201 /* RecordingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */; };
 		A2EA91E7307B453D00AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */; };
 		A2EA91E8307B453D00AAB201 /* RecordingMarker+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA91C6307B453D00AAB201 /* RecordingMarker+Extensions.swift */; };
@@ -153,7 +152,6 @@
 		A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA926F307B532700AAB201 /* ServiceConstants.swift */; };
 		A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9264307B532700AAB201 /* FilterAndSortState.swift */; };
 		A2EA9293307B532700AAB201 /* SummaryStreamingDots.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */; };
-		A2F10002307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10004307E000100AAB201 /* StructuredSummaryView.swift */; };
 		A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9270307B532700AAB201 /* SharedPersistence.swift */; };
 		A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9266307B532700AAB201 /* JotleyNotes.xcdatamodeld */; };
 		A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9271307B532700AAB201 /* SummarizationService.swift */; };
@@ -165,6 +163,8 @@
 		A2EA929D307BB12900AAB201 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = A2EA929B307BB12900AAB201 /* LICENSE */; };
 		A2EA929E307BC9CF00AAB201 /* Rambo-BSD-2-Clause.txt in Resources */ = {isa = PBXBuildFile; fileRef = A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */; };
 		A2EB8BED307D4385008E0696 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A2EB8BEC307D4385008E0696 /* Sparkle */; };
+		A2F10001307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10003307E000100AAB201 /* StructuredSummaryView.swift */; };
+		A2F10002307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10004307E000100AAB201 /* StructuredSummaryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -343,7 +343,6 @@
 		A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
 		A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
 		A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
-		A2F10003307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		A2EA91DD307B453D00AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
 		A2EA91DE307B453D00AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA91DF307B453D00AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
@@ -400,7 +399,6 @@
 		A2EA927A307B532700AAB201 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
 		A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEmptyStateContent.swift; sourceTree = "<group>"; };
 		A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryStreamingDots.swift; sourceTree = "<group>"; };
-		A2F10004307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		A2EA927E307B532700AAB201 /* JotleyNotes.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = JotleyNotes.xcdatamodel; sourceTree = "<group>"; };
 		A2EA927F307B532700AAB201 /* JotleyNotes 2.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 2.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9280307B532700AAB201 /* JotleyNotes 3.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 3.xcdatamodel"; sourceTree = "<group>"; };
@@ -408,6 +406,8 @@
 		A2EA9282307B532700AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA929B307BB12900AAB201 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		A2F10003307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
+		A2F10004307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		DB11239D313826CEC1D213A0 /* AppIcon.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		F47AD93E2BF5B61E005B75AC /* Jotley.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jotley.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -1609,7 +1609,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley records audio directly from your microphone and saves it on this device.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1630,7 +1630,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
@@ -1654,7 +1654,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley records audio directly from your microphone and saves it on this device.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1675,7 +1675,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;

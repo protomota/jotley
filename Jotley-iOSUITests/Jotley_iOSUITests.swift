@@ -394,6 +394,37 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.buttons["transcriptionStopButton"].exists)
     }
 
+    @MainActor func testSwitchingNotesResetsDetailAndContinueUsesSameTranscriber() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
+            throw XCTSkip("Split-view selection regression requires iPad")
+        }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Summary note A","folder":"","tags":[],"transcript":"Transcript belonging to the first note.","summary":"## Decisions\n- Approved first note."},{"title":"Transcript note B","folder":"","tags":[],"transcript":"Transcript belonging only to the second note.","summary":""}]"###
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launch()
+        let first = app.buttons.containing(.staticText, identifier: "Summary note A").firstMatch
+        let second = app.buttons.containing(.staticText, identifier: "Transcript note B").firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 15))
+        for _ in 0..<3 {
+            first.tap()
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 5))
+            XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Summary note A")
+            XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 5))
+            second.tap()
+            XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Transcript note B")
+            XCTAssertTrue(app.staticTexts["Transcript belonging only to the second note."].exists)
+            XCTAssertFalse(app.staticTexts["Approved first note."].exists)
+        }
+        app.buttons["noteDetailContinueTranscriptionButton"].tap()
+        XCTAssertTrue(app.buttons["transcriptionStopButton"].waitForExistence(timeout: 10))
+        app.buttons["transcriptionCloseButton"].tap()
+        XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Transcript note B")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Completed transcript.")).firstMatch.exists)
+    }
+
     @MainActor func testStopAndCloseSaveWithoutConfirmationAndRejectLateWords() throws {
         for action in ["transcriptionStopButton", "transcriptionCloseButton"] {
             let app = XCUIApplication()

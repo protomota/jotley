@@ -43,3 +43,22 @@ The iPhone/iPad build 2.0 (361) was re-verified as VALID / IN_BETA_TESTING in th
 The mounted Mac app passed deep/strict signature and Gatekeeper checks; its original bundle identity, version, enabled Sparkle feed and notarization ticket were verified. The installer layout checks passed. DMG SHA-256: `70ccf1efa21404cac3e939707d7af4f58177cca00542006e2f3085eb9a808930` (4,715,624 bytes). The website production build and all three focused download checks passed locally and on production, including real downloaded bytes and the Ed25519 update signature. Website release commit: [1824a68](https://github.com/protomota/jotley-site/commit/1824a68643dc6b39166be358895b34e06f518f3e).
 
 The shared Swift package passed 25 tests, with seven opt-in model checks skipped and zero failures. This release audit did not repeat physical-device microphone/background or model-performance tests, and did not submit or replace an App Store review build.
+
+
+## Experimental iPad app on Mac — October 17, 2026
+
+Local crash reports for the installed iPad edition 2.1 (372) on macOS 27.0.1 show a SwiftUI `EnvironmentObject.error()` trap when opening transcription. The transcription sheet now requires its existing session manager as an observed initializer dependency for both new and continued sessions. It no longer relies on sheet environment-object inheritance. The audio capture implementation is unchanged: microphone-only live transcription, with no saved audio files or system-audio capture.
+
+The selected note now has an explicit view identity so its fetch, tab and editing state reset when a different note opens. A regular-width split view and its row/finish navigation now use the same decision; a missing size class uses stack navigation. The note-selection regression failed against the previous view identity, even allowing five seconds for the Summary action to appear, and passed with the fix. The test repeatedly switches a summarized note and a transcript-only note, then continues transcription into the correct note.
+
+The Designed for iPad Mac destination was enabled through Xcode's General settings; no Catalyst target was added. Xcode also normalized the existing source-file reference ordering and moved the microphone privacy string into the generated Info settings. The actual signed development app's prompt was verified to say live on-device transcription with no saved audio files. Local Xcode user state is ignored. The native Mac app source and App Store Connect availability were not changed.
+
+Verification:
+
+- Final iPad Pro 13-inch (M5), iPadOS 27 Simulator: two UI cases passed, zero failures/skips, covering repeated note selection and new/continued transcription, Stop/Done completion, automatic opening of the saved note, and rejection of late callbacks. Result: `/tmp/jotley-ipad-on-mac-final.xcresult`.
+- iPhone 17 Pro Max, iOS 27 Simulator: start/stop/Done/continue lifecycle regression passed, zero failures/skips. Result: `/tmp/jotley-ipad-on-mac-phone.xcresult`.
+- An initial note-selection test referenced an obsolete button identifier; corrected before the final verification. The separate comparison with the previous note identity is an expected failing regression check, not a passing result.
+- Shared package: 25 passed, seven opt-in model tests skipped, zero failures.
+- Unsigned iPhone/iPad SDK and Simulator builds passed. A real Designed for iPad Mac build signed with the existing development identity/profile passed; its signature and generated microphone privacy text were checked. Signing settings were supplied to the local build command, not stored in source.
+- Full on-Mac functional validation remains blocked. The installed iPad edition's native UI connection repeatedly timed out. Xcode rejected the Mac UI-test destination with `UI tests are not supported on My Mac (Designed for iPad)`. An app-hosted microphone check then failed before executing: the test host was killed before establishing its test connection. That unexecuted check was removed. These failures do not establish a sandbox restriction or prove that microphone capture works on Mac.
+- Source-tree credential-pattern scan passed with no findings. No new TestFlight build, App Store submission, Mac availability toggle, or website deployment was performed. This branch is a compatibility fix for review, not a verified iPad-on-Mac microphone release.
