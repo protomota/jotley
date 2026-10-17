@@ -96,6 +96,8 @@ struct StructuredSummary {
                 if !current.isEmpty || current.title != nil { sections.append(current) }
                 current = Section(id: line.id, title: Self.headingTitle(plain))
             } else if let marker = line.marker {
+                // A bare "-" or a "No formulas provided." filler has nothing to show.
+                guard !plain.isEmpty, !Self.isPlaceholder(plain) else { continue }
                 let (label, body) = Self.split(line.text)
                 current.items.append(Item(id: line.id, marker: marker, indentation: line.indentation,
                     label: label, body: body, fullText: plain))
@@ -125,6 +127,15 @@ struct StructuredSummary {
         }
     }
 
+    private static let placeholderPattern = try! NSRegularExpression(
+        pattern: #"^(none|n/?a|nothing|no\b.{0,40}\b(provided|mentioned|discussed|given|stated|identified|noted|specified))\.?$"#,
+        options: [.caseInsensitive])
+
+    static func isPlaceholder(_ plain: String) -> Bool {
+        let text = plain.trimmingCharacters(in: .whitespaces)
+        return placeholderPattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
+    }
+
     static func headingTitle(_ plain: String) -> String {
         var title = plain
         while title.hasSuffix(":") { title.removeLast() }
@@ -143,6 +154,11 @@ struct StructuredSummary {
               !prefix.allSatisfy(\.isNumber), !rest.isEmpty, !rest.hasPrefix("//") else { return (nil, text) }
         var body = AttributedString(text[afterColon...])
         while body.characters.first?.isWhitespace == true { body.removeSubrange(body.startIndex..<body.characters.index(after: body.startIndex)) }
+        // "**Sam**: sends the list" reads as a sentence once the name becomes a chip.
+        if let first = body.characters.first, first.isLowercase {
+            let end = body.characters.index(after: body.startIndex)
+            body.replaceSubrange(body.startIndex..<end, with: AttributedString(String(first).uppercased(), attributes: body[body.startIndex..<end].runs.first?.attributes ?? AttributeContainer()))
+        }
         return (AttributedString(prefix), body)
     }
 

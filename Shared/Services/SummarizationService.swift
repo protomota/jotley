@@ -35,19 +35,19 @@ public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
     // Condensed for Apple's local context window; retain each original template's purpose.
     public var prompt: String {
         switch self {
-        case .auto: return "Write a Markdown summary with adaptive, content-specific headings and structured key points. Explain what happened, what changed, next steps and unresolved questions. Include decisions, actions, risks and key facts only when present."
-        case .lecture: return "Write Markdown lecture notes with key concepts, definitions, examples, formulas and questions for review. Preserve concrete facts and the lecturer's reasoning."
-        case .concise: return "Write a concise Markdown summary with key points."
-        case .meeting: return "Write Markdown meeting notes with decisions, action items, owners and open questions. Omit sections without evidence."
-        case .oneToOne: return "Write Markdown 1:1 meeting notes covering goals, feedback, development, decisions and next steps between the participants."
-        case .allHands: return "Write Markdown all-hands meeting notes covering company announcements, metrics, decisions and next steps."
-        case .brainstorming: return "Write Markdown brainstorming notes covering ideas, themes, evaluations, selected ideas and agreed next steps."
-        case .networking: return "Write Markdown networking notes covering who met, shared interests, value offers and relationship follow-ups."
-        case .projectKickoff: return "Write Markdown project kickoff notes covering objectives, scope, roles, milestones, risks and next steps."
-        case .sprintPlanning: return "Write Markdown sprint planning notes covering the sprint goal, committed backlog items, task breakdown, estimates, capacity and next steps."
-        case .standUp: return "Write Markdown stand-up notes separating yesterday's progress, today's plans and blockers by person when identified. Include dependencies and actions to unblock work."
-        case .weeklyStatus: return "Write Markdown weekly project status notes covering progress, blockers, key metrics, decisions and next steps."
-        case .study: return "Write Markdown study notes with key concepts, definitions and questions for review."
+        case .auto: return "Write a Markdown summary. Choose headings that fit this content, such as Key Points, Decisions, Action Items, Risks and Open Questions."
+        case .lecture: return "Write Markdown lecture notes. Headings to choose from: Key Concepts, Definitions, Examples, Formulas (only when the lecturer gives one), Review Questions. Preserve concrete facts and the lecturer's reasoning."
+        case .concise: return "Write a short Markdown summary: the overview, then a single Key Points section of at most six items."
+        case .meeting: return "Write Markdown meeting notes. Headings to choose from: Key Points, Decisions, Action Items, Open Questions."
+        case .oneToOne: return "Write Markdown 1:1 meeting notes. Headings to choose from: Goals, Feedback, Growth, Decisions, Action Items."
+        case .allHands: return "Write Markdown all-hands notes. Headings to choose from: Announcements, Metrics, Decisions, Team Questions, Action Items."
+        case .brainstorming: return "Write Markdown brainstorming notes. Headings to choose from: Ideas, Evaluation, Selected Ideas, Action Items."
+        case .networking: return "Write Markdown networking notes. Headings to choose from: People, Shared Interests, Offers, Follow-ups."
+        case .projectKickoff: return "Write Markdown project kickoff notes. Headings to choose from: Objectives, Scope, Roles, Milestones, Risks, Action Items."
+        case .sprintPlanning: return "Write Markdown sprint planning notes. Headings to choose from: Sprint Goal, Committed Work (with any stated estimates), Capacity, Risks, Action Items."
+        case .standUp: return "Write Markdown stand-up notes. Headings to choose from: Yesterday, Today, Blockers. Begin each item with the speaker's name in bold, then what they did, plan or are blocked on. List every blocker under Blockers."
+        case .weeklyStatus: return "Write Markdown weekly status notes. Headings to choose from: Progress, Blockers, Metrics, Decisions, Action Items."
+        case .study: return "Write Markdown study notes. Headings to choose from: Key Concepts, Definitions, Review Questions."
         }
     }
 }
@@ -255,7 +255,7 @@ public enum LocalSummary {
     static let extractionPrompt = "Extract the key facts, decisions and action items from this source in compact notes. Preserve names, dates, numbers, decisions and unresolved questions across the entire source. Do not repeat facts or add a preamble."
     /// Jotley renders the opening overview as a card and each later heading as a
     /// visual section, so every template shares this Markdown shape.
-    static let structurePrompt = "Format: start with a \"## Summary\" heading and a two or three sentence overview. Then give each section a \"## \" heading and \"- \" list items. Begin a list item with a short bold label and a colon when a label helps the reader scan."
+    static let structurePrompt = "Format: start with \"## Summary\" and a two or three sentence overview. Then use \"## \" headings with \"- \" list items, and give each heading its own section. Start an item with a short bold label and a colon when it helps scanning. In Action Items, the bold label is the name of the person the source says is responsible, followed by the task; leave the label out when nobody is named. Use only headings the source supports and skip the rest. Never write an empty section or item, a placeholder such as none or not discussed, or an estimate, owner, date or number the source does not state. State each fact once; do not repeat it under another heading."
     static func finalPrompt(_ template: LocalSummaryTemplate) -> String {
         template.prompt + "\n" + structurePrompt + "\nCreate one summary. Combine overlapping facts; do not repeat sections. End after the summary."
     }

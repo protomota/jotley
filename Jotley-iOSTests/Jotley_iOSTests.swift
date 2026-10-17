@@ -73,6 +73,11 @@ struct Jotley_iOSTests {
         #expect(legacy.overview.map { String($0.paragraphs[0].text.characters) } == "The team reviewed the launch.")
         #expect(legacy.sections.map(\.title) == ["Key Points", "Action Items"])
         #expect(legacy.sections[1].style == .checklist && legacy.sections[1].paragraphs.count == 1)
+        let filler = StructuredSummary(ParsedNoteMarkdown.rendering("## Summary\nA lecture.\n\n## Formulas\n- No formulas provided.\n\n## Examples\n- \n- None\n- Chunking 1-9-8-4.\n- No later than Friday."))
+        #expect(filler.sections.map(\.title) == ["Examples"])
+        #expect(filler.sections[0].items.map(\.fullText) == ["Chunking 1-9-8-4.", "No later than Friday."])
+        let owner = StructuredSummary(ParsedNoteMarkdown.rendering("## Action Items\n- **Sam**: sends the list."))
+        #expect(String(owner.sections[0].items[0].body.characters) == "Sends the list.")
         let untitled = StructuredSummary(ParsedNoteMarkdown.rendering("# Decisions\n- Keep it."))
         #expect(untitled.overview == nil && untitled.sections.count == 1)
     }

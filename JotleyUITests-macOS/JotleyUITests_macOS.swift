@@ -499,8 +499,9 @@ private final class RoutingRefusedNote: Note {
         let state = SummaryObserverState(); state.summary = fenced
         let host = NSHostingView(rootView: AnyView(SummaryObserverView(note: note, state: state)))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-            styleMask: [.borderless], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
+            styleMask: [.titled], backing: .buffered, defer: false)
+        // A titled window can become key, so text focus behaves as it does in the app.
+        window.isReleasedWhenClosed = false; window.contentView = host; window.makeKeyAndOrderFront(nil)
         defer { window.close() }
         func textViews(_ view: NSView) -> [NSTextView] {
             (view as? NSTextView).map { [$0] } ?? view.subviews.flatMap(textViews)
@@ -516,11 +517,38 @@ private final class RoutingRefusedNote: Note {
               item.map({ String($0.body.characters) }) == "Record live audio." else {
             throw LocalError.message("Fenced summary displayed as code instead of formatted text.")
         }
+        state.summary = "## Summary\nKeep the original app.\n\n## Key Points\n- Record live audio."
+        try await Task.sleep(for: .milliseconds(200))
         state.inlineEdit = 1
         try await Task.sleep(for: .milliseconds(350))
         guard state.inlineEdit == 0, state.rawMarkdown else {
             throw LocalError.message("Explicit summary editing was not consumed.")
         }
+        // Edit the Markdown the way a person types it, then leave the editor.
+        guard let editor = textViews(host).first(where: { $0.isEditable }),
+              editor.string.contains("- Record live audio.") else {
+            throw LocalError.message("The summary editor did not show the Markdown.")
+        }
+        window.makeFirstResponder(editor)
+        let end = NSRange(location: (editor.string as NSString).length, length: 0)
+        let addition = "\n\n## Action Items\n- **Maya**: Share the edited summary."
+        if editor.shouldChangeText(in: end, replacementString: addition) {
+            editor.textStorage?.replaceCharacters(in: end, with: addition)
+            editor.didChangeText()
+        }
+        try await Task.sleep(for: .milliseconds(350))
+        try await Task.sleep(for: .milliseconds(350))
+        let edited = StructuredSummary(ParsedNoteMarkdown.rendering(state.summary))
+        let editedItem = edited.sections.last?.items.first
+        let editedLabel = editedItem?.label.map { String($0.characters) }
+        let editedBody = editedItem.map { String($0.body.characters) }
+        guard edited.sections.last?.title == "Action Items",
+              editedLabel == "Maya", editedBody == "Share the edited summary." else {
+            throw LocalError.message("Typed summary Markdown was not saved as structured sections: label=\(editedLabel ?? "nil") body=\(editedBody ?? "nil") sections=\(edited.sections.map(\.title))")
+        }
+        print("PASS: Markdown typed into the Mac summary editor is saved and parses into structured sections.")
+        state.summary = fenced
+        try await Task.sleep(for: .milliseconds(200))
         state.generating = true
         try await Task.sleep(for: .milliseconds(350))
         state.summary = fenced; state.generating = false

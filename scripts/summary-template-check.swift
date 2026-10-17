@@ -43,12 +43,55 @@ The students idea feels strongest because lectures are a natural fit. The share 
 We picked students and the tutorial series. Next step: Maya drafts the tutorial outline, and Sam contacts two student groups this month.
 """
 
+let oneToOne = """
+Thanks for making time, Jordan. How are things going since the onboarding redesign shipped?
+Pretty well. I'd like to lead the onboarding research next quarter, and I want more time with customers.
+That makes sense. My feedback is that your research summaries are strong, but share them earlier so design can react.
+Good point. I'll send a short weekly digest. I also want to grow in presenting to leadership.
+Let's get you the next roadmap review. Decision: you'll own onboarding research starting in January.
+Next steps: you draft the research plan by November 6, and I'll set up three customer calls.
+"""
+let allHands = """
+Good morning everyone. Big news first: Jotley 2.1 ships on Friday, October 23.
+Downloads grew 18 percent last month, and the Mac app now has 4,000 weekly active users.
+We decided to keep every feature free and to focus Q4 on reliability.
+A question from the team: will we hire for support? Answer: yes, one role opens in November.
+Next steps: each team shares Q4 goals by next Friday.
+"""
+let sprint = """
+Sprint 14 planning. Goal: ship structured summaries for 2.1.
+Committed work: the summary renderer, template prompt updates, and App Store screenshots.
+Leo estimates the renderer at three days. Priya says the prompt updates are two days.
+We have four engineers this sprint, but Jun is out on Thursday.
+Risk: the simulator image for UI tests may not be ready.
+Next step: Priya shares the simulator image today, and we demo on Friday.
+"""
+let kickoff = """
+Welcome to the kickoff for the Jotley Windows exploration. Objective: decide by December whether a Windows version is feasible.
+Scope: research only, no production code. Roles: Maya leads research, Sam evaluates speech engines, Alex owns the budget.
+Milestones: engine comparison by November 15, recommendation by December 10.
+Risk: on-device speech quality on Windows may not match Apple's.
+Next step: Sam sends the engine shortlist by Monday.
+"""
+let status = """
+Weekly status for the 2.1 release. Progress: the summary renderer is merged and screenshots are approved.
+Blocker: TestFlight build processing was slow on Tuesday.
+Metrics: 42 TestFlight testers, crash-free sessions at 99.8 percent.
+Decision: we ship Mac and iPhone on the same day.
+Next steps: submit for review on Monday and update the website download.
+"""
+
 func source(for template: LocalSummaryTemplate) -> String {
     switch template {
     case .lecture, .study: return lecture
     case .standUp: return standUp
     case .networking: return networking
     case .brainstorming: return brainstorm
+    case .oneToOne: return oneToOne
+    case .allHands: return allHands
+    case .sprintPlanning: return sprint
+    case .projectKickoff: return kickoff
+    case .weeklyStatus: return status
     default: return meeting
     }
 }
@@ -79,7 +122,10 @@ struct Result: Codable { let template: String; let seconds: Double; let markdown
         }
         if let t = section.title { texts.append(t) }
     }
-    let leaks = texts.filter { $0.contains("**") || $0.contains("##") || $0.contains("```") || $0.hasPrefix("#") || $0.contains("__") }
+    let placeholders = ["not discussed", "not mentioned", "not specified", "not provided", "n/a", "none mentioned", "no details"]
+    var leaks = texts.filter { $0.contains("**") || $0.contains("##") || $0.contains("```") || $0.hasPrefix("#") || $0.contains("__") }
+    leaks += texts.filter { text in placeholders.contains { text.lowercased().contains($0) } || StructuredSummary.isPlaceholder(text) }.map { "placeholder: " + $0 }
+    leaks += markdown.components(separatedBy: "\n").filter { ["-", "*", "+"].contains($0.trimmingCharacters(in: .whitespaces)) }.map { _ in "empty list item" }
     return (summary.overview != nil, summary.sections.compactMap(\.title), summary.sections.reduce(0) { $0 + $1.items.count }, leaks)
 }
 
