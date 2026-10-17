@@ -267,14 +267,21 @@ struct StructuredSummaryBlockView: View {
             .accessibilityIdentifier("structuredSummaryOverview")
         case .section(let section):
             VStack(alignment: .leading, spacing: 12) {
-                if let title = section.title {
+                if section.title != nil { titleRow(section) }
+                if !section.paragraphs.isEmpty { paragraphsCard(section) }
+                if !section.items.isEmpty { itemsView(section) }
+            }
+        }
+    }
+
+    func titleRow(_ section: StructuredSummary.Section) -> some View {
                     HStack(spacing: 12) {
                         Image(systemName: section.systemImage)
                             .font(.headline).foregroundStyle(palette.accent)
                             .frame(width: iconBox, height: iconBox)
                             .background(palette.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             .accessibilityHidden(true)
-                        Text(title).font(.title3.weight(.semibold)).foregroundStyle(palette.text)
+                        Text(section.title ?? "").font(.title3.weight(.semibold)).foregroundStyle(palette.text)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 0)
                         if section.items.count > 1 {
@@ -285,18 +292,15 @@ struct StructuredSummaryBlockView: View {
                                 .accessibilityHidden(true)
                         }
                     }
-                }
-                if !section.paragraphs.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(section.paragraphs) { line in
-                            Text(line.text).font(.body).foregroundStyle(palette.text).textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }.padding(16).background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                if !section.items.isEmpty { itemsView(section) }
+    }
+
+    func paragraphsCard(_ section: StructuredSummary.Section) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(section.paragraphs) { line in
+                Text(line.text).font(.body).foregroundStyle(palette.text).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
+        }.padding(16).background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     @ViewBuilder
@@ -325,32 +329,47 @@ struct StructuredSummaryBlockView: View {
         case .numbered:
             VStack(spacing: 10) {
                 ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
-                    HStack(alignment: .top, spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.callout.weight(.bold).monospacedDigit()).foregroundStyle(.white)
-                            .frame(width: numberSize, height: numberSize).background(Circle().fill(palette.accent))
-                            .accessibilityHidden(true)
-                        groupText(group, emphasizeLabel: true)
-                    }
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    numberedCard(index: index, group: group)
                 }
             }
         default:
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
                     if index > 0 { Divider().padding(.leading, 44) }
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: Self.rowImage(section.style))
-                            .font(.title3).foregroundStyle(section.style == .risks ? Color.orange : palette.accent)
-                            .frame(width: 26).padding(.top, 1).accessibilityHidden(true)
-                        groupText(group, emphasizeLabel: false)
-                    }.padding(.vertical, 12)
+                    row(section, group: group)
                 }
             }
             .padding(.horizontal, 14)
             .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+    }
+
+    func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(index + 1)")
+                .font(.callout.weight(.bold).monospacedDigit()).foregroundStyle(.white)
+                .frame(width: numberSize, height: numberSize).background(Circle().fill(palette.accent))
+                .accessibilityHidden(true)
+            groupText(group, emphasizeLabel: true)
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func row(_ section: StructuredSummary.Section, group: [StructuredSummary.Item]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: Self.rowImage(section.style))
+                .font(.title3).foregroundStyle(section.style == .risks ? Color.orange : palette.accent)
+                .frame(width: 26).padding(.top, 1).accessibilityHidden(true)
+            groupText(group, emphasizeLabel: false)
+        }.padding(.vertical, 12)
+    }
+
+    /// A list row on its own card, so a PDF can break pages between rows.
+    func rowCard(_ section: StructuredSummary.Section, group: [StructuredSummary.Item]) -> some View {
+        row(section, group: group).padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func groupText(_ group: [StructuredSummary.Item], emphasizeLabel: Bool) -> some View {
@@ -412,7 +431,11 @@ struct StructuredSummaryBlockView: View {
 }
 
 /// Renders a summary as a paginated PDF that matches the in-app layout.
+/// Sections are split into their heading, cards and rows, so pages fill
+/// before breaking and a heading always stays with what follows it.
 @MainActor enum SummaryPDF {
+    private struct Piece { let view: AnyView; var keepWithNext = false; var gapAfter: CGFloat = 10 }
+
     static func write(title: String, date: Date?, markdown: String, to url: URL) throws {
         let page = CGSize(width: 612, height: 792), margin: CGFloat = 42, width = page.width - margin * 2
         var box = CGRect(origin: .zero, size: page)
@@ -427,25 +450,46 @@ struct StructuredSummaryBlockView: View {
                     .font(.subheadline).foregroundStyle(palette.secondary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
-        var views = [AnyView(header)]
-        views += StructuredSummary(ParsedNoteMarkdown.rendering(markdown)).blocks.map { AnyView(StructuredSummaryBlockView(block: $0, palette: palette)) }
-        var y = margin
-        var pageOpen = false
+        var pieces = [Piece(view: AnyView(header), gapAfter: 18)]
+        for block in StructuredSummary(ParsedNoteMarkdown.rendering(markdown)).blocks {
+            let view = StructuredSummaryBlockView(block: block, palette: palette)
+            guard case .section(let section) = block else {
+                pieces.append(Piece(view: AnyView(view), gapAfter: 22)); continue
+            }
+            if section.title != nil { pieces.append(Piece(view: AnyView(view.titleRow(section)), keepWithNext: true, gapAfter: 12)) }
+            if !section.paragraphs.isEmpty { pieces.append(Piece(view: AnyView(view.paragraphsCard(section)))) }
+            for (index, group) in StructuredSummaryView.groups(section.items).enumerated() {
+                pieces.append(Piece(view: section.style == .numbered
+                    ? AnyView(view.numberedCard(index: index, group: group))
+                    : AnyView(view.rowCard(section, group: group)), gapAfter: 8))
+            }
+            if let last = pieces.indices.last { pieces[last].gapAfter = 22 }
+        }
+        let renderers = pieces.map { piece -> ImageRenderer<AnyView> in
+            let renderer = ImageRenderer(content: AnyView(piece.view.frame(width: width)
+                .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .small)))
+            renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+            return renderer
+        }
+        var heights: [CGFloat] = []
+        for renderer in renderers { renderer.render { size, _ in heights.append(size.height) } }
+
+        var y = margin, pageOpen = false
         func newPage() {
             if pageOpen { pdf.endPDFPage() }
             pdf.beginPDFPage(nil); pageOpen = true; y = margin
         }
         newPage()
-        for view in views {
-            let renderer = ImageRenderer(content: view.frame(width: width)
-                .environment(\.colorScheme, .light).environment(\.dynamicTypeSize, .small))
-            renderer.proposedSize = ProposedViewSize(width: width, height: nil)
+        let bottom = page.height - margin
+        for (index, renderer) in renderers.enumerated() {
+            let height = heights[index]
+            // A heading moves with the first card under it.
+            let needed = pieces[index].keepWithNext && index + 1 < heights.count ? height + pieces[index].gapAfter + heights[index + 1] : height
+            if y > margin, y + needed > bottom, needed <= bottom - margin { newPage() }
             renderer.render { size, draw in
-                // Keep a block on one page when it fits; slice only taller blocks.
-                if y + size.height > page.height - margin, y > margin, size.height <= page.height - margin * 2 { newPage() }
                 var shown: CGFloat = 0
                 while true {
-                    let available = page.height - margin - y
+                    let available = bottom - y
                     pdf.saveGState()
                     pdf.clip(to: CGRect(x: margin, y: margin, width: width, height: available))
                     pdf.translateBy(x: margin, y: page.height - y - size.height + shown)
@@ -456,8 +500,8 @@ struct StructuredSummaryBlockView: View {
                     if shown >= size.height { break }
                     newPage()
                 }
-                y += 18
             }
+            y += pieces[index].gapAfter
         }
         if pageOpen { pdf.endPDFPage() }
         pdf.closePDF()
