@@ -229,12 +229,13 @@ struct NotesListView: View {
                                         let noteId = ensureStableNoteID(for: note)
                                         selectedNoteId = noteId
 
-                                        // On iPhone, push to note detail; on iPad, use split view selection
-                                        if horizontalSizeClass == .compact {
+                                        // Match MainTabView: only regular width uses split selection.
+                                        // A missing size class must also push on the stack.
+                                        if horizontalSizeClass != .regular {
                                             navigationPath.append(noteId)
                                         }
                                     } label: {
-                                        NoteRowView(note: note, isSelected: horizontalSizeClass != .compact && selectedNoteId == note.id)
+                                        NoteRowView(note: note, isSelected: horizontalSizeClass == .regular && selectedNoteId == note.id)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)

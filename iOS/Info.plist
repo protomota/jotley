@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).summary.*</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -13,15 +17,9 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Jotley uses your microphone for live, on-device transcription. No audio files are saved.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Comfortaa-Bold.ttf</string>
-	</array>
-	<key>BGTaskSchedulerPermittedIdentifiers</key>
-	<array>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER).summary.*</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

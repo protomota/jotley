@@ -29,7 +29,10 @@ struct MainTabView: View {
                         }
                 } detail: {
                     NavigationStack {
-                        if let selectedNoteId { NoteDetailByIdView(noteId: selectedNoteId) }
+                        if let selectedNoteId {
+                            // Reset the fetch and tab/editor state when another note is selected.
+                            NoteDetailByIdView(noteId: selectedNoteId).id(selectedNoteId)
+                        }
                         else { ContentUnavailableView("Select a Note", systemImage: "note.text", description: Text("Choose a note or tap + to transcribe live.")) }
                     }
                 }
@@ -47,12 +50,11 @@ struct MainTabView: View {
         .observeThemeChanges()
         .sheet(isPresented: $showingTranscriptionModal, onDismiss: {
             if let id = newTranscriptionNote?.id {
-                if UIDevice.current.userInterfaceIdiom == .pad { selectedNoteId = id }
-                else { navigationPath.append(id) }
+                openNote(id)
             }
             newTranscriptionNote = nil
         }) {
-            LiveTranscriptionView(isPresented: $showingTranscriptionModal, existingNote: newTranscriptionNote, isNewTranscription: newTranscriptionNote != nil)
+            LiveTranscriptionView(isPresented: $showingTranscriptionModal, existingNote: newTranscriptionNote, isNewTranscription: newTranscriptionNote != nil, transcriptionManager: transcriptionManager)
         }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
