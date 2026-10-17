@@ -13,7 +13,7 @@ extension NoteDetailView {
                             .font(.body).foregroundColor(.themeTextSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading).padding()
                     } else {
-                        MarkdownContentView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
+                        StructuredSummaryView(content: summaryIsRunning ? transcriptionManager.summaryPreview : note.summary ?? "")
                             .padding(.horizontal).accessibilityIdentifier("noteDetailSummaryContent")
                     }
                 } else if hasTranscript || noteIsTranscribing {

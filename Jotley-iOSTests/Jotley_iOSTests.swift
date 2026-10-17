@@ -46,6 +46,37 @@ struct Jotley_iOSTests {
         #expect(ParsedNoteMarkdown.rendering(source) === parsed)
     }
 
+    @Test func askAIConversationExportsEveryTurnInOrder() {
+        let messages = [LocalChatMessage(role: "user", content: "Who owns onboarding?"),
+                        LocalChatMessage(role: "assistant", content: "- Maya finishes the onboarding screens.\n")]
+        let text = LocalNoteChat.conversationMarkdown(title: "Weekly Design Review", messages: messages)
+        #expect(text == "# Ask AI: Weekly Design Review\n\n**You**\n\nWho owns onboarding?\n\n**Jotley**\n\n- Maya finishes the onboarding screens.")
+        #expect(LocalNoteChat.conversationMarkdown(title: nil, messages: []) == "# Ask AI: Untitled")
+    }
+
+    @MainActor @Test func structuredSummaryGroupsOverviewSectionsAndLabels() throws {
+        let source = "## Summary\nThe team agreed to ship Friday.\n\n## Key Points\n- **Launch date**: Friday at 10:00.\n  - Room booked.\n- Keep the transcript simple.\n\n## Action Items\n- **Maya**: Finish onboarding.\n- Check https://example.com today.\n\n## Open Questions\n- Who owns widgets?"
+        let summary = StructuredSummary(ParsedNoteMarkdown.rendering(source))
+        let overview = try #require(summary.overview)
+        #expect(String(overview.paragraphs[0].text.characters) == "The team agreed to ship Friday.")
+        #expect(summary.sections.map(\.title) == ["Key Points", "Action Items", "Open Questions"])
+        #expect(summary.sections.map(\.style) == [.numbered, .checklist, .questions])
+        let points = summary.sections[0].items
+        #expect(points[0].label.map { String($0.characters) } == "Launch date")
+        #expect(String(points[0].body.characters) == "Friday at 10:00.")
+        #expect(StructuredSummaryView.groups(points).map(\.count) == [2, 1])
+        #expect(summary.sections[1].items[0].label.map { String($0.characters) } == "Maya")
+        #expect(summary.sections[1].items[1].label == nil)
+        let french = StructuredSummary(ParsedNoteMarkdown.rendering("## Résumé\nLancement vendredi.\n\n## Actions\n- Tester."))
+        #expect(french.overview != nil && french.sections.count == 1)
+        let legacy = StructuredSummary(ParsedNoteMarkdown.rendering("The team reviewed the launch.\n**Key Points:**\n- Ship Friday.\n**Action Items**\n- **Maya**: Finish onboarding.\nA **bold** word in prose."))
+        #expect(legacy.overview.map { String($0.paragraphs[0].text.characters) } == "The team reviewed the launch.")
+        #expect(legacy.sections.map(\.title) == ["Key Points", "Action Items"])
+        #expect(legacy.sections[1].style == .checklist && legacy.sections[1].paragraphs.count == 1)
+        let untitled = StructuredSummary(ParsedNoteMarkdown.rendering("# Decisions\n- Keep it."))
+        #expect(untitled.overview == nil && untitled.sections.count == 1)
+    }
+
     @MainActor @Test func transcriptEditsPersistWithoutReplacingSummaryAndRejectStaleDrafts() throws {
         let store = try SharedPersistenceController(root: FileManager.default.temporaryDirectory.appendingPathComponent("JotleyTranscriptEditing-" + UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
