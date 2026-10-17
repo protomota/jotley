@@ -10,6 +10,37 @@ import XCTest
 
 @Suite(.serialized)
 struct Jotley_iOSTests {
+    @MainActor @Test func streamingSummaryDoesNotCreateTemporaryMarkdownCards() throws {
+        let base = "## Summary\nA short overview.\n\n## Key Points\n- First point.\n"
+        let initial = StructuredSummary(ParsedNoteMarkdown.rendering(base, isStreaming: true))
+        for tail in ["-", "  -", "##", "## Action Items", "**Action", "**Action Items**", "1", "1."] {
+            let parsed = ParsedNoteMarkdown.rendering(base + tail, isStreaming: true)
+            let result = StructuredSummary(parsed)
+            #expect(result.blocks.map(\.id) == initial.blocks.map(\.id))
+            #expect(result.sections[0].paragraphs.isEmpty)
+            #expect(result.sections[0].items.count == 1)
+        }
+        let growing = "- A second point grows word by word."
+        for length in 3...growing.count {
+            let result = StructuredSummary(ParsedNoteMarkdown.rendering(base + growing.prefix(length), isStreaming: true))
+            #expect(result.sections[0].paragraphs.isEmpty)
+            #expect(result.sections[0].items.count == 2)
+            #expect(result.sections[0].items.last?.id == initial.sections[0].items[0].id + 1)
+        }
+        let complete = base + "## Action Items\n- Maya: Test the Mac layout."
+        let streamed = StructuredSummary(ParsedNoteMarkdown.rendering(complete, isStreaming: true))
+        let saved = StructuredSummary(ParsedNoteMarkdown.rendering(complete))
+        #expect(streamed.blocks.map(\.id) == saved.blocks.map(\.id))
+        #expect(streamed.sections.map(\.title) == saved.sections.map(\.title))
+        #expect(streamed.sections.last?.items.last?.fullText == "Maya: Test the Mac layout.")
+        // An overview classification change retains its source identity.
+        let lead = "## Launch\nA short lead-in.\n"
+        let before = StructuredSummary(ParsedNoteMarkdown.rendering(lead))
+        let after = StructuredSummary(ParsedNoteMarkdown.rendering(lead + "## Decisions\n- Ship Friday."))
+        #expect(before.blocks.first?.id == after.blocks.first?.id)
+        #expect(ParsedNoteMarkdown.rendering("## Action Items").lines[0].heading)
+    }
+
     @MainActor @Test func summaryEditsPersistMarkdownWithoutChangingTranscriptAndRejectStaleDrafts() throws {
         let store = try SharedPersistenceController(root: FileManager.default.temporaryDirectory.appendingPathComponent("JotleySummaryEditing-" + UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }

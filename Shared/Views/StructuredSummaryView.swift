@@ -27,8 +27,15 @@ final class ParsedNoteMarkdown: NSObject {
         return cache
     }()
     private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
-    private init(content: String) {
-        lines = LocalSummary.markdownForDisplay(content).components(separatedBy: "\n").enumerated().map { index, line in
+    private init(content: String, isStreaming: Bool) {
+        var sourceLines = LocalSummary.markdownForDisplay(content).components(separatedBy: "\n")
+        // The model streams prefixes, not complete Markdown nodes. Don't turn a
+        // trailing "-", "## Act" or "**Owner" into a temporary paragraph/card.
+        // Ordinary prose and list bodies still update as each snapshot arrives.
+        if isStreaming, let tail = sourceLines.last, Self.awaitingStructure(tail) {
+            sourceLines[sourceLines.count - 1] = ""
+        }
+        lines = sourceLines.enumerated().map { index, line in
             let heading = line.hasPrefix("#")
             var text = heading ? String(line.drop(while: { $0 == "#" || $0 == " " })) : line
             var marker: String?
@@ -46,10 +53,17 @@ final class ParsedNoteMarkdown: NSObject {
                 text: (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
         }
     }
-    static func rendering(_ content: String) -> ParsedNoteMarkdown {
-        let key = content as NSString
+    static func awaitingStructure(_ line: String) -> Bool {
+        let text = line.trimmingCharacters(in: .whitespaces)
+        return text.hasPrefix("#") || text.hasPrefix("**") || text.hasPrefix("__")
+            || text.hasPrefix("```") || ["-", "+", "*"].contains(text)
+            || text.range(of: #"^[0-9]{1,9}[.)]?$"#, options: .regularExpression) != nil
+    }
+
+    static func rendering(_ content: String, isStreaming: Bool = false) -> ParsedNoteMarkdown {
+        let key = ((isStreaming ? "stream:" : "saved:") + content) as NSString
         if let saved = cache.object(forKey: key) { return saved }
-        let result = ParsedNoteMarkdown(content: content)
+        let result = ParsedNoteMarkdown(content: content, isStreaming: isStreaming)
         // Account for both the source key and the attributed-text/line storage.
         cache.setObject(result, forKey: key, cost: content.utf8.count * 8 + result.lines.count * 128)
         return result
@@ -225,7 +239,7 @@ struct SummaryPalette {
 extension StructuredSummary {
     enum Block: Identifiable {
         case overview(Section), section(Section)
-        var id: Int { switch self { case .overview: return Int.min; case .section(let section): return section.id } }
+        var id: Int { switch self { case .overview(let section), .section(let section): return section.id } }
     }
     var blocks: [Block] { (overview.map { [.overview($0)] } ?? []) + sections.map { .section($0) } }
 }
@@ -233,13 +247,17 @@ extension StructuredSummary {
 struct StructuredSummaryView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     let content: String
+    var isStreaming = false
 
     var body: some View {
-        let summary = StructuredSummary(ParsedNoteMarkdown.rendering(content))
+        let summary = StructuredSummary(ParsedNoteMarkdown.rendering(content, isStreaming: isStreaming))
         let palette = SummaryPalette.current
-        return LazyVStack(alignment: .leading, spacing: 22) {
+        // scrollTo(bottom) needs actual heights while text grows. Lazy estimates
+        // repeatedly materialize and discard cards near the viewport's edge.
+        return VStack(alignment: .leading, spacing: 22) {
             ForEach(summary.blocks) { block in StructuredSummaryBlockView(block: block, palette: palette) }
         }
+        .transaction { if isStreaming { $0.animation = nil } }
     }
 
     /// A top-level item and the nested items under it share one card or row.
