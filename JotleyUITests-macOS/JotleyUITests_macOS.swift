@@ -70,6 +70,35 @@ private struct MacTranscriptionPreviewRoot: View {
     }
 }
 
+private struct MacSupportPreviewRoot: View {
+    @ObservedObject var engagement: JotleyEngagement
+    @State private var showingSupport = false
+    @State private var lastURL = "No external links opened."
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Jotley support preview").font(.largeTitle.bold())
+            Text("Isolated preferences and synthetic summaries. Link clicks are intercepted; no browser or email is opened.")
+            Text("\(engagement.completedActions) saved summaries · \(engagement.clickedActions.count) saved button clicks · automatic reminders \(engagement.automaticRemindersStopped ? "off" : "on")")
+                .accessibilityIdentifier("supportPreviewCounts")
+            Button("Save another summary") {
+                engagement.completedSummary(result: "Synthetic saved summary")
+                print("SUPPORT_PREVIEW pending=\(engagement.hasPendingSupportReminder) active=\(NSApp.isActive) main=\(NSApp.mainWindow != nil) key=\(NSApp.keyWindow != nil)")
+            }
+            Button("Open support from Settings") { showingSupport = true }
+            Text(lastURL)
+            Spacer()
+        }.padding(30).frame(width: 840, height: 860)
+            .foregroundStyle(Color.themeTextPrimary).background(Color.themeBackground)
+            .modifier(JotleyEngagementPrompts(isIdle: !showingSupport, engagement: engagement))
+            .modifier(JotleySupportCardPresentation(isPresented: $showingSupport, engagement: engagement))
+            .environment(\.scenePhase, .active)
+            .environment(\.openURL, OpenURLAction { url in
+                lastURL = "Intercepted click: \(url.absoluteString)"
+                return .handled
+            })
+    }
+}
+
 /// Compile this existing source against the built app with the harness flag to
 /// exercise its actual view model without adding a second implementation.
 @main private struct MacRoutingHarness {
@@ -77,6 +106,10 @@ private struct MacTranscriptionPreviewRoot: View {
         UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey)
         if CommandLine.arguments.contains("--layout-preview") {
             previewRecordingControls()
+            return
+        }
+        if CommandLine.arguments.contains("--support-preview") {
+            previewSupportCard()
             return
         }
         do {
@@ -124,7 +157,7 @@ private struct MacTranscriptionPreviewRoot: View {
         let engagementSuite = "JotleyMacEngagement-" + UUID().uuidString
         let engagementDefaults = UserDefaults(suiteName: engagementSuite)!
         defer { engagementDefaults.removePersistentDomain(forName: engagementSuite) }
-        let engagement = JotleyEngagement(defaults: engagementDefaults)
+        let engagement = JotleyEngagement(defaults: engagementDefaults, usesCustomReminders: false)
         engagement.completedSummary(result: " ")
         for _ in 0..<5 { engagement.completedSummary(result: "Saved local result") }
         engagement.beginProcessing()
@@ -133,16 +166,18 @@ private struct MacTranscriptionPreviewRoot: View {
         guard engagement.claimPrompt(isIdle: false) == nil,
               engagement.claimPrompt(isIdle: true) == .review,
               engagement.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Mac native review milestone is incorrect") }
-        let relaunched = JotleyEngagement(defaults: engagementDefaults)
+        let relaunched = JotleyEngagement(defaults: engagementDefaults, usesCustomReminders: false)
         for _ in 0..<3 { relaunched.completedSummary(result: "Saved summary") }
         guard relaunched.claimPrompt(isIdle: true) == nil,
-              JotleyEngagement(defaults: engagementDefaults).claimPrompt(isIdle: true) == nil else { throw LocalError.message("Mac must not show a custom review prompt after the native request") }
+              JotleyEngagement(defaults: engagementDefaults, usesCustomReminders: false).claimPrompt(isIdle: true) == nil else { throw LocalError.message("Mac must not show a custom review prompt after the native request") }
+        try verifySupportReminders()
+        try await verifySupportCardLayout()
         guard JotleyWebsiteTipPolicy.allowsTips(countryCode: "USA"),
               !JotleyWebsiteTipPolicy.allowsTips(countryCode: nil),
               !JotleyWebsiteTipPolicy.allowsTips(countryCode: "GBR") else {
             throw LocalError.message("Website tip eligibility must fail closed")
         }
-        print("PASS: Mac review/support milestones wait for saved results and idle time, persist, and never repeat; web tips respect storefront eligibility.")
+        print("PASS: Store review requests remain native and one-time; Store website tips respect storefront eligibility.")
 
         guard let modelURL = Bundle.main.url(forResource: "JotleyNotes", withExtension: "momd"),
               let bundledModel = NSManagedObjectModel(contentsOf: modelURL),
@@ -572,6 +607,128 @@ private struct MacTranscriptionPreviewRoot: View {
         window.contentView = host; window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
         Task { await model.startNewNote() }
+        withExtendedLifetime(delegate) { app.run() }
+    }
+    @MainActor private static func verifySupportReminders() throws {
+        let suite = "JotleySupportReminders-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: JotleyEngagement.reviewKey)
+        defaults.set("keep-my-notes", forKey: "unrelated-notes-fixture")
+        let state = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+        state.completedSummary(result: " ")
+        for _ in 0..<4 { state.completedSummary(result: "Saved result") }
+        guard state.completedActions == 4, state.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Support appeared before five completed summaries.") }
+        state.completedSummary(result: "Fifth saved result")
+        state.beginProcessing()
+        guard state.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Support interrupted model processing.") }
+        state.endProcessing()
+        guard state.claimPrompt(isIdle: false) == nil, state.claimPrompt(isIdle: true) == .support,
+              state.claimPrompt(isIdle: true) == nil,
+              JotleyEngagement(defaults: defaults, usesCustomReminders: true).claimPrompt(isIdle: true) == nil else {
+            throw LocalError.message("Support must claim one idle presentation across windows and relaunch.")
+        }
+        for _ in 0..<4 {
+            state.completedSummary(result: "Later saved result")
+            guard state.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Support repeated before five more summaries.") }
+        }
+        state.completedSummary(result: "Tenth saved result")
+        guard state.claimPrompt(isIdle: true) == .support else { throw LocalError.message("A dismissal must allow another reminder five summaries later.") }
+        state.completedSummary(result: "Manual support result")
+        state.supportCardOpened()
+        guard JotleyEngagement(defaults: defaults, usesCustomReminders: true).claimPrompt(isIdle: true) == nil else { throw LocalError.message("Closing manual support reopened the same reminder.") }
+
+        for action in JotleyEngagement.Action.allCases {
+            defaults.removeObject(forKey: JotleyEngagement.clicksKey)
+            defaults.removeObject(forKey: JotleyEngagement.stoppedKey)
+            let clicked = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+            clicked.recordClick(action); clicked.recordClick(action)
+            guard clicked.clickedActions == [action], clicked.automaticRemindersStopped else { throw LocalError.message("Any single action must stop reminders and deduplicate its mark.") }
+            let restored = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+            for _ in 0..<15 { restored.completedSummary(result: "Saved after clicking") }
+            guard restored.hasClicked(action), restored.automaticRemindersStopped,
+                  restored.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Single-action dismissal did not survive relaunch.") }
+            let count = restored.completedActions
+            restored.resetClickedActions()
+            guard restored.clickedActions.isEmpty, restored.automaticRemindersStopped,
+                  defaults.integer(forKey: JotleyEngagement.countKey) == count,
+                  defaults.bool(forKey: JotleyEngagement.reviewKey),
+                  defaults.string(forKey: "unrelated-notes-fixture") == "keep-my-notes" else { throw LocalError.message("Reset changed notes, usage or the permanent reminder dismissal.") }
+            let afterReset = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+            for _ in 0..<10 { afterReset.completedSummary(result: "Saved after reset") }
+            guard afterReset.claimPrompt(isIdle: true) == nil else { throw LocalError.message("Reset accidentally restarted automatic reminders.") }
+        }
+        // Previously stored marks are genuine clicks, unlike the old native request flag.
+        defaults.removeObject(forKey: JotleyEngagement.stoppedKey)
+        defaults.set(["feedback"], forKey: JotleyEngagement.clicksKey)
+        let migrated = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+        guard migrated.automaticRemindersStopped, defaults.bool(forKey: JotleyEngagement.stoppedKey) else { throw LocalError.message("Existing feedback click was not honored.") }
+        print("PASS: direct Mac support waits five summaries between dismissals; any one Rate/Tip/Share/Feedback click permanently stops reminders; reset clears marks only; windows/relaunch and legacy marks are handled.")
+    }
+    @MainActor private static func verifySupportCardLayout() async throws {
+        let suite = "JotleySupportLayout-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let engagement = JotleyEngagement(defaults: defaults)
+        let originalMode = ThemeManager.shared.currentAppearanceMode
+        let originalColor = ThemeManager.shared.currentThemeColor
+        defer {
+            ThemeManager.shared.setAppearanceMode(originalMode)
+            ThemeManager.shared.currentThemeColor = originalColor
+        }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("Jotley-Support-Proof")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        for mode in [AppearanceMode.dark, .light] {
+            ThemeManager.shared.setAppearanceMode(mode)
+            for color in ThemeColor.allCases {
+                ThemeManager.shared.currentThemeColor = color
+                let host = NSHostingView(rootView: JotleySupportView(engagement: engagement, isAutomatic: true, dismiss: {}))
+                let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 780),
+                                      styleMask: [.borderless], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
+                try await Task.sleep(for: .milliseconds(100))
+                host.layoutSubtreeIfNeeded()
+                guard host.frame.size == NSSize(width: 600, height: 780),
+                      let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
+                    throw LocalError.message("Support card failed to fit its sheet.")
+                }
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                guard let background = bitmap.colorAt(x: 5, y: 5)?.usingColorSpace(.deviceRGB),
+                      background.alphaComponent > 0.9,
+                      let png = bitmap.representation(using: .png, properties: [:]) else {
+                    throw LocalError.message("Support card rendering is transparent.")
+                }
+                var neutralGlyphs = 0
+                for y in 30..<145 { for x in 115..<520 {
+                    guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    let rgb = [pixel.redComponent, pixel.greenComponent, pixel.blueComponent]
+                    if (mode == .dark ? rgb.min()! > 0.7 : rgb.max()! < 0.3), rgb.max()! - rgb.min()! < 0.1 { neutralGlyphs += 1 }
+                } }
+                guard neutralGlyphs > 100 else { throw LocalError.message("Support header lacks readable neutral text.") }
+                try png.write(to: output.appendingPathComponent("Support-\(mode.rawValue)-\(color.rawValue).png"))
+                window.close()
+            }
+        }
+        print("PASS: production support card renders at 600×780 with readable headings in five themes, Light and Dark.")
+    }
+    @MainActor private static func previewSupportCard() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.regular)
+        let delegate = RecordingLayoutDelegate(); app.delegate = delegate
+        ThemeManager.shared.setAppearanceMode(.dark)
+        ThemeManager.shared.currentThemeColor = .purple
+        app.appearance = NSAppearance(named: .darkAqua)
+        let suite = "JotleySupportPreview-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let engagement = JotleyEngagement(defaults: defaults, usesCustomReminders: true)
+        for _ in 0..<5 { engagement.completedSummary(result: "Synthetic saved summary") }
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 100, width: 840, height: 860),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Jotley Support Preview"; window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: MacSupportPreviewRoot(engagement: engagement))
+        window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
         withExtendedLifetime(delegate) { app.run() }
     }
     @MainActor private static func verifyTranscriptRevisions(note: Note) throws {

@@ -135,9 +135,6 @@ extension SettingsView {
                         }
                     }
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Support Jotley").font(.headline)
-                        JotleySupportLinks()
-                        Divider()
                         Text("About")
                             .font(.headline)
 
@@ -157,6 +154,8 @@ extension SettingsView {
                                     .font(.callout)
                             }
                         }
+                        Divider()
+                        JotleySupportLinks()
                     }
 
                 }
