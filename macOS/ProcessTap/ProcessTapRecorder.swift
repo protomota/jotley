@@ -54,6 +54,16 @@ public final class ProcessTapRecorder: ObservableObject {
     #if DEBUG && !SWIFT_PACKAGE
     // Exercise the real start route without requesting microphone access in UI tests.
     var simulatedStart: (@MainActor (URL, UUID, Bool) async throws -> Void)?
+    private var simulatedSession = false
+    func beginSimulatedLiveTranscription(_ snapshot: LocalTranscript) {
+        simulatedSession = true; recording = true; paused = false; elapsed = 32; currentAudioLevel = 0.12
+        transcriptTimeOffset = existingUtterances.compactMap(\.end).max() ?? 0
+        accept(snapshot)
+    }
+    func publishSimulatedLiveTranscript(_ snapshot: LocalTranscript) {
+        guard simulatedSession, recording else { return }
+        accept(snapshot)
+    }
     #endif
     public init() {}
     private func accept(_ value: LocalTranscript) {
@@ -189,6 +199,9 @@ public final class ProcessTapRecorder: ObservableObject {
     }
     public func togglePause() throws {
         guard recording, !isBusy else { return }
+        #if DEBUG && !SWIFT_PACKAGE
+        if simulatedSession { paused.toggle(); return }
+        #endif
         if paused { try startSegment(); paused = false }
         else {
             let captureError = stopCapture()
@@ -213,6 +226,9 @@ public final class ProcessTapRecorder: ObservableObject {
         return captureError
     }
     public func stopCaptureSession() {
+        #if DEBUG && !SWIFT_PACKAGE
+        simulatedSession = false
+        #endif
         stopCapture(); timer?.invalidate(); timer = nil
         recording = false; paused = false
         NotificationCenter.default.post(name: .processTapRecordingStateChanged, object: self)

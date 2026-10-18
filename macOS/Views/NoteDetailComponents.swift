@@ -10,48 +10,6 @@ import AppKit
 
 // MARK: - Spinning Tab Icon
 
-// MARK: - Live Transcript Delta Bubble
-
-struct LiveTranscriptDeltaBubble: View {
-    let latestWords: String
-    let isVisible: Bool
-
-    private var visibleText: String {
-        let normalized = latestWords
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        guard !normalized.isEmpty else { return "" }
-        // Keep the bubble compact and prioritize the newest words.
-        return String(normalized.suffix(140))
-    }
-
-    var body: some View {
-        Group {
-            if isVisible && !visibleText.isEmpty {
-                Text(visibleText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color.themeTextPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.themeContentBackground.opacity(0.92))
-                    )
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.themeAccent.opacity(0.25), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.2), radius: 12, x: 0, y: 4)
-                    .frame(maxWidth: 300, alignment: .center)
-                    .allowsHitTesting(false)
-            }
-        }
-    }
-}
 
 struct LocalMacAskNoteView: View {
     @ObservedObject var note: Note

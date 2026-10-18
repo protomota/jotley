@@ -55,6 +55,21 @@ private final class RoutingRefusedNote: Note {
     }
 }
 
+private struct MacTranscriptionPreviewRoot: View {
+    @ObservedObject var model: NotesListViewModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Transcription saved").font(.title.bold())
+            Text(model.accumulatedTranscription).font(.system(size: 18))
+            Spacer()
+        }.padding(24).frame(width: 840, height: 760)
+            .foregroundStyle(Color.themeTextPrimary).background(Color.themeBackground)
+            .sheet(isPresented: $model.showingLiveTranscription, onDismiss: { Task { await model.stopRecording() } }) {
+                MacLiveTranscriptionSheet(viewModel: model).interactiveDismissDisabled()
+            }
+    }
+}
+
 /// Compile this existing source against the built app with the harness flag to
 /// exercise its actual view model without adding a second implementation.
 @main private struct MacRoutingHarness {
@@ -187,6 +202,7 @@ private final class RoutingRefusedNote: Note {
         try await verifyAutomaticTags(note: created, store: store, viewModel: viewModel)
         try await verifyPlusStartsCaptureImmediately(store: store)
         try await verifyRecordingControlLayout()
+        try await verifyLiveTranscriptionModal(store: store)
         if ProcessInfo.processInfo.environment["JOTLEY_RUN_TITLE_TESTS"] == "1" {
             try await verifyOnDeviceTitle(note: created, viewModel: viewModel)
         }
@@ -205,12 +221,12 @@ private final class RoutingRefusedNote: Note {
         let viewModel = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
         let start = Task { await viewModel.startNewNote() }
         for _ in 0..<30 { if !calls.isEmpty { break }; try await Task.sleep(for: .milliseconds(10)) }
-        guard calls.count == 1 else { throw LocalError.message("New transcription must immediately call capture start.") }
+        guard calls.count == 1, viewModel.showingLiveTranscription else { throw LocalError.message("New transcription must immediately start capture and open the modal.") }
         await viewModel.startNewNote()
         await start.value
         let created = try store.notes().filter { !before.contains($0.objectID) }
         guard calls.count == 1, created.count == 1, created.first?.localNoteID == calls.first,
-              !recorder.starting, !recorder.isRecording else {
+              !recorder.starting, !recorder.isRecording, !viewModel.showingLiveTranscription else {
             throw LocalError.message("Repeated + taps created duplicate notes or left capture busy after failure.")
         }
         guard let newNote = created.first else { throw LocalError.message("New transcription note is missing.") }
@@ -446,6 +462,74 @@ private final class RoutingRefusedNote: Note {
         }
         print("PASS: installed Apple model generated summary/title and regenerated a long transcript in \(Date().timeIntervalSince(began)) seconds with \(snapshots.count) live snapshots; preparation progress was reported and the title was preserved.")
     }
+    @MainActor private static func verifyLiveTranscriptionModal(store: SharedPersistenceController) async throws {
+        let recorder = ProcessTapRecorder()
+        var speech = LocalTranscript()
+        speech.accept(text: "Keep the live transcript in one focused window.", start: 0, end: 8, final: true)
+        speech.accept(text: "Maya will test the next interface on Friday.", start: 12, end: 20, final: true)
+        speech.accept(text: "Alex will review the summary templates.", start: 24, end: 30, final: true)
+        recorder.simulatedStart = { _, _, _ in recorder.beginSimulatedLiveTranscription(speech) }
+        let model = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
+        defer { recorder.simulatedStart = nil }
+        await model.startNewNote()
+        guard model.showingLiveTranscription, recorder.isRecording, let note = model.newNoteBeingRecorded else {
+            throw LocalError.message("New capture did not open its live-transcription modal.")
+        }
+        defer { try? store.deleteNoteAndAudio(note) }
+        let original = ThemeManager.shared.currentAppearanceMode
+        defer { ThemeManager.shared.setAppearanceMode(original) }
+        let host = NSHostingView(rootView: MacLiveTranscriptionSheet(viewModel: model))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 660), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
+        defer { window.close() }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("Jotley-Transcription-Proof")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        for mode in [AppearanceMode.dark, .light] {
+            ThemeManager.shared.setAppearanceMode(mode)
+            try await Task.sleep(for: .milliseconds(200))
+            host.layoutSubtreeIfNeeded()
+            guard host.frame.size == NSSize(width: 600, height: 660),
+                  let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
+                throw LocalError.message("Transcription modal does not fit its 600×660 surface.")
+            }
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            guard let background = bitmap.colorAt(x: 5, y: 5)?.usingColorSpace(.deviceRGB), background.alphaComponent > 0.9 else {
+                throw LocalError.message("Modal capture is transparent; this is not a valid rendering check.")
+            }
+            var contrastingGlyphs = 0
+            for y in 105..<210 { for x in 30..<550 {
+                guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                let rgb = [color.redComponent, color.greenComponent, color.blueComponent]
+                if (mode == .dark ? rgb.min()! > 0.7 : rgb.max()! < 0.3), rgb.max()! - rgb.min()! < 0.1 { contrastingGlyphs += 1 }
+            } }
+            guard contrastingGlyphs > 100 else { throw LocalError.message("Live transcript text lacks neutral contrast: mode=\(mode.rawValue), glyphs=\(contrastingGlyphs).") }
+            guard let png = bitmap.representation(using: .png, properties: [:]) else { throw LocalError.message("Modal rendering failed.") }
+            let path = output.appendingPathComponent("Mac-Live-Transcription-\(mode == .dark ? "dark" : "light").png")
+            try png.write(to: path); print("JOTLEY_MAC_TRANSCRIPTION_SCREENSHOT \(path.path)")
+        }
+        await model.resumeTranscription()
+        guard model.isTranscriptionPaused && model.showingLiveTranscription else { throw LocalError.message("Pause dismissed the live modal.") }
+        await model.resumeTranscription()
+        guard !model.isTranscriptionPaused else { throw LocalError.message("Continue did not resume the same session.") }
+        await model.stopRecording()
+        let completed = note.transcription
+        guard !model.showingLiveTranscription, !recorder.isRecording, model.newNoteBeingRecorded == nil,
+              completed == speech.text, note.transcriptUtterances.map(\.text).joined(separator: " ") == speech.text,
+              model.selectedDetailTab == DetailTab.transcript.rawValue else {
+            throw LocalError.message("Close/save failure: presented=\(model.showingLiveTranscription), active=\(recorder.isRecording), noteActive=\(model.newNoteBeingRecorded != nil), matchesText=\(completed == speech.text), utterances=\(note.transcriptUtterances.count), tab=\(model.selectedDetailTab), error=\(model.syncErrorMessage)")
+        }
+        var late = speech; late.accept(text: "Late words must not enter a closed note.", start: 34, end: 40, final: true)
+        recorder.publishSimulatedLiveTranscript(late)
+        guard note.transcription == completed else { throw LocalError.message("Closed transcript still accepts live words.") }
+        var addition = LocalTranscript()
+        addition.accept(text: "Additional words after continuing the same note.", start: 0, end: 5, final: true)
+        recorder.simulatedStart = { _, _, _ in recorder.beginSimulatedLiveTranscription(addition) }
+        await model.resumeTranscriptionOnNote(note: note)
+        guard model.showingLiveTranscription, model.newNoteBeingRecorded == note else { throw LocalError.message("Continue failed to reopen the existing note in the modal.") }
+        await model.stopRecording()
+        guard note.transcription == [speech.text, addition.text].joined(separator: " ") else { throw LocalError.message("Continuing replaced or duplicated the saved transcript.") }
+        print("PASS: real Mac modal renders in light/dark; start, pause, continue, close/save, static completion and reopen-existing-note routes work without microphone access.")
+    }
     @MainActor private static func verifyRecordingControlLayout() async throws {
         let original = ThemeManager.shared.currentAppearanceMode
         defer { ThemeManager.shared.setAppearanceMode(original) }
@@ -453,8 +537,7 @@ private final class RoutingRefusedNote: Note {
             ThemeManager.shared.setAppearanceMode(mode)
             var sizes: [NSSize] = []
             for timer in ["0m 28s", "180m 00s"] {
-                let host = NSHostingView(rootView: NoteRecordingControls(timerText: timer, appIcon: nil,
-                    audioLevel: 0, isPaused: timer == "180m 00s", onPause: {}, onStop: {}))
+                let host = NSHostingView(rootView: MacTranscriptionControls(timerText: timer, isPaused: timer == "180m 00s", onPause: {}, onStop: {}))
                 let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 90),
                     styleMask: [.borderless], backing: .buffered, defer: false)
                 window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
@@ -462,30 +545,33 @@ private final class RoutingRefusedNote: Note {
                 sizes.append(host.fittingSize)
                 window.close()
             }
-            guard sizes[0].height == 52, sizes[1].height == 52, sizes[0].width > 196, sizes[1].width > sizes[0].width else {
+            guard sizes[0].height == 52, sizes[1].height == 52, sizes[0].width >= 460, sizes[1].width >= sizes[0].width else {
                 throw LocalError.message("Recording controls compressed Stop or failed to grow for a longer timer: \(sizes)")
             }
         }
-        print("PASS: actual recording controls retain 52-point height and grow for long timers in light and dark mode.")
+        print("PASS: actual recording controls retain 52-point height and fit long timers in light and dark mode.")
     }
     @MainActor private static func previewRecordingControls() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
-        let delegate = RecordingLayoutDelegate()
-        app.delegate = delegate
-        ThemeManager.shared.setAppearanceMode(CommandLine.arguments.contains("--light") ? .light : .dark)
+        let delegate = RecordingLayoutDelegate(); app.delegate = delegate
+        ThemeManager.shared.setAppearanceMode(.dark)
+        app.appearance = NSAppearance(named: .darkAqua)
+        let store = try! SharedPersistenceController(inMemory: true)
         let recorder = ProcessTapRecorder()
-        let widget = RecordingWidgetViewModel(recorder: recorder)
-        let host = NSHostingView(rootView: VStack(spacing: 22) {
-            Text("Recording control layout — no audio capture")
-            NoteRecordingControls(timerText: "0m 28s", appIcon: nil, audioLevel: 0, isPaused: false, onPause: {}, onStop: {})
-            NoteRecordingControls(timerText: "180m 00s", appIcon: nil, audioLevel: 0, isPaused: true, onPause: {}, onStop: {})
-            RecordingWidgetView(viewModel: widget)
-        }.padding(30).foregroundColor(Color.themeTextPrimary).background(Color.themeContentBackground))
-        let window = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 450, height: 360),
+        var speech = LocalTranscript()
+        speech.accept(text: "Keep the live transcript in one focused window.", start: 0, end: 8, final: true)
+        speech.accept(text: "Maya will test the next interface on Friday.", start: 12, end: 20, final: true)
+        speech.accept(text: "Alex will review the summary templates.", start: 24, end: 30, final: true)
+        recorder.simulatedStart = { _, _, _ in recorder.beginSimulatedLiveTranscription(speech) }
+        let model = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
+        let host = NSHostingView(rootView: MacTranscriptionPreviewRoot(model: model))
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 100, width: 840, height: 760),
             styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Jotley Recording Layout"; window.isReleasedWhenClosed = false
-        window.contentView = host; window.orderFrontRegardless()
+        window.title = "Jotley Transcription Preview"; window.isReleasedWhenClosed = false
+        window.contentView = host; window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
+        Task { await model.startNewNote() }
         withExtendedLifetime(delegate) { app.run() }
     }
     @MainActor private static func verifyTranscriptRevisions(note: Note) throws {

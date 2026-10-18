@@ -16,7 +16,6 @@ struct SettingsView: View {
     @AppStorage("syncFolderLastSyncTimestamp") var syncFolderLastSyncTimestamp: Double = 0
     @AppStorage("syncFolderLastSyncError") var syncFolderLastSyncError: String = ""
     @AppStorage("showTags") var showTags: Bool = false
-    @AppStorage("showLiveCaptions") var showLiveCaptions: Bool = true
     @AppStorage(RecordingWidgetController.widgetEnabledDefaultsKey) var showRecordingWidget: Bool = true
     @AppStorage("transcriptionLanguage") var transcriptionLanguage: String = "en-US"
     @AppStorage("recordSystemAudio") var recordSystemAudio = true

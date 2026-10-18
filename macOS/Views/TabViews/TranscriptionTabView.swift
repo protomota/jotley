@@ -6,6 +6,7 @@ enum TabLoadingAnimation {
 }
 
 struct TranscriptBubbleView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     let text: String
     let timestampLabel: String?
     let isInterim: Bool

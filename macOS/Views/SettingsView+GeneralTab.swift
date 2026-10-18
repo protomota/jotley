@@ -57,10 +57,7 @@ extension SettingsView {
                             Toggle("Show Tags", isOn: $showTags)
                                 .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Toggle("Show Live Captions", isOn: $showLiveCaptions)
-                                .toggleStyle(.switch)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Toggle("Show Floating Transcription Indicator", isOn: $showRecordingWidget)
+                            Toggle("Show Transcription Indicator When Jotley Is in Background", isOn: $showRecordingWidget)
                                 .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }

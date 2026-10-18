@@ -46,7 +46,6 @@ extension NoteDetailPlaceholderView {
             summarySaveTimer = nil
             transcriptSaveTimer?.invalidate()
             transcriptSaveTimer = nil
-            teardownDetailScrollTracking()
             // Only flush when the user was actively editing — an unconditional
             // save here can race the SwiftUI binding update for editable*
             // and overwrite real content with an empty @State buffer.

@@ -40,7 +40,7 @@ final class RecordingWidgetController {
     private func syncRecordingState() {
         guard let recorder else { return }
         let isEnabled = UserDefaults.standard.object(forKey: Self.widgetEnabledDefaultsKey) as? Bool ?? true
-        let shouldShowWidget = isEnabled && recorder.isRecording
+        let shouldShowWidget = isEnabled && recorder.isRecording && !NSApp.isActive
 
         if shouldShowWidget != wasWidgetVisible {
             wasWidgetVisible = shouldShowWidget

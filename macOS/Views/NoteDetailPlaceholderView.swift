@@ -18,7 +18,6 @@ struct NoteDetailPlaceholderView: View {
     @EnvironmentObject var persistenceController: SharedPersistenceController
 
     @AppStorage("showTags") var showTags: Bool = false
-    @AppStorage("showLiveCaptions") var showLiveCaptions: Bool = true
 
     // Original properties to maintain app functionality
     @State var showActionsPopover: Bool = false
@@ -77,13 +76,6 @@ struct NoteDetailPlaceholderView: View {
     // Timers for debounced saving
     @State var summarySaveTimer: Timer?
     @State var transcriptSaveTimer: Timer?
-    // Scroll-follow state for live transcription
-    @State var shouldShowScrollToLatestControl: Bool = false
-    @State var detailScrollProxy: ScrollViewProxy?
-    @State var detailScrollObserverToken: NSObjectProtocol?
-    @State var detailScrollEndObserverToken: NSObjectProtocol?
-    @State var observedDetailScrollView: NSScrollView?
-
     var body: some View {
         contentWithAlerts
     }
