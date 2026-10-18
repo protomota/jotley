@@ -60,7 +60,7 @@ extension NoteDetailPlaceholderView {
                                 .frame(maxWidth: .infinity, minHeight: max(400, geometry.size.height - 150))
                                 .padding(.top, 8)
                         }
-                        .padding(.bottom, 16)
+                        .padding(.bottom, viewModel.recorder.isRecording ? 88 : 16)
 
                         Color.clear
                             .frame(height: 1)
@@ -172,7 +172,7 @@ extension NoteDetailPlaceholderView {
     @ViewBuilder var detailOverlay5: some View {
 
             // Transcript action footer — pinned to bottom of window, outside the ScrollView
-            if selectedTab == DetailTab.transcript.rawValue && !isRecordingThisNote && !isGeneratingThisSummary && !viewModel.operationInProgress {
+            if selectedTab == DetailTab.transcript.rawValue && !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
                 let transcript = editableTranscript
                 // Per-note saved-audio loading flag (not a persisted placeholder) so the
                 // action footer stays hidden while saved audio is being transcribed.

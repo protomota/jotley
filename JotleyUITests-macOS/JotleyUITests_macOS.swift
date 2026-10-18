@@ -85,7 +85,7 @@ private struct MacTranscriptionPreviewRoot: View {
                     .id(note.objectID)
                     .environmentObject(model.persistenceController)
                     .environment(\.managedObjectContext, model.viewContext)
-                    .safeAreaInset(edge: .bottom) {
+                    .overlay(alignment: .bottom) {
                         if model.recorder.isRecording { MacCompactTranscriptionBar(viewModel: model).padding(12) }
                     }
             }
@@ -129,7 +129,7 @@ private struct MacSupportPreviewRoot: View {
     @MainActor static func main() async {
         UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey)
         if CommandLine.arguments.contains("--layout-preview") {
-            await previewRecordingControls()
+            previewRecordingControls()
             return
         }
         if CommandLine.arguments.contains("--support-preview") {
@@ -137,7 +137,10 @@ private struct MacSupportPreviewRoot: View {
             return
         }
         do {
-            if CommandLine.arguments.contains("--summary-scroll-only") {
+            if CommandLine.arguments.contains("--compact-only") {
+                guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
+                try await verifyCompactTranscription(store: store)
+            } else if CommandLine.arguments.contains("--summary-scroll-only") {
                 guard let store = LocalAppModel.shared.store,
                       let note = try store.create(title: "Summary scroll fixture", text: "Maya reviews Friday.") as? Note else { throw LocalError.message("Summary scroll store unavailable") }
                 defer { try? store.deleteNoteAndAudio(note) }
@@ -529,6 +532,25 @@ private struct MacSupportPreviewRoot: View {
         let model = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
         await model.startNewNote()
         guard recorder.isRecording, let note = model.newNoteBeingRecorded else { throw LocalError.message("Capture did not start immediately.") }
+        if CommandLine.arguments.contains("--compact-only") {
+        let host = NSHostingView(rootView: MacTranscriptionPreviewRoot(model: model))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 760),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
+        defer { window.close() }
+        try await Task.sleep(for: .milliseconds(250))
+        host.layoutSubtreeIfNeeded()
+        func scrollViews(in view: NSView) -> [NSScrollView] {
+            (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews(in: $0) }
+        }
+        guard let scroll = scrollViews(in: host).first(where: { $0.bounds.height > 300 }) else {
+            throw LocalError.message("The actual transcript scroll view is missing.")
+        }
+        let frame = scroll.convert(scroll.bounds, to: host)
+        let bottomGap = host.isFlipped ? host.bounds.maxY - frame.maxY : frame.minY - host.bounds.minY
+        guard abs(bottomGap) < 2 else { throw LocalError.message("Scrollbar stops above the window bottom: \(bottomGap) points.") }
+        print("PASS: actual transcript scroll view reaches the window bottom under the floating capsule.")
+        }
         let other = try store.create(title: "Browse while transcribing", text: "Keep this note unchanged.") as! Note
         other.summary = "Existing summary"; try store.save()
         defer { recorder.simulatedStart = nil; try? store.deleteNoteAndAudio(note); try? store.deleteNoteAndAudio(other) }
@@ -593,13 +615,13 @@ private struct MacSupportPreviewRoot: View {
         }
         print("PASS: actual recording controls retain 52-point height and fit long timers in light and dark mode.")
     }
-    @MainActor private static func previewRecordingControls() async {
+    @MainActor private static func previewRecordingControls() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
         let delegate = RecordingLayoutDelegate(); app.delegate = delegate
         ThemeManager.shared.setAppearanceMode(.dark)
         app.appearance = NSAppearance(named: .darkAqua)
-        let store = try! SharedPersistenceController(inMemory: true)
+        let store = LocalAppModel.shared.store!
         let recorder = ProcessTapRecorder()
         var speech = LocalTranscript()
         for index in 1...30 {
@@ -615,12 +637,7 @@ private struct MacSupportPreviewRoot: View {
         window.contentView = host; window.makeKeyAndOrderFront(nil)
         app.activate(ignoringOtherApps: true)
         Task { await model.startNewNote() }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            DispatchQueue.main.async {
-                withExtendedLifetime(delegate) { app.run() }
-                continuation.resume()
-            }
-        }
+        withExtendedLifetime(delegate) { app.run() }
     }
     @MainActor private static func verifySupportReminders() throws {
         let suite = "JotleySupportReminders-" + UUID().uuidString
