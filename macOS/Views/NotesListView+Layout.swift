@@ -17,6 +17,13 @@ extension NotesListView {
                 }
         } detail: {
             detailContent
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if viewModel.recorder.isRecording {
+                        MacCompactTranscriptionBar(viewModel: viewModel)
+                            .padding(.horizontal, 12).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
                 .background(Color.themeContentBackground.ignoresSafeArea())
                 .frame(maxWidth: .infinity)
         }

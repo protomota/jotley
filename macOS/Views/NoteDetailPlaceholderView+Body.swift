@@ -67,6 +67,23 @@ extension NoteDetailPlaceholderView {
                             .id(detailScrollBottomAnchorID)
                     }
                     .coordinateSpace(name: "scroll")
+                    .onScrollPhaseChange { _, phase in
+                        transcriptFollow.scrollPhaseChanged(isUserScrolling: phase != .idle && phase != .animating)
+                    }
+                    .onScrollGeometryChange(for: Bool.self) { geometry in
+                        geometry.contentOffset.y + geometry.containerSize.height >=
+                            geometry.contentSize.height + geometry.contentInsets.bottom - 40
+                    } action: { _, atBottom in
+                        transcriptFollow.bottomChanged(atBottom)
+                    }
+                    .task(id: [viewModel.recorder.transcription, String(selectedTab), note.objectID.uriRepresentation().absoluteString, String(isRecordingThisNote)]) {
+                        guard isRecordingThisNote, selectedTab == DetailTab.transcript.rawValue,
+                              transcriptFollow.shouldFollow else { return }
+                        await Task.yield()
+                        guard !Task.isCancelled, transcriptFollow.shouldFollow else { return }
+                        scrollProxy.scrollTo(detailScrollBottomAnchorID, anchor: .bottom)
+                    }
+
                     .task(id: viewModel.streamingSummaryViewModel.summary) {
                         guard isGeneratingThisSummary, selectedTab == DetailTab.summary.rawValue else { return }
                         await Task.yield()
@@ -94,6 +111,7 @@ extension NoteDetailPlaceholderView {
             }
         }
         .onChange(of: note.objectID) { _, _ in
+            transcriptFollow = MacTranscriptFollowState()
             showActionsPopover = false
         }
         .onChange(of: viewModel.recorder.isRecording) { _, isRecordingNow in
@@ -247,6 +265,3 @@ extension NoteDetailPlaceholderView {
 
     }
 }
-
-/// The note's live controls size to their content instead of compressing Stop
-/// into a fixed-width container. Also used by hardware-free layout checks.

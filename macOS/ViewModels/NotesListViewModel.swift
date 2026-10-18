@@ -10,7 +10,6 @@ import Combine
     let persistenceController: SharedPersistenceController
     @Published var newNoteBeingRecorded: Note?
     @Published var isTranscriptionPaused = false
-    @Published var showingLiveTranscription = false
     @Published var accumulatedTranscription = ""
     @Published var selectedNoteIDs: Set<NSManagedObjectID> = []
     @Published var selectedDetailTab = DetailTab.transcript.rawValue
@@ -93,7 +92,6 @@ import Combine
             recorder.existingUtterances = baseUtterances
             JotleyAppDelegate.shared?.recordingNotesViewModel = self
             LocalAppModel.shared.selected = note.id
-            showingLiveTranscription = true
             newNoteBeingRecorded = note; selectedNoteIDs = [note.objectID]; selectedDetailTab = DetailTab.transcript.rawValue
             recorder.speechLocale = Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")
             let system = UserDefaults.standard.object(forKey: "recordSystemAudio") as? Bool ?? true
@@ -102,7 +100,6 @@ import Combine
             isTranscriptionPaused = false
             if let message = recorder.errorMessage { syncErrorMessage = message; showSyncError = true }
         } catch {
-            showingLiveTranscription = false
             newNoteBeingRecorded = nil
             if let recordingLease { persistenceController.endRecording(lease: recordingLease); self.recordingLease = nil }
             if JotleyAppDelegate.shared?.recordingNotesViewModel === self { JotleyAppDelegate.shared?.recordingNotesViewModel = nil }
@@ -140,8 +137,10 @@ import Combine
             operationInProgress = true
             defer {
                 if let recordingLease { persistenceController.endRecording(lease: recordingLease); self.recordingLease = nil }
+                if let note = newNoteBeingRecorded, selectedNoteIDs.contains(note.objectID) {
+                    selectedDetailTab = DetailTab.transcript.rawValue
+                }
                 newNoteBeingRecorded = nil; isTranscriptionPaused = false; operationInProgress = false; stopTask = nil
-                showingLiveTranscription = false; selectedDetailTab = DetailTab.transcript.rawValue
                 if JotleyAppDelegate.shared?.recordingNotesViewModel === self { JotleyAppDelegate.shared?.recordingNotesViewModel = nil }
             }
             _ = await recorder.stop()
@@ -172,7 +171,7 @@ import Combine
         selectedDetailTab = note.hasMeaningfulSummaryText ? DetailTab.summary.rawValue : DetailTab.transcript.rawValue
     }
     func clearSelection() { selectedNoteIDs.removeAll() }
-    func jumpToActiveRecordingNote() { if let note = activeRecordingNote { selectedNoteIDs = [note.objectID]; selectedDetailTab = DetailTab.transcript.rawValue; showingLiveTranscription = true } }
+    func jumpToActiveRecordingNote() { if let note = activeRecordingNote { selectedNoteIDs = [note.objectID]; selectedDetailTab = DetailTab.transcript.rawValue } }
     func performContextualDelete(for note: Note) { Task { await delete(note) } }
     private func delete(_ note: Note) async {
         guard !LocalAppModel.shared.busy, !recorder.isBusy else {
