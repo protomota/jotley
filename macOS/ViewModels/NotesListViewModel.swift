@@ -186,6 +186,7 @@ import Combine
         isGeneratingSummary = true; generatingSummaryNoteID = note.objectID; generatingSummaryStartedAt = Date()
         streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing
         let template = LocalSummaryTemplate.resolve(templateKey)
+        let source = note.transcription ?? ""
         let activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep,
             reason: "Finish on-device note summary")
         let task = Task { @MainActor in
@@ -207,10 +208,10 @@ import Combine
                 let result: String
                 #if DEBUG
                 if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
-                else { result = try await LocalSummary.generate(note.transcription ?? "", template: template,
+                else { result = try await LocalSummary.generate(source, template: template,
                     locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update) }
                 #else
-                result = try await LocalSummary.generate(note.transcription ?? "", template: template,
+                result = try await LocalSummary.generate(source, template: template,
                     locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update)
                 #endif
                 var generatedTitle: String?
@@ -226,24 +227,24 @@ import Combine
                 var generatedTags: [String]?
                 var tagError: Error?
                 streamingSummaryViewModel.progress = .organizingTags
+                let library = try persistenceController.tagLibrary()
                 do {
-                    let library = try persistenceController.tagLibrary()
                     #if DEBUG
                     if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
-                    else { generatedTags = try await LocalNoteTags.generate(from: result, library: library,
+                    else { generatedTags = try await LocalNoteTags.generate(from: result, transcript: source, library: library,
                         locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")) }
                     #else
-                    generatedTags = try await LocalNoteTags.generate(from: result, library: library,
+                    generatedTags = try await LocalNoteTags.generate(from: result, transcript: source, library: library,
                         locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
                     #endif
                 } catch is CancellationError { throw CancellationError() }
                 catch { tagError = error }
                 try Task.checkCancellation(); guard !note.isDeleted else { return }
                 try persistenceController.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
+                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: LocalNoteTags.completedNames(generatedTags, transcript: source, summary: result, library: library))
                 await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags organized using local text analysis: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { report(LocalError.message("Summary saved. " + warnings.joined(separator: " "))) }
                 NotificationCenter.default.post(name: Notification.Name("SummaryGenerationComplete"), object: nil,
                     userInfo: ["noteID": note.objectID, "summary": result])

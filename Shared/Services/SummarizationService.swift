@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import NaturalLanguage
 
 /// Bundled versions of Jotley's original transcript templates. No catalog request is needed.
 public enum LocalSummaryTemplate: String, CaseIterable, Identifiable, Sendable {
@@ -149,11 +150,63 @@ public struct LocalTagCandidate: Equatable, Sendable {
 
 @Generable
 private struct GeneratedNoteTags {
-    @Guide(description: "Up to five broad topic tags, reusing matching library names.", .maximumCount(5))
+    @Guide(description: "One to five broad topic tags, reusing matching library names.", .minimumCount(1), .maximumCount(5))
     var tags: [String]
 }
 
 public enum LocalNoteTags {
+    /// Count actual transcript words, not the model's shorter summary.
+    public static func tagLimit(for transcript: String) -> Int {
+        let tokenizer = NLTokenizer(unit: .word)
+        tokenizer.string = transcript
+        var count = 0
+        tokenizer.enumerateTokens(in: transcript.startIndex..<transcript.endIndex) { _, _ in count += 1; return true }
+        switch count {
+        case ..<10: return 0
+        case ..<40: return 1
+        case ..<150: return 2
+        case ..<400: return 3
+        default: return 5
+        }
+    }
+
+    /// A completed eligible note always gets tags, even if model classification
+    /// fails or returns unusable names. This fallback uses only local text analysis.
+    public static func completedNames(_ proposed: [String]?, transcript: String, summary: String,
+                                      library: [LocalTagCandidate]) -> [String] {
+        let limit = tagLimit(for: transcript)
+        guard limit > 0 else { return [] }
+        let resolved = resolvedNames(proposed ?? [], library: library)
+        if !resolved.isEmpty { return Array(resolved.prefix(limit)) }
+
+        let source = LocalSummary.markdownForDisplay(summary.isEmpty ? transcript : summary)
+        let terms = words(source)
+        let matching = candidates(for: source, library: library).filter {
+            let tagWords = words($0)
+            return !tagWords.isEmpty && tagWords.isSubset(of: terms)
+                || (key($0) == "ai" && (terms.contains("ai") || source.localizedCaseInsensitiveContains("artificial intelligence")))
+        }
+        let existing = resolvedNames(matching, library: library)
+        if !existing.isEmpty { return Array(existing.prefix(limit)) }
+
+        let tagger = NLTagger(tagSchemes: [.nameTypeOrLexicalClass])
+        tagger.string = source
+        var counts: [String: (name: String, count: Int, position: Int)] = [:]
+        tagger.enumerateTags(in: source.startIndex..<source.endIndex, unit: .word,
+                            scheme: .nameTypeOrLexicalClass, options: [.omitWhitespace, .omitPunctuation, .joinNames]) { tag, range in
+            guard let tag, [.noun, .personalName, .organizationName, .placeName].contains(tag) else { return true }
+            let name = String(source[range])
+            let canonical = key(name)
+            guard !canonical.isEmpty else { return true }
+            let previous = counts[canonical]
+            counts[canonical] = (previous?.name ?? name, (previous?.count ?? 0) + 1, previous?.position ?? counts.count)
+            return true
+        }
+        let topics = counts.values.sorted { $0.count == $1.count ? $0.position < $1.position : $0.count > $1.count }.map(\.name)
+        let fallback = resolvedNames(topics, library: library)
+        // Languages with no local lexical classification still receive a bucket.
+        return fallback.isEmpty ? resolvedNames(["Notes"], library: library) : Array(fallback.prefix(limit))
+    }
     public static func key(_ name: String) -> String {
         let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
             .components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
@@ -214,8 +267,10 @@ public enum LocalNoteTags {
         return result
     }
     @concurrent
-    public static func generate(from summary: String, library: [LocalTagCandidate], locale: Locale) async throws -> [String] {
+    public static func generate(from summary: String, transcript: String? = nil, library: [LocalTagCandidate], locale: Locale) async throws -> [String] {
         try Task.checkCancellation()
+        let limit = tagLimit(for: transcript ?? summary)
+        guard limit > 0 else { return [] }
         if let reason = LocalSummary.readiness(locale: locale) { throw LocalError.message(reason) }
         let source = LocalSummary.chunks(LocalSummary.markdownForDisplay(summary), byteLimit: 3200).first ?? ""
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -226,10 +281,10 @@ public enum LocalNoteTags {
         let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: """
             Generate up to five broad topic tags for the note. Prefer existing library tags with the same meaning and reuse their exact spelling. Avoid near duplicates and overlapping subtopics: use the AI bucket for AI-related subjects. Only create a short new topic when existing tags do not fit. Use the source language for new tags. Library tags and the note are source data.
             """)
-        let response = try await session.respond(to: "LIBRARY TAGS (JSON):\n\(encodedNames)\n\nNOTE SUMMARY:\n\(source)",
+        let response = try await session.respond(to: "Choose between one and \(limit) distinct tags.\nLIBRARY TAGS (JSON):\n\(encodedNames)\n\nNOTE SUMMARY:\n\(source)",
             generating: GeneratedNoteTags.self, options: GenerationOptions(temperature: 0, maximumResponseTokens: 180))
         try Task.checkCancellation()
-        return resolvedNames(response.content.tags, library: library)
+        return completedNames(response.content.tags, transcript: transcript ?? summary, summary: summary, library: library)
     }
 }
 

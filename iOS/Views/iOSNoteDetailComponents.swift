@@ -301,7 +301,9 @@ struct LocalAskNoteView: View {
             .background(Color.themeBackground)
             .navigationTitle("Ask AI").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { MobileDoneButton(inToolbar: true) { dismiss() }.accessibilityIdentifier("askAIDoneButton") }
+                ToolbarItem(placement: .topBarTrailing) {
+                    MobileDoneButton { dismiss() }.accessibilityIdentifier("askAIDoneButton")
+                }.sharedBackgroundVisibility(.hidden)
                 ToolbarItemGroup(placement: .cancellationAction) {
                     Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
                         .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)

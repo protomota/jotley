@@ -236,6 +236,7 @@ private final class RoutingRefusedNote: Note {
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
         try store.saveNoteChanges(note, values: [:], replacingTags: ["Outdated"])
         note.title = "Design review"
+        note.transcription = String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5)
         viewModel.simulatedSummaryGeneration = { _ in "Finished design summary." }
         viewModel.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "AI Tools", "Design"] }
         defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedTagGeneration = nil; try? store.deleteNoteAndAudio(other) }
@@ -246,8 +247,8 @@ private final class RoutingRefusedNote: Note {
         }
         viewModel.simulatedTagGeneration = { _, _ in throw LocalError.message("Injected tagging failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.tagNames == ["AI", "Design"], note.summary == "Finished design summary.", delivered == 2 else {
-            throw LocalError.message("Tagging failure must preserve existing tags and save the completed summary.")
+        guard !note.tagNames.isEmpty, note.tagNames.count <= 2, note.summary == "Finished design summary.", delivered == 2 else {
+            throw LocalError.message("Tagging failure must use local fallback tags and save the completed summary.")
         }
         viewModel.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")

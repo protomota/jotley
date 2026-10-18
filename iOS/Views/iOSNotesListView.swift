@@ -340,14 +340,14 @@ struct NotesListView: View {
     private var settingsButton: some View {
         Button(action: { showingSettings = true }) {
             ZStack {
-                Circle().fill(Color.themePrimaryAccent).frame(width: 44, height: 44)
+                Circle().fill(Color.themePrimaryAccent).frame(width: usesIPadLayout ? 56 : 44, height: usesIPadLayout ? 56 : 44)
                 Image(systemName: "gearshape.fill")
-                    .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+                    .font(.system(size: usesIPadLayout ? 20 : 16, weight: .semibold)).foregroundColor(.white)
             }
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
+            .frame(width: usesIPadLayout ? 56 : 44, height: usesIPadLayout ? 56 : 44)
+            .contentShape(Rectangle())
+            .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .buttonStyle(.plain)
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("notesListSettingsButton")
     }

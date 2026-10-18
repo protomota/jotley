@@ -740,13 +740,13 @@ final class LiveTranscriptionManager: ObservableObject {
                 var generatedTags: [String]?
                 var tagError: Error?
                 self.summaryProgress = .organizingTags; runtime.update(.organizingTags)
+                let library = try store.tagLibrary()
                 do {
-                    let library = try store.tagLibrary()
                     #if DEBUG && targetEnvironment(simulator)
                     if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
-                    else { generatedTags = try await LocalNoteTags.generate(from: result, library: library, locale: locale) }
+                    else { generatedTags = try await LocalNoteTags.generate(from: result, transcript: job.checkpoint.input, library: library, locale: locale) }
                     #else
-                    generatedTags = try await LocalNoteTags.generate(from: result, library: library, locale: locale)
+                    generatedTags = try await LocalNoteTags.generate(from: result, transcript: job.checkpoint.input, library: library, locale: locale)
                     #endif
                 } catch is CancellationError { throw CancellationError() }
                 catch { tagError = error }
@@ -755,11 +755,11 @@ final class LiveTranscriptionManager: ObservableObject {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
                 }
                 try store.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
+                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: LocalNoteTags.completedNames(generatedTags, transcript: job.checkpoint.input, summary: result, library: library))
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags organized using local text analysis: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { self.errorMessage = "Summary saved. " + warnings.joined(separator: " ") }
             } catch is CancellationError {
                 if !self.summaryPausedBySystem { self.removeSummaryJob() }

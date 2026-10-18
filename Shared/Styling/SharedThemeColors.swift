@@ -308,17 +308,11 @@ extension View {
 /// The same neutral Liquid Glass dismissal control in toolbars and custom sheets.
 struct MobileDoneButton: View {
     @ObservedObject private var themeManager = ThemeManager.shared
-    var inToolbar = false
     let action: () -> Void
 
     var body: some View {
-        if inToolbar {
-            // Navigation bars supply Liquid Glass themselves. Applying .glass
-            // here as well would draw a second capsule inside the native one.
-            doneButton
-        } else {
-            doneButton.buttonStyle(.glass).buttonBorderShape(.capsule)
-        }
+        doneButton.buttonStyle(.glass).buttonBorderShape(.capsule)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var doneButton: some View {

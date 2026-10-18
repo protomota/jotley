@@ -44,7 +44,7 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 | **Summaries that finish** | Choose **Auto** or a template. Long notes become one consolidated summary. See preparation progress while sections are reviewed, then follow the summary as it is written. **Cancel Generation** stays visible; regeneration starts with one tap. |
 | **Ask your notes** | On iPhone and iPad, tap **Ask AI** on the Summary tab; on Mac, use **More → Ask AI**. Find answers, pull out action items or clarify a detail using on-device Apple Intelligence. |
 | **Know when it’s ready** | Optional local notifications tell you when a completed summary is saved. Alerts work offline and keep note content off the Lock Screen. |
-| **Automatic topic tags** | Each completed summary replaces the note’s tags with up to five relevant topics, preferring existing library tags to keep related notes together. |
+| **Automatic topic tags** | Each completed summary replaces the note’s tags with one to five relevant topics, preferring existing library tags. Transcripts under ten words can remain untagged. |
 | **Make it yours** | Edit transcripts and summaries, organize with folders and tags, search and filter, and choose light or dark appearance. |
 | **Keep moving** | iPhone widgets and the Lock Screen/Dynamic Island show the active transcription session. |
 | **Share your work** | Export text or Markdown, share natively, and send notes to Obsidian on Mac. |

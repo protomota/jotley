@@ -48,6 +48,14 @@ struct JotleyiOSApp: App {
         store = persistence; launchError = failure
         let recorder = LiveTranscriptionManager(store: failure == nil ? persistence : nil)
         #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_TAGS"] == "1" {
+            recorder.simulatedSummaryGeneration = { update in
+                await update("AI and design guide the project research and planning.")
+                try await Task.sleep(for: .seconds(1))
+                return "AI and design guide the project research and planning."
+            }
+            recorder.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"] }
+        }
         if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_SCROLL"] == "1" {
             recorder.simulatedSummaryGeneration = { update in
                 try await Task.sleep(for: .seconds(3))

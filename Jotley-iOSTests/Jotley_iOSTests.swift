@@ -48,7 +48,7 @@ struct Jotley_iOSTests {
     }
 
     #if DEBUG && targetEnvironment(simulator)
-    @MainActor @Test func successfulSummaryReplacesTagsAndFailureOrCancelKeepsExistingBuckets() async throws {
+    @MainActor @Test func successfulSummaryReplacesTagsAndFallsBackWithoutOverwritingCancelledWork() async throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }
         let suite = "JotleySummaryDelivery-" + UUID().uuidString
@@ -62,10 +62,12 @@ struct Jotley_iOSTests {
                 sent.append(request)
             }, isActive: { true })
         let manager = LiveTranscriptionManager(store: store, summaryNotifications: notifications)
-        let note = try manager.createNote(text: "AI supports design.", title: "Design review")
+        let note = try manager.createNote(text: String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5), title: "Design review")
         let other = try manager.createNote(text: "Related work", title: "Related")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
-        try store.saveNoteChanges(note, values: [:], replacingTags: ["Old topic"])
+        for index in 1...10 { try note.addTagByName("Outdated-\(index)", in: store.context) }
+        try store.save()
+        #expect(note.tagNames.count == 10)
         manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
         manager.simulatedTagGeneration = { _, library in
             #expect(library.contains { $0.name == "AI" })
@@ -79,8 +81,9 @@ struct Jotley_iOSTests {
         manager.simulatedTagGeneration = { _, _ in throw LocalError.message("Model unavailable") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames == ["AI", "Design"])
-        #expect(manager.errorMessage?.contains("Tags were kept") == true && sent.count == 2)
+        #expect(!note.tagNames.isEmpty && note.tagNames.count <= 2)
+        let fallbackTags = note.tagNames
+        #expect(manager.errorMessage?.contains("local text analysis") == true && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
         manager.simulatedTagGeneration = { _, _ in try await Task.sleep(for: .seconds(5)); return ["Wrong"] }
         manager.summarize(note, template: .auto)
@@ -88,11 +91,21 @@ struct Jotley_iOSTests {
         #expect(manager.summaryProgress == .organizingTags)
         manager.cancelProcessing()
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.summary == "A completed design summary." && note.tagNames == ["AI", "Design"] && sent.count == 2)
+        #expect(note.summary == "A completed design summary." && note.tagNames == fallbackTags && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(sent.count == 2 && note.summary == "A completed design summary.")
+        manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
+        manager.simulatedTagGeneration = { _, _ in [] }
+        note.transcription = "one two three four five six seven eight nine ten"
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(note.tagNames.count == 1 && sent.count == 3)
+        note.transcription = "one two three four five six seven eight nine"
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(note.tagNames.isEmpty && sent.count == 4)
     }
     #endif
 

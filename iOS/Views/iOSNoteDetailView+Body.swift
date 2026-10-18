@@ -131,6 +131,7 @@ extension NoteDetailView {
             }
         } message: { Text("This permanently deletes the note.") }
         .onAppear { currentTags = note.tagNames; if hasSummary { selectedTab = "Summary" } }
+        .onChange(of: note.tagNames) { _, tags in currentTags = tags }
         .onChange(of: isTitleFieldFocused) { _, focused in if !focused { isEditingTitle = false } }
         .onChange(of: hasSummary) { _, available in if !available { selectedTab = "Transcript" } }
         .onChange(of: summaryIsRunning) { _, running in if running { selectedTab = "Summary" } }
@@ -159,8 +160,9 @@ extension NoteDetailView {
             iOSNoteFolderRow(note: note, onChange: transcriptionManager.saveEdits).padding(.horizontal).padding(.top,8)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
-                    ForEach(currentTags, id: \.self) { tag in
+                    ForEach(note.tagNames, id: \.self) { tag in
                         iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
+                            .accessibilityIdentifier("noteDetailTag-\(tag)")
                     }
                     Button("Add Tag", systemImage: "plus.circle.fill") { showingAddTag = true }.font(.caption)
                 }.padding(.horizontal)

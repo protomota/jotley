@@ -6,6 +6,25 @@ import Speech
 @testable import jotley
 
 final class LocalCoreTests: XCTestCase {
+    func testCompletedTagsAlwaysReplaceEligibleNotesAndRespectTranscriptLength() {
+        let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20)]
+        let nine = "one two three four five six seven eight nine"
+        let ten = nine + " ten"
+        XCTAssertEqual(LocalNoteTags.tagLimit(for: nine), 0)
+        XCTAssertEqual(LocalNoteTags.completedNames(["AI"], transcript: nine, summary: "AI", library: library), [])
+        XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: ten, summary: "AI helps design.", library: library), ["AI"])
+        let long = String(repeating: "AI helps design teams plan research projects and meetings every week. ", count: 40)
+        XCTAssertEqual(LocalNoteTags.tagLimit(for: long), 5)
+        let modelTags = LocalNoteTags.completedNames(["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"], transcript: long, summary: "", library: library)
+        XCTAssertEqual(modelTags, ["AI", "Design", "Research", "Planning", "Meetings"])
+        for proposed: [String]? in [nil, [], ["###", " "]] {
+            let fallback = LocalNoteTags.completedNames(proposed, transcript: long, summary: "AI helps design.", library: library)
+            XCTAssertEqual(fallback, ["AI", "Design"])
+            XCTAssertFalse(LocalNoteTags.completedNames(proposed, transcript: ten, summary: "", library: []).isEmpty)
+        }
+        XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: "", summary: "", library: library), [])
+    }
+
     func testAutoTagsReuseBucketsAndLimitDistinctTopics() {
         let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20), LocalTagCandidate(name: "Project-Planning", usageCount: 5)]
         XCTAssertEqual(LocalNoteTags.resolvedNames(["artificial intelligence", "AI Tools", "ai", "Design", "Project Planning", "Research", "Work", "Extra"], library: library),
@@ -61,17 +80,35 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(other.text("title"), "Unrelated unsaved edit")
     }
 
-    func testInstalledTagModelReusesExistingBroadBuckets() async throws {
+    @MainActor func testInstalledTagModelReusesExistingBroadBuckets() async throws {
         guard ProcessInfo.processInfo.environment["JOTLEY_RUN_TAG_TESTS"] == "1" else { throw XCTSkip("Installed Apple tag model test is opt-in") }
         let locale = Locale(identifier: "en-US")
         if let reason = LocalSummary.readiness(locale: locale) { throw XCTSkip(reason) }
         let library = [LocalTagCandidate(name: "AI", usageCount: 50), LocalTagCandidate(name: "Design", usageCount: 20), LocalTagCandidate(name: "Gardening", usageCount: 5)]
-        let tags = try await LocalNoteTags.generate(from: "The design team adopted artificial intelligence tools. Designers use generative AI to explore interface layouts and prototype product ideas.", library: library, locale: locale)
+        let source = String(repeating: "The design team adopted artificial intelligence tools. Designers use generative AI to explore interface layouts and prototype product ideas. ", count: 3)
+        let tags = try await LocalNoteTags.generate(from: source, library: library, locale: locale)
         XCTAssertTrue(tags.contains("AI"), tags.description)
         XCTAssertTrue(tags.contains("Design"), tags.description)
         XCTAssertFalse(tags.contains("Gardening"), tags.description)
         XCTAssertLessThanOrEqual(tags.count, 5)
         XCTAssertEqual(Set(tags.map(LocalNoteTags.key)).count, tags.count)
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let note = try store.create(title: "Ten old tags", text: source)
+        var oldTags: [NSManagedObject] = []
+        for index in 1...10 {
+            let tag = NSEntityDescription.insertNewObject(forEntityName: "Tag", into: store.context)
+            tag.setValue(UUID(), forKey: "id"); tag.setValue("Outdated-\(index)", forKey: "name")
+            oldTags.append(tag)
+        }
+        note.setValue(NSSet(array: oldTags), forKey: "tags")
+        try store.save()
+        XCTAssertEqual((note.value(forKey: "tags") as? NSSet)?.count, 10)
+        try store.saveNoteChanges(note, values: ["summary": source], replacingTags: tags)
+        store.context.refresh(note, mergeChanges: false)
+        let saved = (note.value(forKey: "tags") as? Set<NSManagedObject>) ?? []
+        XCTAssertEqual(Set(saved.map { $0.text("name") }), Set(tags))
+        XCTAssertFalse(saved.contains { $0.text("name").hasPrefix("Outdated-") })
         let cancelled = Task { try await LocalNoteTags.generate(from: "AI", library: library, locale: locale) }
         cancelled.cancel()
         do { _ = try await cancelled.value; XCTFail("Cancelled tagging must not finish") } catch is CancellationError { }

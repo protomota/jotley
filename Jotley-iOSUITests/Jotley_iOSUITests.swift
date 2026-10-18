@@ -8,6 +8,81 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testRegeneratingSummaryReplacesVisibleTenTagSetWithoutReopeningNote() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        let oldTags = (1...10).map { "Outdated-\($0)" }
+        let fixture: [[String: Any]] = [
+            ["title": "Tag replacement", "folder": "", "tags": oldTags,
+             "transcript": String(repeating: "AI helps design teams plan research projects and meetings every week. ", count: 40),
+             "summary": "An existing summary."],
+            ["title": "Library buckets", "folder": "", "tags": ["AI", "Design"], "transcript": "Related work", "summary": ""]
+        ]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_SUMMARY_TAGS"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let row = app.buttons.containing(.staticText, identifier: "Tag replacement").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        XCTAssertTrue(app.staticTexts["Outdated-1"].waitForExistence(timeout: 5))
+        for _ in 0..<2 {
+            app.buttons["noteDetailGenerateSummaryButton"].tap()
+            XCTAssertTrue(app.staticTexts["AI"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.staticTexts["Design"].exists)
+            for old in oldTags { XCTAssertFalse(app.staticTexts[old].exists, "Old tags must disappear without reopening the note") }
+            XCTAssertFalse(app.staticTexts["Overflow"].exists)
+            for tag in ["AI", "Design", "Research", "Planning", "Meetings"] {
+                XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", tag)).count, 1)
+            }
+            XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].waitForExistence(timeout: 5))
+        }
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Regeneration replaces ten visible tags with five library-aware tags"
+        attachment.lifetime = .keepAlways; add(attachment)
+    }
+
+    @MainActor func testSettingsDoneGlassRemainsNeutralAcrossThemesAndAppearances() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launch()
+        XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 15))
+        app.buttons["notesListSettingsButton"].tap()
+        for mode in ["Dark", "Light"] {
+            app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch.tap()
+            app.buttons[mode].tap()
+            for theme in ["Purple", "Magenta", "Orange", "Yellow", "Light Blue"] {
+                app.descendants(matching: .any)["settingsThemeColorPicker"].firstMatch.tap()
+                app.buttons[theme].tap()
+                let done = app.buttons["settingsDoneButton"]
+                XCTAssertTrue(done.isHittable)
+                XCTAssertGreaterThanOrEqual(done.frame.width, 55, "Done must fit without truncating its label")
+                let image = try XCTUnwrap(done.screenshot().image.cgImage)
+                let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
+                    bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+                context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+                let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+                var colored = 0
+                for index in 0..<(image.width * image.height) {
+                    let rgb = (0..<3).map { Int(pixels[index * 4 + $0]) }
+                    if rgb.max()! - rgb.min()! > 45 { colored += 1 }
+                }
+                XCTAssertLessThan(Double(colored) / Double(image.width * image.height), 0.05,
+                                  "Done must have neutral glass, not an accent fill: \(mode), \(theme)")
+                if theme == "Magenta" {
+                    let attachment = XCTAttachment(screenshot: app.screenshot())
+                    attachment.name = "Neutral glass Done with Magenta theme - \(mode)"
+                    attachment.lifetime = .keepAlways; add(attachment)
+                }
+            }
+        }
+        app.buttons["settingsDoneButton"].tap()
+        XCTAssertTrue(app.buttons["notesListSettingsButton"].isHittable)
+    }
+
     @MainActor func testMacStyleDateRowsStayReadableWhileScrolling() throws {
         guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
             throw XCTSkip("Sidebar rendering regression requires iPad")

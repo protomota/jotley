@@ -156,7 +156,9 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden).background(Color.themeBackground)
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
         .tint(Color.themeActionText)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { MobileDoneButton(inToolbar: true) { dismiss() }.accessibilityIdentifier("settingsDoneButton") } }
+        .toolbar { ToolbarItem(placement: .topBarTrailing) {
+            MobileDoneButton { dismiss() }.accessibilityIdentifier("settingsDoneButton")
+        }.sharedBackgroundVisibility(.hidden) }
         .task(id: transcriptionLanguage) { await checkModels() }
         .onDisappear { speechSetupTask?.cancel() }
         .preferredColorScheme(themeManager.effectiveColorScheme).observeThemeChanges()
