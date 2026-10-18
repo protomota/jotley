@@ -68,7 +68,7 @@ Once the Apple models are ready, these features work offline. A speech language 
 
 Apple Intelligence must be enabled and its model ready. Transcription also needs a supported language with its separate Apple speech model installed. Hardware compatibility alone does not complete model setup.
 
-**Jotley 2.1.1 (395) for Mac is available at [jotley.ai/download](https://jotley.ai/download), and iPhone/iPad 2.1.1 (392) is in internal TestFlight. The separate iPhone/iPad 2.1 App Store update remains under review.** You can build both apps from this source.
+**Jotley 2.1.1 (395) for Mac is available at [jotley.ai/download](https://jotley.ai/download), and iPhone/iPad 2.1.1 (396) is in internal TestFlight. The separate iPhone/iPad 2.1 App Store update remains under review.** You can build both apps from this source.
 
 ## Build it yourself
 
