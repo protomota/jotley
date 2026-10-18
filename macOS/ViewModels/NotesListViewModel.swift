@@ -6,6 +6,7 @@ import Combine
 @MainActor final class NotesListViewModel: ObservableObject {
     let viewContext: NSManagedObjectContext
     let recorder: ProcessTapRecorder
+    let summaryNotifications: JotleySummaryNotifications
     let persistenceController: SharedPersistenceController
     @Published var newNoteBeingRecorded: Note?
     @Published var isTranscriptionPaused = false
@@ -32,7 +33,8 @@ import Combine
     private var stopTask: Task<Void, Never>?
     private var baseText = ""
     private var baseUtterances: [TranscriptUtterance] = []
-    init(viewContext: NSManagedObjectContext, recorder: ProcessTapRecorder, persistenceController: SharedPersistenceController) {
+    init(viewContext: NSManagedObjectContext, recorder: ProcessTapRecorder, persistenceController: SharedPersistenceController, summaryNotifications: JotleySummaryNotifications? = nil) {
+        self.summaryNotifications = summaryNotifications ?? .shared
         self.viewContext = viewContext; self.recorder = recorder; self.persistenceController = persistenceController
         streamingSummaryViewModel.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
         recorder.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &subscriptions)
@@ -180,6 +182,7 @@ import Combine
     }
     func generateSummary(note: Note, templateKey: String) async {
         guard !operationInProgress, !isGeneratingSummary, !recorder.isRecording, !recorder.isBusy, !LocalAppModel.shared.busy else { return }
+        summaryNotifications.prepareForSummary()
         isGeneratingSummary = true; generatingSummaryNoteID = note.objectID; generatingSummaryStartedAt = Date()
         streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing
         let template = LocalSummaryTemplate.resolve(templateKey)
@@ -238,6 +241,7 @@ import Combine
                 try Task.checkCancellation(); guard !note.isDeleted else { return }
                 try persistenceController.saveNoteChanges(note,
                     values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
+                await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
                 let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { report(LocalError.message("Summary saved. " + warnings.joined(separator: " "))) }

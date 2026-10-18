@@ -94,6 +94,10 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testSettingsPlacementKeepsIPadWindowControlsClear() throws {
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        if permission.exists, permission.label.contains("Jotley"), permission.buttons["Allow"].exists {
+            permission.buttons["Allow"].tap()
+        }
         let app = XCUIApplication()
         app.launchArguments = ["-selectedThemeColor", "Purple"]
         let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
@@ -130,10 +134,15 @@ final class Jotley_iOSUITests: XCTestCase {
                 let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
                 attachment.name = "iPad Settings placement \(orientation == .portrait ? "portrait" : "landscape") \(mode)"
                 attachment.lifetime = .keepAlways; add(attachment)
-                settings.tap()
-                let done = app.buttons["settingsDoneButton"]
-                XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
-                XCTAssertTrue(settings.waitForExistence(timeout: 5)); XCTAssertTrue(settings.isHittable)
+                // Hit the colored circle well outside the central gear glyph.
+                for point in [CGVector(dx: 0.12, dy: 0.5), CGVector(dx: 0.88, dy: 0.5),
+                              CGVector(dx: 0.5, dy: 0.12), CGVector(dx: 0.5, dy: 0.88)] {
+                    settings.coordinate(withNormalizedOffset: point).tap()
+                    let done = app.buttons["settingsDoneButton"]
+                    XCTAssertTrue(done.waitForExistence(timeout: 5), "The entire Settings circle must intercept taps")
+                    done.tap()
+                    XCTAssertTrue(settings.waitForExistence(timeout: 5)); XCTAssertTrue(settings.isHittable)
+                }
             }
         }
     }

@@ -2,11 +2,134 @@ import SwiftUI
 import StoreKit
 import FoundationModels
 import Combine
+import UserNotifications
 #if os(iOS)
 import UIKit
 #else
 import AppKit
 #endif
+
+// Local alerts only: no APNs registration, network request or note content.
+@MainActor final class JotleySummaryNotifications: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
+    static let shared = JotleySummaryNotifications(defaults: .standard, center: .current())
+    static let enabledKey = "jotleySummaryNotificationsEnabled"
+    static let requestPrefix = "jotley.summary."
+    @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Published private(set) var deliveryError: String?
+    @Published var noteToOpen: UUID?
+    private let defaults: UserDefaults
+    private let authorization: () async -> UNAuthorizationStatus
+    private let requestAuthorization: () async throws -> Bool
+    private let enqueue: (UNNotificationRequest) async throws -> Void
+    private let isActive: () -> Bool
+    private var center: UNUserNotificationCenter?
+    private var permissionTask: Task<Void, Never>?
+    private var pending = Set<UUID>()
+    private var delivered = Set<UUID>()
+    var isEnabled: Bool { defaults.object(forKey: Self.enabledKey) as? Bool ?? true }
+
+    init(defaults: UserDefaults, authorization: @escaping () async -> UNAuthorizationStatus,
+         requestAuthorization: @escaping () async throws -> Bool,
+         enqueue: @escaping (UNNotificationRequest) async throws -> Void, isActive: @escaping () -> Bool) {
+        self.defaults = defaults; self.authorization = authorization
+        self.requestAuthorization = requestAuthorization; self.enqueue = enqueue; self.isActive = isActive
+        super.init()
+    }
+    convenience init(defaults: UserDefaults, center: UNUserNotificationCenter) {
+        self.init(defaults: defaults, authorization: { await center.notificationSettings().authorizationStatus },
+            requestAuthorization: { try await center.requestAuthorization(options: [.alert, .sound]) },
+            enqueue: { try await center.add($0) }, isActive: {
+                #if os(iOS)
+                return UIApplication.shared.applicationState == .active
+                #else
+                return NSApp?.isActive == true
+                #endif
+            })
+        self.center = center
+    }
+    func install() { center?.delegate = self }
+    func refreshAuthorization() async { authorizationStatus = await authorization() }
+    // Start the system consent request alongside inference, never at app launch.
+    func prepareForSummary() {
+        guard isEnabled, permissionTask == nil else { return }
+        permissionTask = Task {
+            await refreshAuthorization()
+            if authorizationStatus == .notDetermined, isActive(), isEnabled {
+                do { _ = try await requestAuthorization(); await refreshAuthorization() }
+                catch { deliveryError = "Notifications could not be enabled. Your summaries still work normally." }
+            }
+            permissionTask = nil
+        }
+    }
+    static func request(noteID: UUID, generationID: UUID) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = "Summary ready"
+        content.body = "Your summary is saved. Open Jotley to read it."
+        content.sound = .default
+        content.userInfo = ["noteID": noteID.uuidString]
+        return UNNotificationRequest(identifier: requestPrefix + generationID.uuidString, content: content, trigger: nil)
+    }
+    // Call only after a completed summary has been committed to the note store.
+    func summarySaved(noteID: UUID?, generationID: UUID = UUID()) async {
+        guard let noteID, isEnabled, !pending.contains(generationID), !delivered.contains(generationID) else { return }
+        pending.insert(generationID); defer { pending.remove(generationID) }
+        if let permissionTask { await permissionTask.value }
+        await refreshAuthorization()
+        guard isEnabled, [.authorized, .provisional].contains(authorizationStatus) else { return }
+        do {
+            try await enqueue(Self.request(noteID: noteID, generationID: generationID))
+            if delivered.count >= 128 { delivered.removeAll() }
+            delivered.insert(generationID); deliveryError = nil
+        } catch { deliveryError = "The summary was saved, but its notification could not be shown." }
+    }
+    @discardableResult func openSummary(from request: UNNotificationRequest) -> Bool {
+        guard request.identifier.hasPrefix(Self.requestPrefix),
+              let value = request.content.userInfo["noteID"] as? String, let id = UUID(uuidString: value) else { return false }
+        noteToOpen = id
+        #if os(macOS)
+        NSApp?.activate(ignoringOtherApps: true)
+        #endif
+        return true
+    }
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        Task { @MainActor in completionHandler(isEnabled ? [.banner, .sound] : []) }
+    }
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        Task { @MainActor in
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier { openSummary(from: response.notification.request) }
+            completionHandler()
+        }
+    }
+}
+
+struct JotleySummaryNotificationSettings: View {
+    @AppStorage(JotleySummaryNotifications.enabledKey) private var enabled = true
+    @ObservedObject private var notifications = JotleySummaryNotifications.shared
+    @Environment(\.scenePhase) private var scenePhase
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("Notify when a summary is ready", isOn: $enabled)
+                .tint(.themePrimaryAccent).accessibilityIdentifier("settingsSummaryNotificationsToggle")
+            Text("Local alerts contain no note text and work offline. A notification is sent only after a completed summary is saved.")
+                .font(.caption).foregroundStyle(.secondary)
+            if enabled && notifications.authorizationStatus == .notDetermined {
+                Button("Allow Notifications") { notifications.prepareForSummary() }
+                    .foregroundStyle(Color.themeActionText)
+                    .accessibilityIdentifier("settingsAllowSummaryNotifications")
+                Text("You can also allow notifications when you next generate a summary.").font(.caption).foregroundStyle(.secondary)
+            } else if enabled && notifications.authorizationStatus == .denied {
+                Text("Notifications are blocked in system Settings. Allow Jotley notifications there to receive alerts.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if let error = notifications.deliveryError { Text(error).font(.caption).foregroundStyle(.secondary) }
+        }
+        .task { await notifications.refreshAuthorization() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await notifications.refreshAuthorization() } } }
+        .onChange(of: enabled) { _, value in if value { notifications.prepareForSummary() } }
+    }
+}
 
 // Hardware eligibility is distinct from enabling Apple Intelligence or preparing
 // its models. Apple's API supports all eligible devices without guessed model IDs.

@@ -45,6 +45,11 @@ extension SettingsView {
                     }
 
                     VStack(alignment: .leading, spacing: 16) {
+                        Text("Notifications").font(.headline)
+                        JotleySummaryNotificationSettings()
+                    }
+
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("Display Options")
                             .font(.headline)
 

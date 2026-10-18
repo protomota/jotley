@@ -4,6 +4,7 @@ import CoreData
 import Darwin
 import SwiftUI
 import AppKit
+import UserNotifications
 import AVFoundation
 import CoreText
 @testable import Jotley
@@ -58,6 +59,7 @@ private final class RoutingRefusedNote: Note {
 /// exercise its actual view model without adding a second implementation.
 @main private struct MacRoutingHarness {
     @MainActor static func main() async {
+        UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey)
         if CommandLine.arguments.contains("--layout-preview") {
             previewRecordingControls()
             return
@@ -218,6 +220,18 @@ private final class RoutingRefusedNote: Note {
         print("PASS: Mac new-transcription route starts capture on a fresh note immediately, blocks duplicate starts and releases a failed start.")
     }
     @MainActor private static func verifyAutomaticTags(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
+        let suite = "JotleyMacSummaryDelivery-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var delivered = 0
+        let notifications = JotleySummaryNotifications(defaults: defaults, authorization: { .authorized },
+            requestAuthorization: { true }, enqueue: { request in
+                guard note.summary == "Finished design summary.", request.content.userInfo["noteID"] as? String == note.id?.uuidString else {
+                    throw LocalError.message("A notification was sent before its summary was saved.")
+                }
+                delivered += 1
+            }, isActive: { true })
+        let viewModel = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store, summaryNotifications: notifications)
         let other = try store.create(title: "Other tag bucket", text: "Related note")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
         try store.saveNoteChanges(note, values: [:], replacingTags: ["Outdated"])
@@ -226,17 +240,20 @@ private final class RoutingRefusedNote: Note {
         viewModel.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "AI Tools", "Design"] }
         defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedTagGeneration = nil; try? store.deleteNoteAndAudio(other) }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.summary == "Finished design summary.", note.tagNames == ["AI", "Design"],
+        guard note.summary == "Finished design summary.", note.tagNames == ["AI", "Design"], delivered == 1,
               (other.value(forKey: "tags") as? NSSet)?.count == 2 else {
             throw LocalError.message("Mac summary must replace old tags and reuse existing library buckets.")
         }
         viewModel.simulatedTagGeneration = { _, _ in throw LocalError.message("Injected tagging failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.tagNames == ["AI", "Design"], note.summary == "Finished design summary." else {
+        guard note.tagNames == ["AI", "Design"], note.summary == "Finished design summary.", delivered == 2 else {
             throw LocalError.message("Tagging failure must preserve existing tags and save the completed summary.")
         }
+        viewModel.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
+        await viewModel.generateSummary(note: note, templateKey: "Concise")
+        guard delivered == 2, note.summary == "Finished design summary." else { throw LocalError.message("Failed summaries must not notify.") }
         viewModel.showSyncError = false
-        print("PASS: Mac summaries replace old tags, reuse library entities and retain tags after tagging failure.")
+        print("PASS: Mac summaries replace tags and deliver local notifications only after saved results, including tag-warning results.")
     }
     @MainActor private static func verifySummaryFollowAndCancel(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
         note.summary = "Previously saved summary."

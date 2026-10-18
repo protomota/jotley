@@ -194,6 +194,8 @@ extension NotesListView {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
                     }
+                    .frame(width: 36, height: 36)
+                    .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .help("Settings")

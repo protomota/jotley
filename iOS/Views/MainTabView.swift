@@ -3,6 +3,8 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
+    @ObservedObject private var summaryNotifications = JotleySummaryNotifications.shared
+    @State private var summaryNavigationID = UUID()
     @State private var navigationPath = NavigationPath()
     @State private var showingSettings = false
     @State private var selectedNoteId: UUID?
@@ -31,7 +33,7 @@ struct MainTabView: View {
                     NavigationStack {
                         if let selectedNoteId {
                             // Reset the fetch and tab/editor state when another note is selected.
-                            NoteDetailByIdView(noteId: selectedNoteId).id(selectedNoteId)
+                            NoteDetailByIdView(noteId: selectedNoteId).id(selectedNoteId).id(summaryNavigationID)
                         }
                         else { ContentUnavailableView("Select a Note", systemImage: "note.text", description: Text("Choose a note or tap + to transcribe live.")) }
                     }
@@ -41,7 +43,7 @@ struct MainTabView: View {
                 NavigationStack(path: $navigationPath) {
                     notesList
                         .navigationDestination(for: UUID.self) { id in
-                            NoteDetailByIdView(noteId: id)
+                            NoteDetailByIdView(noteId: id).id(summaryNavigationID)
                         }
                 }
             }
@@ -53,9 +55,11 @@ struct MainTabView: View {
                 openNote(id)
             }
             newTranscriptionNote = nil
+            openNotifiedSummary()
         }) {
             LiveTranscriptionView(isPresented: $showingTranscriptionModal, existingNote: newTranscriptionNote, isNewTranscription: newTranscriptionNote != nil, transcriptionManager: transcriptionManager)
         }
+        .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, _ in openNotifiedSummary() }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
             if showingSettings { pendingWidgetAction = action; showingSettings = false }
@@ -63,6 +67,7 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $showingSettings, onDismiss: {
             if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }
+            openNotifiedSummary()
         }) {
             NavigationStack { SettingsView() }
                 .presentationDetents([.large]).presentationDragIndicator(.visible)
@@ -95,6 +100,12 @@ struct MainTabView: View {
             if transcriptionManager.activeNoteID == id, transcriptionManager.isTranscribing { showingTranscriptionModal = true }
             else { openNote(id) }
         }
+    }
+    private func openNotifiedSummary() {
+        guard !showingSettings, !showingTranscriptionModal, let id = summaryNotifications.noteToOpen else { return }
+        summaryNavigationID = UUID()
+        openNote(id)
+        summaryNotifications.noteToOpen = nil
     }
     private func openNote(_ id: UUID) {
         guard (try? persistenceController.notes().contains { $0.localNoteID == id }) == true else { return }

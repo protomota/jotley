@@ -6,15 +6,62 @@ import UIKit
 import Speech
 import FoundationModels
 import XCTest
+import UserNotifications
 @testable import Jotley_iOS
 
 @Suite(.serialized)
 struct Jotley_iOSTests {
+    init() { UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey) }
+
+    @MainActor @Test func summaryNotificationsRespectConsentPrivacyAndDeduplication() async throws {
+        let suite = "JotleyNotificationTests-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var status: UNAuthorizationStatus = .notDetermined
+        var requests = 0
+        var notifications: [UNNotificationRequest] = []
+        let service = JotleySummaryNotifications(defaults: defaults, authorization: { status },
+            requestAuthorization: { requests += 1; status = .authorized; return true },
+            enqueue: { notifications.append($0) }, isActive: { true })
+        let note = UUID(), generation = UUID()
+        service.prepareForSummary(); service.prepareForSummary()
+        await service.summarySaved(noteID: note, generationID: generation)
+        await service.summarySaved(noteID: note, generationID: generation)
+        #expect(requests == 1 && notifications.count == 1)
+        let sent = try #require(notifications.first)
+        #expect(sent.content.title == "Summary ready")
+        #expect(sent.content.body == "Your summary is saved. Open Jotley to read it.")
+        #expect(sent.content.userInfo.count == 1 && sent.content.userInfo["noteID"] as? String == note.uuidString)
+        #expect(sent.trigger == nil)
+        #expect(service.openSummary(from: sent) && service.noteToOpen == note)
+        status = .denied
+        service.prepareForSummary()
+        await service.summarySaved(noteID: note)
+        #expect(requests == 1 && notifications.count == 1)
+        defaults.set(false, forKey: JotleySummaryNotifications.enabledKey)
+        status = .authorized
+        await service.summarySaved(noteID: note)
+        #expect(notifications.count == 1)
+        defaults.set(true, forKey: JotleySummaryNotifications.enabledKey)
+        await service.summarySaved(noteID: nil)
+        #expect(notifications.count == 1)
+    }
+
     #if DEBUG && targetEnvironment(simulator)
     @MainActor @Test func successfulSummaryReplacesTagsAndFailureOrCancelKeepsExistingBuckets() async throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }
-        let manager = LiveTranscriptionManager(store: store)
+        let suite = "JotleySummaryDelivery-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var sent: [UNNotificationRequest] = []
+        let notifications = JotleySummaryNotifications(defaults: defaults, authorization: { .authorized },
+            requestAuthorization: { true }, enqueue: { request in
+                let saved = try store.notes()
+                #expect(saved.contains { $0.text("summary") == "A completed design summary." })
+                sent.append(request)
+            }, isActive: { true })
+        let manager = LiveTranscriptionManager(store: store, summaryNotifications: notifications)
         let note = try manager.createNote(text: "AI supports design.", title: "Design review")
         let other = try manager.createNote(text: "Related work", title: "Related")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
@@ -28,12 +75,12 @@ struct Jotley_iOSTests {
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(note.summary == "A completed design summary.")
         #expect(note.tagNames == ["AI", "Design"] && other.tagNames == ["AI", "Design"])
-        #expect(manager.errorMessage == nil)
+        #expect(manager.errorMessage == nil && sent.count == 1)
         manager.simulatedTagGeneration = { _, _ in throw LocalError.message("Model unavailable") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(note.tagNames == ["AI", "Design"])
-        #expect(manager.errorMessage?.contains("Tags were kept") == true)
+        #expect(manager.errorMessage?.contains("Tags were kept") == true && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
         manager.simulatedTagGeneration = { _, _ in try await Task.sleep(for: .seconds(5)); return ["Wrong"] }
         manager.summarize(note, template: .auto)
@@ -41,7 +88,46 @@ struct Jotley_iOSTests {
         #expect(manager.summaryProgress == .organizingTags)
         manager.cancelProcessing()
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.summary == "A completed design summary." && note.tagNames == ["AI", "Design"])
+        #expect(note.summary == "A completed design summary." && note.tagNames == ["AI", "Design"] && sent.count == 2)
+        manager.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
+        manager.summarize(note, template: .auto)
+        for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        #expect(sent.count == 2 && note.summary == "A completed design summary.")
+    }
+    #endif
+
+    #if DEBUG && targetEnvironment(simulator)
+    @MainActor @Test func savedSummaryReachesSystemNotificationCenter() async throws {
+        let center = UNUserNotificationCenter.current()
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional else {
+            throw XCTSkip("Allow notifications in the Simulator before running the real OS delivery check")
+        }
+        let suite = "JotleyRealNotification-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite); JotleySummaryNotifications.shared.install() }
+        let service = JotleySummaryNotifications(defaults: defaults, center: center)
+        service.install()
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let manager = LiveTranscriptionManager(store: store, summaryNotifications: service)
+        let note = try manager.createNote(text: "Maya will check the next build Friday.", title: "Notification test")
+        manager.simulatedSummaryGeneration = { _ in "Maya will check the next build Friday." }
+        manager.simulatedTagGeneration = { _, _ in ["Testing"] }
+        manager.summarize(note, template: .auto)
+        for _ in 0..<200 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(20)) }
+        #expect(note.summary == "Maya will check the next build Friday.")
+        #expect(manager.summaryNoteID == nil)
+        var matching: [UNNotification] = []
+        for _ in 0..<50 {
+            matching = await center.deliveredNotifications().filter { $0.request.content.userInfo["noteID"] as? String == note.id?.uuidString }
+            if !matching.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        defer { center.removeDeliveredNotifications(withIdentifiers: matching.map { $0.request.identifier }) }
+        #expect(matching.count == 1)
+        #expect(matching.first?.request.content.title == "Summary ready")
+        print("Verified real OS summary delivery:", matching.map { $0.request.identifier })
     }
     #endif
 

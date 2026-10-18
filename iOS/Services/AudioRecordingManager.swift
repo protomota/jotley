@@ -268,6 +268,7 @@ final class LiveTranscriptionManager: ObservableObject {
     @Published private(set) var summaryNoteID: UUID?
     @Published private(set) var summaryPreview = ""
     @Published private(set) var summaryProgress: LocalSummaryProgress = .preparing
+    let summaryNotifications: JotleySummaryNotifications
     private let store: SharedPersistenceController?
     private let audioSessionOwner = UUID()
     private var pendingInterruption: String?
@@ -310,7 +311,8 @@ final class LiveTranscriptionManager: ObservableObject {
     var isTranscribing: Bool { transcriptionState != .idle }
     var canStart: Bool { !busy && stopRequests == 0 && !isTranscribing && summaryNoteID == nil }
 
-    init(store: SharedPersistenceController?, notificationCenter: NotificationCenter = .default) {
+    init(store: SharedPersistenceController?, notificationCenter: NotificationCenter = .default, summaryNotifications: JotleySummaryNotifications? = nil) {
+        self.summaryNotifications = summaryNotifications ?? .shared
         self.store = store; self.notificationCenter = notificationCenter
         guard let store, store.ready else { return }
         do { try LegacyMobileAudioCleanup.remove(in: store.root) } catch { errorMessage = "Could not remove previous audio: \(error.localizedDescription). Your transcript text is preserved." }
@@ -632,6 +634,7 @@ final class LiveTranscriptionManager: ObservableObject {
             checkpoint: LocalSummaryCheckpoint(input: note.transcription ?? "", template: template))
         do { try persistSummaryJob(job) }
         catch { errorMessage = "Could not save summary recovery: \(error.localizedDescription)"; return }
+        summaryNotifications.prepareForSummary()
         startSummary(note, job: job)
     }
 
@@ -754,6 +757,7 @@ final class LiveTranscriptionManager: ObservableObject {
                 try store.saveNoteChanges(note,
                     values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: generatedTags)
                 self.removeSummaryJob(); completed = true
+                await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)
                 let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags were kept: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { self.errorMessage = "Summary saved. " + warnings.joined(separator: " ") }

@@ -145,6 +145,7 @@ struct SettingsView: View {
                      : (persistenceController.syncMode.isEnabled ? "iCloud sync is enabled for this session. Apple schedules synchronization when available." : "iCloud sync is off for this session."))
                     .font(.caption).foregroundColor(.secondary)
             }
+            Section("Notifications") { JotleySummaryNotificationSettings() }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
                 Text("Jotley · Free · Offline")

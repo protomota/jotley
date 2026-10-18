@@ -12,6 +12,7 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
     private var recorderStateObserver: NSObjectProtocol?
     var recordingNotesViewModel: NotesListViewModel?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        JotleySummaryNotifications.shared.install()
         setupStatusItem()
         JotleyUpdates.shared.start()
     }

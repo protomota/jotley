@@ -4,6 +4,13 @@ extension NotesListView {
     var body: some View {
         navigationView
             .modifier(AlertModifier(viewModel: viewModel))
+            .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, id in
+                guard let id, let note = notes.first(where: { $0.id == id }) else { return }
+                viewModel.selectedNoteIDs = [note.objectID]
+                viewModel.selectedDetailTab = DetailTab.summary.rawValue
+                focusMainWindow()
+                summaryNotifications.noteToOpen = nil
+            }
             .onDeleteCommand(perform: handleDeleteCommand)
             .onChange(of: viewModel.recorder.transcription) { _, _ in viewModel.updateNewNoteTranscription() }
             .onChange(of: filterState.selectedFolder) { _, value in viewModel.pendingFolderSelection = value }

@@ -9,6 +9,7 @@ struct JotleyiOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        JotleySummaryNotifications.shared.install()
         var persistence: SharedPersistenceController?
         var failure = MobileDeviceEligibility.unsupportedReason
         if failure == nil {

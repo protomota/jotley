@@ -4,6 +4,7 @@ import Foundation
 import AppKit
 
 struct NotesListView: View {
+    @ObservedObject var summaryNotifications = JotleySummaryNotifications.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.managedObjectContext) var viewContext
     @FetchRequest(
