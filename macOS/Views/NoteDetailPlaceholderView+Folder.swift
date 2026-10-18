@@ -117,6 +117,7 @@ private struct NewFolderInlineSheet: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
+        .buttonStyle(JotleyGlassButtonStyle())
         .padding(20)
         .frame(minWidth: 320)
     }

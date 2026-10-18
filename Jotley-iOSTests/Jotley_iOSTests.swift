@@ -83,7 +83,7 @@ struct Jotley_iOSTests {
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(!note.tagNames.isEmpty && note.tagNames.count <= 2)
         let fallbackTags = note.tagNames
-        #expect(manager.errorMessage?.contains("local text analysis") == true && sent.count == 2)
+        #expect(manager.errorMessage == nil && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
         manager.simulatedTagGeneration = { _, _ in try await Task.sleep(for: .seconds(5)); return ["Wrong"] }
         manager.summarize(note, template: .auto)

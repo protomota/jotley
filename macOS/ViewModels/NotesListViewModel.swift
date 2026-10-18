@@ -239,7 +239,6 @@ import Combine
                     catch { titleError = error }
                 }
                 var generatedTags: [String]?
-                var tagError: Error?
                 streamingSummaryViewModel.progress = .organizingTags
                 let library = try persistenceController.tagLibrary()
                 do {
@@ -252,13 +251,13 @@ import Combine
                         locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
                     #endif
                 } catch is CancellationError { throw CancellationError() }
-                catch { tagError = error }
+                catch { generatedTags = nil }
                 try Task.checkCancellation(); guard !note.isDeleted else { return }
                 try persistenceController.saveNoteChanges(note,
                     values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: LocalNoteTags.completedNames(generatedTags, transcript: source, summary: result, library: library))
                 await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags organized using local text analysis: \($0.localizedDescription)" }].compactMap { $0 }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { report(LocalError.message("Summary saved. " + warnings.joined(separator: " "))) }
                 NotificationCenter.default.post(name: Notification.Name("SummaryGenerationComplete"), object: nil,
                     userInfo: ["noteID": note.objectID, "summary": result])

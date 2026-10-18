@@ -155,6 +155,30 @@ enum JotleyAppleIntelligenceEligibility {
     }
 }
 
+#if os(macOS)
+/// Draw the control as SwiftUI content with the native interactive glass material.
+/// Primitive AppKit-backed button styles can fall back to white rectangular bezels.
+struct JotleyGlassButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    var circular = false
+    func makeBody(configuration: Configuration) -> some View {
+        Group {
+            if circular {
+                configuration.label.frame(width: 36, height: 36)
+                    .contentShape(Circle()).glassEffect(.regular.interactive(), in: Circle())
+            } else {
+                configuration.label.padding(.horizontal, 16).frame(minHeight: 36)
+                    .contentShape(Capsule()).glassEffect(.regular.interactive(), in: Capsule())
+            }
+        }
+        .foregroundStyle(configuration.role == .destructive ? Color.red : Color.themeTextPrimary)
+        .opacity(isEnabled ? 1 : 0.45)
+        .scaleEffect(configuration.isPressed ? 0.97 : 1)
+        .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+#endif
+
 // Local, device-only milestones. Failed, canceled and empty results never count.
 @MainActor final class JotleyEngagement: ObservableObject {
     static let shared = JotleyEngagement()
@@ -491,7 +515,7 @@ struct JotleySupportView: View {
                 Button(action: dismiss) {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .semibold))
                         .frame(width: 32, height: 32).contentShape(Circle())
-                }.buttonStyle(.glass).tint(.primary)
+                }.buttonStyle(JotleyGlassButtonStyle(circular: true))
                     .accessibilityLabel("Close support message").accessibilityIdentifier("jotleySupportClose")
             }.padding(.bottom, 22)
             ScrollView {
@@ -547,8 +571,8 @@ struct JotleySupportView: View {
                     .font(.system(size: 12)).foregroundStyle(Color.themeTextSecondary)
                 Spacer(minLength: 0)
                 Button(isAutomatic ? "Back to Notes" : "Back to Settings", action: dismiss)
-                    .font(.system(size: 15, weight: .semibold)).buttonStyle(.glass)
-                    .tint(.primary).keyboardShortcut(.cancelAction)
+                    .font(.system(size: 15, weight: .semibold)).buttonStyle(JotleyGlassButtonStyle())
+                    .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("jotleySupportDismiss")
             }.padding(.top, 22)
         }.padding(30)

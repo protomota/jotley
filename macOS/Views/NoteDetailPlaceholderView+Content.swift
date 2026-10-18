@@ -13,29 +13,7 @@ extension NoteDetailPlaceholderView {
         }
         .safeAreaInset(edge: .bottom) {
             if isGeneratingThisSummary {
-                VStack(spacing: 10) {
-                    HStack(spacing: 12) {
-                        ProgressView().controlSize(.small)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(viewModel.summaryProgress.title).font(.system(size: 15, weight: .semibold))
-                            if let detail = viewModel.summaryProgress.detail {
-                                Text(detail).font(.system(size: 13)).foregroundColor(.themeTextSecondary)
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }.accessibilityIdentifier("noteDetailSummaryProgress")
-                    if let fraction = viewModel.summaryProgress.fraction {
-                        ProgressView(value: fraction).tint(.themePrimaryAccent)
-                    }
-                    Button { viewModel.cancelInference() } label: {
-                        Label("Cancel Generation", systemImage: "xmark.circle.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal,20).frame(minWidth: 220, minHeight: 44)
-                            .background(Capsule().fill(Color.themePrimaryAccent))
-                    }.buttonStyle(.plain).keyboardShortcut(.cancelAction)
-                        .accessibilityIdentifier("noteDetailCancelGenerationButton")
-                        .frame(maxWidth: .infinity)
-                }.frame(maxWidth: 480).padding(12).frame(maxWidth: .infinity).background(Color.themeBackground)
+                MacSummaryProgressFooter(progress: viewModel.summaryProgress) { viewModel.cancelInference() }
             }
         }
         .onAppear(perform: handleOnAppear)
@@ -159,5 +137,33 @@ extension NoteDetailPlaceholderView {
             Text(obsidianAlertMessage)
         }
 
+    }
+}
+
+
+/// Center the status itself over Cancel, rather than expanding a leading-aligned row.
+struct MacSummaryProgressFooter: View {
+    let progress: LocalSummaryProgress
+    let cancel: () -> Void
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text(progress.title).font(.system(size: 15, weight: .semibold))
+            }.frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("noteDetailSummaryProgress")
+            if let detail = progress.detail {
+                Text(detail).font(.system(size: 13)).foregroundStyle(Color.themeTextSecondary)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            if let fraction = progress.fraction { ProgressView(value: fraction).tint(.themePrimaryAccent) }
+            Button(action: cancel) {
+                Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+            }.buttonStyle(JotleyGlassButtonStyle())
+                .keyboardShortcut(.cancelAction).accessibilityIdentifier("noteDetailCancelGenerationButton")
+        }.foregroundStyle(Color.themeTextPrimary)
+            .frame(maxWidth: 480).padding(12).frame(maxWidth: .infinity)
+            .background(Color.themeBackground)
     }
 }

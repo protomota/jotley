@@ -90,6 +90,7 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) { sidebarView; Divider(); contentView.frame(maxWidth: .infinity, maxHeight: .infinity) }
             .frame(minWidth: 800, idealWidth: 900, maxWidth: 1200, minHeight: 560, idealHeight: 640, maxHeight: 820)
+            .buttonStyle(JotleyGlassButtonStyle())
             .observeThemeChanges()
     }
 }

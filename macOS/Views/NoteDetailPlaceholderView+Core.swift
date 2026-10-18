@@ -43,10 +43,10 @@ struct LocalMacTranscriptEditor: View {
                         try note.saveEditedTranscript(text, original: original, in: store)
                         dismiss()
                     } catch { self.error = error.localizedDescription }
-                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(!canSave)
+                }.buttonStyle(JotleyGlassButtonStyle()).keyboardShortcut(.defaultAction).disabled(!canSave)
                     .accessibilityIdentifier("transcriptEditorSaveButton")
             }
-        }.padding(24).frame(width: 600, height: 440).background(Color.themeBackground)
+        }.buttonStyle(JotleyGlassButtonStyle()).padding(24).frame(width: 600, height: 440).background(Color.themeBackground)
             .tint(.themePrimaryAccent).observeThemeChanges()
     }
 }

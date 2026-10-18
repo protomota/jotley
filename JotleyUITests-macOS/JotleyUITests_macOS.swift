@@ -132,6 +132,10 @@ private struct MacSupportPreviewRoot: View {
             previewRecordingControls()
             return
         }
+        if CommandLine.arguments.contains("--summary-progress-preview") {
+            previewSummaryProgress()
+            return
+        }
         if CommandLine.arguments.contains("--support-preview") {
             previewSupportCard()
             return
@@ -332,14 +336,14 @@ private struct MacSupportPreviewRoot: View {
         }
         viewModel.simulatedTagGeneration = { _, _ in throw LocalError.message("Injected tagging failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard !note.tagNames.isEmpty, note.tagNames.count <= 2, note.summary == "Finished design summary.", delivered == 2 else {
+        guard !note.tagNames.isEmpty, note.tagNames.count <= 2, note.summary == "Finished design summary.", delivered == 2, !viewModel.showSyncError else {
             throw LocalError.message("Tagging failure must use local fallback tags and save the completed summary.")
         }
         viewModel.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard delivered == 2, note.summary == "Finished design summary." else { throw LocalError.message("Failed summaries must not notify.") }
+        guard delivered == 2, note.summary == "Finished design summary.", viewModel.showSyncError else { throw LocalError.message("Failed summaries must not notify.") }
         viewModel.showSyncError = false
-        print("PASS: Mac summaries replace tags and deliver local notifications only after saved results, including tag-warning results.")
+        print("PASS: Mac summaries replace tags and deliver local notifications only after saved results, including silent fallback tags and genuine summary failures.")
     }
     @MainActor private static func verifySummaryFollowAndCancel(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
         note.summary = "Previously saved summary."
@@ -750,6 +754,32 @@ private struct MacSupportPreviewRoot: View {
             }
         }
         print("PASS: production support card renders at 600×780 with readable headings in five themes, Light and Dark.")
+    }
+    @MainActor private static func previewSummaryProgress() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.regular)
+        let delegate = RecordingLayoutDelegate(); app.delegate = delegate
+        ThemeManager.shared.setAppearanceMode(.dark)
+        ThemeManager.shared.currentThemeColor = .purple
+        app.appearance = NSAppearance(named: .darkAqua)
+        let store = LocalAppModel.shared.store!
+        let note = try! store.create(title: "Weekly project review", text: "The team will review the design on Friday and prepare the next release together.") as! Note
+        let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
+        model.selectedNoteIDs = [note.objectID]; model.selectedDetailTab = DetailTab.summary.rawValue
+        model.simulatedSummaryGeneration = { _ in try await Task.sleep(for: .seconds(3600)); return "Unused preview result" }
+        let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note, selectedTab: Binding(get: { model.selectedDetailTab }, set: { model.selectedDetailTab = $0 }), viewModel: model)
+            .environmentObject(store).environment(\.managedObjectContext, store.context))
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 100, width: 760, height: 680), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Jotley Summary Progress Preview"; window.isReleasedWhenClosed = false
+        window.contentView = host; window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
+        Task {
+            let generation = Task { await model.generateSummary(note: note, templateKey: "Concise") }
+            for _ in 0..<100 { if model.isGeneratingSummary { break }; try? await Task.sleep(for: .milliseconds(10)) }
+            model.streamingSummaryViewModel.progress = .writing
+            await generation.value
+        }
+        withExtendedLifetime(delegate) { app.run() }
     }
     @MainActor private static func previewSupportCard() {
         let app = NSApplication.shared

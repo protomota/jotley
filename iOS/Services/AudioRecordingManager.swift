@@ -738,7 +738,6 @@ final class LiveTranscriptionManager: ObservableObject {
                     catch { titleError = error }
                 }
                 var generatedTags: [String]?
-                var tagError: Error?
                 self.summaryProgress = .organizingTags; runtime.update(.organizingTags)
                 let library = try store.tagLibrary()
                 do {
@@ -749,7 +748,7 @@ final class LiveTranscriptionManager: ObservableObject {
                     generatedTags = try await LocalNoteTags.generate(from: result, transcript: job.checkpoint.input, library: library, locale: locale)
                     #endif
                 } catch is CancellationError { throw CancellationError() }
-                catch { tagError = error }
+                catch { generatedTags = nil }
                 try Task.checkCancellation()
                 guard !note.isDeleted, note.transcription == job.checkpoint.input else {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
@@ -759,7 +758,7 @@ final class LiveTranscriptionManager: ObservableObject {
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }, tagError.map { "Tags organized using local text analysis: \($0.localizedDescription)" }].compactMap { $0 }
+                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }
                 if !warnings.isEmpty { self.errorMessage = "Summary saved. " + warnings.joined(separator: " ") }
             } catch is CancellationError {
                 if !self.summaryPausedBySystem { self.removeSummaryJob() }

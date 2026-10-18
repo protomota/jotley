@@ -61,8 +61,7 @@ extension SettingsView {
                         .foregroundColor(.secondary)
                         .font(.system(size: 14, weight: .medium))
                 }
-                .buttonStyle(.plain)
-                .frame(width: 24, height: 24)
+                .buttonStyle(JotleyGlassButtonStyle(circular: true))
                 .accessibilityIdentifier("settingsCloseButton")
             }
             .padding(.horizontal, 20)

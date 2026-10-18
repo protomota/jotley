@@ -84,6 +84,7 @@ internal struct AddTagPopoverView: View {
                 .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
+        .buttonStyle(JotleyGlassButtonStyle())
         .padding([.horizontal, .bottom], 15)
         .padding(.top, 10)
         .frame(minWidth: 250, idealWidth: 280)

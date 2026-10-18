@@ -51,7 +51,7 @@ struct LocalMacAskNoteView: View {
                     .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
                     .accessibilityIdentifier("askAIClearButton")
                 Button("Done") { dismiss() }.accessibilityIdentifier("askAIDoneButton")
-            }.padding(16)
+            }.buttonStyle(JotleyGlassButtonStyle()).padding(16)
             Divider()
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
@@ -65,7 +65,7 @@ struct LocalMacAskNoteView: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     if preview.isEmpty { ProgressView("Thinking on this device…") }
                                     else { MacChatAnswerText(content: preview) }
-                                    Button("Stop Answer") { cancel() }
+                                    Button("Stop Answer") { cancel() }.buttonStyle(JotleyGlassButtonStyle())
                                         .accessibilityIdentifier("askAIStopButton")
                                 }.id("answer").padding().background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
                             }
@@ -80,7 +80,7 @@ struct LocalMacAskNoteView: View {
                     HStack(alignment: .top) {
                         Image(systemName: "info.circle")
                         Text(notice).font(.system(size: 13))
-                        if error != nil { Button("Dismiss") { error = nil } }
+                        if error != nil { Button("Dismiss") { error = nil }.buttonStyle(JotleyGlassButtonStyle()) }
                     }.foregroundStyle(Color.themeTextSecondary).padding()
                         .accessibilityIdentifier("askAIStatus")
                 }
@@ -136,7 +136,7 @@ struct LocalMacAskNoteView: View {
             }
             ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
                 Button(suggestion) { input = suggestion; inputFocused = true }
-                    .frame(minHeight: 44).buttonStyle(.bordered)
+                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle())
             }
         }.padding(.vertical, 16)
     }

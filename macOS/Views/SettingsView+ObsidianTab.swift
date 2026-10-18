@@ -42,13 +42,13 @@ extension SettingsView {
                             Button(obsidianSyncFolderPath.isEmpty ? "Select Obsidian Sync Folder" : "Change Sync Folder") {
                                 selectObsidianSyncFolder()
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(JotleyGlassButtonStyle())
                             .tint(Color.themePrimaryAccent)
 
                             Button("Export Selected Note…") {
                                 LocalAppModel.shared.exportObsidian()
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(JotleyGlassButtonStyle())
                             .tint(Color.themePrimaryAccent)
                             .disabled(obsidianSyncFolderPath.isEmpty)
                         }

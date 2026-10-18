@@ -9,7 +9,8 @@ struct RootView: View {
     var body: some View {
         NotesListView(recorder: recorder, searchText: $searchText, showingSettingsSheet: $showingSettingsSheet, persistenceController: persistenceController)
             .background(Color.themeContentBackground.ignoresSafeArea())
-            .sheet(isPresented: $showingSettingsSheet) { SettingsView() }
+            .sheet(isPresented: $showingSettingsSheet) { SettingsView().buttonStyle(JotleyGlassButtonStyle()) }
+            .buttonStyle(JotleyGlassButtonStyle())
             .observeThemeChanges()
             .modifier(JotleyEngagementPrompts(isIdle: !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))
             .safeAreaInset(edge: .bottom) {
