@@ -231,3 +231,10 @@ Final live scroll verification found and fixed a non-user scroll-phase edge case
 
 
 Final verification rerun: native Debug build, full routing harness, and the separate single-store viewport/navigation check all passed. The CLI harness now pumps the AppKit run loop; a dispatch-only test loop timed out and was replaced. The first rerun also correctly refused to delete leftover synthetic preview notes; their test-only store was moved intact to `/tmp/jotley-395-preview-sandbox-backup`, then the clean recovery checks passed. This test isolation work changes no production behavior. Final runtime release source remains public `4493a2e` / private `808c280`.
+
+
+### Mac 2.1.1 (395) delivered
+
+Final runtime source public `4493a2e` / private `808c280`; [release run 39147258657](https://github.com/protomota/jotley-app/actions/runs/39147258657) succeeded. Earlier unpublished 395 artifacts were never distributed. The final DMG passed Apple notarization/staple, strict/deep signing, Gatekeeper, expected version/bundle/feed, installer geometry and app-byte checks. Release resources contain the compact controls and exclude the old modal and preview diagnostics. DMG: 4,856,745 bytes, SHA-256 `afec68becfbb2d12c7f1108e6d2e88e83f37a32ab530b86013b3a9dddc999b91`. R2 full-byte verification passed.
+
+Website source `60218f8` passed its production build and three local download/Sparkle checks. Deployment `dpl_J85p2SiTxb4PehNhE5P7tiPdRUFD` is production READY. The live /download page shows 2.1.1 (395), and clicking its actual download button yielded the exact signed hash above. The temporary local DMG fixture was removed before deployment.
