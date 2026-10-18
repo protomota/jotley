@@ -8,6 +8,58 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testIPadSplitSelectionHighlightsOnlyTheOpenNote() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
+            throw XCTSkip("Split selection requires iPad")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Design review","folder":"Work","tags":[],"transcript":"Maya reviews the new interface Friday.","summary":"## Next Steps\n- Review the interface."},{"title":"Garden plans","folder":"Personal","tags":[],"transcript":"Plant herbs by the kitchen window.","summary":"## Weekend\n- Plant herbs."}]"###
+        defer { XCUIDevice.shared.orientation = .portrait }
+
+        func assertHighlight(_ row: XCUIElement, selected: Bool) throws {
+            XCTAssertEqual(row.isSelected, selected)
+            let image = try XCTUnwrap(row.screenshot().image.cgImage)
+            let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+            var colored = 0
+            for index in 0..<(image.width * image.height) {
+                let rgb = (0..<3).map { Int(pixels[index * 4 + $0]) }
+                if rgb.max()! - rgb.min()! > 20 { colored += 1 }
+            }
+            let fraction = Double(colored) / Double(image.width * image.height)
+            if selected { XCTAssertGreaterThan(fraction, 0.2, "The open note must have a visible theme-colored highlight") }
+            else { XCTAssertLessThan(fraction, 0.02, "The previous selection must return to its neutral row") }
+        }
+
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            for mode in ["Dark", "Light"] {
+                app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+                app.launch()
+                let first = app.buttons.containing(.staticText, identifier: "Design review").firstMatch
+                let second = app.buttons.containing(.staticText, identifier: "Garden plans").firstMatch
+                XCTAssertTrue(first.waitForExistence(timeout: 15)); first.tap()
+                XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Design review")
+                try assertHighlight(first, selected: true); try assertHighlight(second, selected: false)
+                second.tap()
+                XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Garden plans")
+                try assertHighlight(first, selected: false); try assertHighlight(second, selected: true)
+                app.buttons["notesListSettingsButton"].tap()
+                let done = app.buttons["settingsDoneButton"]
+                XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
+                try assertHighlight(second, selected: true)
+                let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                attachment.name = "iPad split selection and smaller gear - \(mode) \(orientation == .portrait ? "portrait" : "landscape")"
+                attachment.lifetime = .keepAlways; add(attachment)
+                app.terminate()
+            }
+        }
+    }
+
     @MainActor func testRegeneratingSummaryReplacesVisibleTenTagSetWithoutReopeningNote() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
@@ -209,9 +261,9 @@ final class Jotley_iOSUITests: XCTestCase {
                 let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
                 attachment.name = "iPad Settings placement \(orientation == .portrait ? "portrait" : "landscape") \(mode)"
                 attachment.lifetime = .keepAlways; add(attachment)
-                // Hit the colored circle well outside the central gear glyph.
-                for point in [CGVector(dx: 0.12, dy: 0.5), CGVector(dx: 0.88, dy: 0.5),
-                              CGVector(dx: 0.5, dy: 0.12), CGVector(dx: 0.5, dy: 0.88)] {
+                // Hit the full target, including padding beyond the smaller visible iPad circle.
+                for point in [CGVector(dx: 0.05, dy: 0.5), CGVector(dx: 0.95, dy: 0.5),
+                              CGVector(dx: 0.5, dy: 0.05), CGVector(dx: 0.5, dy: 0.95)] {
                     settings.coordinate(withNormalizedOffset: point).tap()
                     let done = app.buttons["settingsDoneButton"]
                     XCTAssertTrue(done.waitForExistence(timeout: 5), "The entire Settings circle must intercept taps")

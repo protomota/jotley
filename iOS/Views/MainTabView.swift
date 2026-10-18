@@ -113,7 +113,7 @@ struct MainTabView: View {
         else { navigationPath = NavigationPath(); navigationPath.append(id) }
     }
     private var notesList: some View {
-        NotesListView(navigationPath: $navigationPath, showingSettings: $showingSettings,
+        NotesListView(navigationPath: $navigationPath, usesSplitView: horizontalSizeClass == .regular, showingSettings: $showingSettings,
             selectedNoteId: $selectedNoteId,
             showingTranscriptionModal: $showingTranscriptionModal, columnVisibility: $columnVisibility, newTranscriptionNote: $newTranscriptionNote)
     }

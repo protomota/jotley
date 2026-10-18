@@ -4,6 +4,7 @@ import UIKit
 
 struct NotesListView: View {
     @Binding var navigationPath: NavigationPath
+    let usesSplitView: Bool
     @Binding var showingSettings: Bool
     @Binding var selectedNoteId: UUID?
     @Binding var showingTranscriptionModal: Bool
@@ -12,7 +13,6 @@ struct NotesListView: View {
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @ObservedObject var themeManager = ThemeManager.shared
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)],
         animation: .default
@@ -213,6 +213,7 @@ struct NotesListView: View {
                             ForEach(itemsInGroup) { item in
                                 switch item {
                                 case .note(let note):
+                                    let rowIsSelected = usesSplitView && note.id != nil && selectedNoteId == note.id
                                     Button {
                                         // A note synced from another device (or a legacy note) can
                                         // arrive without an `id`. Guaranteeing one here is what makes
@@ -221,16 +222,17 @@ struct NotesListView: View {
                                         let noteId = ensureStableNoteID(for: note)
                                         selectedNoteId = noteId
 
-                                        // Match MainTabView: only regular width uses split selection.
-                                        // A missing size class must also push on the stack.
-                                        if horizontalSizeClass != .regular {
+                                        // Use the container’s mode: the sidebar can report a
+                                        // compact size class even while the app is split.
+                                        if !usesSplitView {
                                             navigationPath.append(noteId)
                                         }
                                     } label: {
-                                        NoteRowView(note: note, isSelected: horizontalSizeClass == .regular && selectedNoteId == note.id)
+                                        NoteRowView(note: note, isSelected: rowIsSelected)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityAddTraits(rowIsSelected ? .isSelected : [])
                                     .accessibilityIdentifier("notesListNoteRow-\(note.id?.uuidString ?? "unknown")")
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
@@ -340,9 +342,9 @@ struct NotesListView: View {
     private var settingsButton: some View {
         Button(action: { showingSettings = true }) {
             ZStack {
-                Circle().fill(Color.themePrimaryAccent).frame(width: usesIPadLayout ? 56 : 44, height: usesIPadLayout ? 56 : 44)
+                Circle().fill(Color.themePrimaryAccent).frame(width: 44, height: 44)
                 Image(systemName: "gearshape.fill")
-                    .font(.system(size: usesIPadLayout ? 20 : 16, weight: .semibold)).foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
             }
             .frame(width: usesIPadLayout ? 56 : 44, height: usesIPadLayout ? 56 : 44)
             .contentShape(Rectangle())
