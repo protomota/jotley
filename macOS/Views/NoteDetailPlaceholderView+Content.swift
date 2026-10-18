@@ -148,7 +148,7 @@ struct MacSummaryProgressFooter: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                ProgressView().controlSize(.small)
+                ProgressView().progressViewStyle(MacThemedCircularProgressStyle()).controlSize(.small)
                 Text(progress.title).font(.system(size: 15, weight: .semibold))
             }.frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityIdentifier("noteDetailSummaryProgress")

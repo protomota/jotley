@@ -106,7 +106,9 @@ private struct NewFolderInlineSheet: View {
             Text("New Folder")
                 .font(.headline)
             TextField("Folder name", text: $name)
-                .textFieldStyle(.roundedBorder)
+                .tint(Color.themePrimaryAccent)
+                .accentColor(Color.themePrimaryAccent)
+                .modifier(JotleyFormInputStyle())
                 .onSubmit { commit() }
             HStack {
                 Spacer()

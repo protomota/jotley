@@ -143,6 +143,7 @@ extension NoteDetailView {
             Group {
                 if isEditingTitle {
                     TextField("Untitled", text: $editedTitle)
+                        .tint(Color.themePrimaryAccent)
                         .focused($isTitleFieldFocused).submitLabel(.done)
                         .accessibilityIdentifier("noteDetailTitleEditor")
                         .onChange(of: editedTitle) { _, value in note.title = value; transcriptionManager.saveEdits() }

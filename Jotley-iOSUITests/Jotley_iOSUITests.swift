@@ -504,11 +504,17 @@ final class Jotley_iOSUITests: XCTestCase {
         let footer = XCTAttachment(screenshot: app.screenshot())
         footer.name = "Summary tab with contextual Ask AI"; footer.lifetime = .keepAlways; add(footer)
         ask.tap()
-        XCTAssertTrue(app.textFields["askAIQuestionField"].waitForExistence(timeout: 10))
+        let question = app.textViews["askAIQuestionField"]
+        XCTAssertTrue(question.waitForExistence(timeout: 10))
         app.buttons["List any action items"].tap()
-        app.buttons["askAISendButton"].tap()
+        let send = app.buttons["askAISendButton"]
+        XCTAssertEqual(question.frame.midY, send.frame.midY, accuracy: 2, "Send arrow should be centered beside its input")
+        question.typeText("\n")
         let copy = app.buttons["askAICopyConversationButton"]
         let share = app.buttons["askAIShareConversationButton"]
+        let done = app.buttons["askAIDoneButton"]
+        XCTAssertGreaterThan(done.frame.minX, share.frame.midX)
+        XCTAssertGreaterThan(done.frame.minX, app.buttons["askAIClearButton"].frame.midX)
         let answered = expectation(for: NSPredicate(format: "enabled == YES"), evaluatedWith: copy)
         wait(for: [answered], timeout: 90)
         XCTAssertFalse(app.buttons["askAICopyAnswerButton"].exists, "Answers no longer carry their own Copy/Share")
@@ -729,7 +735,7 @@ final class Jotley_iOSUITests: XCTestCase {
         more.tap()
         let menuAsk = app.buttons["noteDetailAskAIButton"]
         XCTAssertTrue(menuAsk.waitForExistence(timeout: 5)); menuAsk.tap()
-        let field = app.textFields["askAIQuestionField"]
+        let field = app.textViews["askAIQuestionField"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Ask about your note"].exists)
         let screenshotImage = app.screenshot()

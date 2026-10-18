@@ -155,19 +155,24 @@ enum JotleyAppleIntelligenceEligibility {
     }
 }
 
-#if os(macOS)
-/// Draw the control as SwiftUI content with the native interactive glass material.
-/// Primitive AppKit-backed button styles can fall back to white rectangular bezels.
+/// Keep glass controls consistent across the Mac and mobile custom headers.
 struct JotleyGlassButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     var circular = false
+    private var controlHeight: CGFloat {
+        #if os(macOS)
+        36
+        #else
+        44
+        #endif
+    }
     func makeBody(configuration: Configuration) -> some View {
         Group {
             if circular {
-                configuration.label.frame(width: 36, height: 36)
+                configuration.label.frame(width: controlHeight, height: controlHeight)
                     .contentShape(Circle()).glassEffect(.regular.interactive(), in: Circle())
             } else {
-                configuration.label.padding(.horizontal, 16).frame(minHeight: 36)
+                configuration.label.padding(.horizontal, 16).frame(minHeight: controlHeight)
                     .contentShape(Capsule()).glassEffect(.regular.interactive(), in: Capsule())
             }
         }
@@ -177,7 +182,6 @@ struct JotleyGlassButtonStyle: ButtonStyle {
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
-#endif
 
 // Local, device-only milestones. Failed, canceled and empty results never count.
 @MainActor final class JotleyEngagement: ObservableObject {

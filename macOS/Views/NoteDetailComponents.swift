@@ -34,6 +34,9 @@ struct LocalMacAskNoteView: View {
         LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
+    private var canSend: Bool {
+        generation == nil && unavailable == nil && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
@@ -63,7 +66,7 @@ struct LocalMacAskNoteView: View {
                             }
                             if generation != nil {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    if preview.isEmpty { ProgressView("Thinking on this device…") }
+                                    if preview.isEmpty { ProgressView("Thinking on this device…").progressViewStyle(MacThemedCircularProgressStyle()) }
                                     else { MacChatAnswerText(content: preview) }
                                     Button("Stop Answer") { cancel() }.buttonStyle(JotleyGlassButtonStyle())
                                         .accessibilityIdentifier("askAIStopButton")
@@ -85,12 +88,12 @@ struct LocalMacAskNoteView: View {
                         .accessibilityIdentifier("askAIStatus")
                 }
                 Divider()
-                HStack(alignment: .bottom, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
                     TextField("Ask about this note…", text: $input, axis: .vertical)
                         .textFieldStyle(.plain)
                         .tint(Color.themePrimaryAccent)
                         .accentColor(Color.themePrimaryAccent)
-                        .lineLimit(1...5).padding(12)
+                        .lineLimit(1...5).padding(12).frame(minHeight: 44)
                         .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20)
@@ -98,12 +101,25 @@ struct LocalMacAskNoteView: View {
                                 .allowsHitTesting(false)
                         }
                         .focused($inputFocused).disabled(generation != nil)
+                        .onKeyPress(keys: [.return, KeyEquivalent("\u{3}")], phases: .down) { press in
+                            let editor = NSApp.keyWindow?.firstResponder as? NSTextView
+                            // IME Return confirms composition before a question is sent.
+                            guard editor?.hasMarkedText() != true else { return .ignored }
+                            if !press.modifiers.isDisjoint(with: [.shift, .option]) {
+                                guard let editor else { return .ignored }
+                                editor.insertText("\n", replacementRange: editor.selectedRange())
+                                return .handled
+                            }
+                            send()
+                            return .handled
+                        }
                         .accessibilityIdentifier("askAIQuestionField")
                     Button(action: send) {
                         Image(systemName: "arrow.up.circle.fill").font(.system(size: 32))
+                            .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
-                    }.keyboardShortcut(.return, modifiers: .command)
-                        .disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
+                    }.buttonStyle(.plain).keyboardShortcut(.return, modifiers: .command)
+                        .disabled(!canSend)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
@@ -160,7 +176,7 @@ struct LocalMacAskNoteView: View {
         }
     }
     private func send() {
-        guard generation == nil, let id = note.id, !note.isDeleted else { return }
+        guard canSend, let id = note.id, !note.isDeleted else { return }
         let question = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = source, history = messages
         do {
@@ -205,5 +221,29 @@ private struct MacChatAnswerText: View {
     var body: some View {
         Text(rendered).font(.system(size: 15)).foregroundStyle(Color.themeTextPrimary)
             .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+
+/// AppKit's circular progress control can ignore a local tint. Draw the native
+/// activity symbol in the selected theme instead, retaining ProgressView labels.
+struct MacThemedCircularProgressStyle: ProgressViewStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            MacActivityIndicator()
+            configuration.label
+        }
+    }
+}
+
+private struct MacActivityIndicator: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        Image(systemName: "progress.indicator")
+            .font(.system(size: 14)).frame(width: 16, height: 16)
+            .foregroundStyle(themeManager.currentThemeColor.color)
+            .symbolEffect(.rotate, options: .repeating, isActive: !reduceMotion)
+            .accessibilityHidden(true)
     }
 }

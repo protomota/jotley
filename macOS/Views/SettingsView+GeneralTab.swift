@@ -95,7 +95,7 @@ extension SettingsView {
                                 .toggleStyle(.switch)
                             Text(speechStatus).font(.caption).foregroundColor(.secondary)
                             if isSettingUpSpeech {
-                                ProgressView("Setting up Apple speech…", value: speechSetupProgress)
+                                ProgressView("Setting up Apple speech…", value: speechSetupProgress).tint(.themePrimaryAccent)
                                 Button("Cancel Setup") { speechSetupTask?.cancel() }
                             } else if speechNeedsSetup {
                                 Button("Set Up On-Device Speech") { setUpSpeech() }

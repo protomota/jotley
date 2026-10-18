@@ -17,7 +17,7 @@ struct RootView: View {
                 if !local.message.isEmpty {
                     HStack {
                         Text(local.message).font(.caption).foregroundColor(Color.themeTextSecondary)
-                        if local.busy { ProgressView().controlSize(.small); Button("Cancel") { local.cancel() } }
+                        if local.busy { ProgressView().progressViewStyle(MacThemedCircularProgressStyle()).controlSize(.small); Button("Cancel") { local.cancel() } }
                     }.padding(6)
                 }
             }

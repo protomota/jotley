@@ -40,11 +40,15 @@ extension NoteDetailPlaceholderView {
 
     // Keep the final transcript above the entire footer fade, while the scroll
     // view and its scrollbar continue to reach the bottom of the window.
-    var transcriptFooterFadeHeight: CGFloat { 120 }
+    var detailFooterFadeHeight: CGFloat {
+        selectedTab == DetailTab.summary.rawValue ? 160 : 120
+    }
 
     var detailBottomPadding: CGFloat {
         if viewModel.recorder.isRecording { return 88 }
-        if selectedTab == DetailTab.transcript.rawValue { return transcriptFooterFadeHeight + 16 }
+        if selectedTab == DetailTab.transcript.rawValue || note.hasMeaningfulSummaryText {
+            return detailFooterFadeHeight + 16
+        }
         return 16
     }
 
@@ -181,7 +185,36 @@ extension NoteDetailPlaceholderView {
 
     @ViewBuilder var detailOverlay5: some View {
 
-            // Transcript action footer — pinned to bottom of window, outside the ScrollView
+            if selectedTab == DetailTab.summary.rawValue && note.hasMeaningfulSummaryText &&
+                !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
+                MacSummaryActionsFooter(
+                    template: LocalSummaryTemplate.resolve(note.summaryType),
+                    hasTranscript: hasContentToSummarize,
+                    isEnabled: !hasActiveRecordingSession && !viewModel.recorder.isBusy &&
+                        !viewModel.isGeneratingSummary && !LocalAppModel.shared.busy,
+                    onAsk: { showingAskAI = true },
+                    onTemplate: { template in
+                        guard note.summaryType != template.key else { return }
+                        let previous = note.summaryType
+                        note.summaryType = template.key
+                        do { try persistenceController.save() }
+                        catch { note.summaryType = previous; viewModel.report(error) }
+                    },
+                    onRegenerate: {
+                        Task { @MainActor in
+                            await handleSummarizeAction(templateKey: LocalSummaryTemplate.resolve(note.summaryType).key)
+                        }
+                    }
+                )
+                .padding(.horizontal, 14).padding(.vertical, 14).padding(.trailing, 16)
+                .background(alignment: .bottom) {
+                    LinearGradient(colors: [.themeContentBackground.opacity(0), .themeContentBackground.opacity(0.85), .themeContentBackground],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: detailFooterFadeHeight).padding(.trailing, 16).allowsHitTesting(false)
+                }
+            }
+
+            // Transcript actions remain on the Transcript tab.
             if selectedTab == DetailTab.transcript.rawValue && !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
                 let transcript = editableTranscript
                 // Per-note saved-audio loading flag (not a persisted placeholder) so the
@@ -265,7 +298,7 @@ extension NoteDetailPlaceholderView {
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(height: transcriptFooterFadeHeight)
+                        .frame(height: detailFooterFadeHeight)
                         .padding(.trailing, 16) // Leave space for scrollbar
                         .allowsHitTesting(false),
                         alignment: .bottom
@@ -273,5 +306,64 @@ extension NoteDetailPlaceholderView {
                 }
             }
 
+    }
+}
+
+
+struct MacSummaryActionsFooter: View {
+    let template: LocalSummaryTemplate
+    let hasTranscript: Bool
+    let isEnabled: Bool
+    let onAsk: () -> Void
+    let onTemplate: (LocalSummaryTemplate) -> Void
+    let onRegenerate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Button(action: onAsk) {
+                Label {
+                    Text("Ask AI").foregroundStyle(Color.themeTextPrimary)
+                } icon: {
+                    Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
+                }
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 14).frame(height: 36)
+                    .background(Color.themePrimaryAccent.opacity(0.18), in: Capsule())
+            }
+            .accessibilityIdentifier("noteDetailSummaryAskAIButton")
+
+            if hasTranscript {
+                HStack(spacing: 8) {
+                    Menu {
+                        ForEach(LocalSummaryTemplate.allCases) { item in
+                            Button { onTemplate(item) } label: {
+                                if item == template { Label(item.title, systemImage: "checkmark") }
+                                else { Text(item.title) }
+                            }.accessibilityIdentifier("noteTemplate-\(item.key)")
+                        }
+                    } label: {
+                        Label(template.title, systemImage: "sparkles")
+                            .font(.system(size: 13, weight: .medium))
+                            .lineLimit(1).truncationMode(.tail)
+                            .foregroundStyle(Color.themeTextPrimary)
+                    }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                    .frame(width: 136, height: 40)
+                    .background(Color.themePrimaryAccent.opacity(0.18), in: Capsule())
+                    .accessibilityLabel("Templates: \(template.title)")
+                    .accessibilityIdentifier("noteDetailTemplatesButton")
+
+                    Button(action: onRegenerate) {
+                        Text("Regenerate Summary")
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .background(Color.themePrimaryAccent, in: Capsule())
+                    }
+                    .accessibilityIdentifier("noteDetailGenerateSummaryButton")
+                }
+            }
+        }.buttonStyle(.plain).disabled(!isEnabled)
     }
 }

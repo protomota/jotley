@@ -88,6 +88,7 @@ private struct NewFolderInlineSheetiOS: View {
         NavigationStack {
             Form {
                 TextField("Folder name", text: $name)
+                    .tint(Color.themePrimaryAccent)
                     .submitLabel(.done)
                     .onSubmit { commit() }
             }

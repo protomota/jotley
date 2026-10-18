@@ -112,6 +112,8 @@ struct FolderManagementSheet: View {
         #if os(iOS)
         VStack(alignment: .leading, spacing: 12) {
             TextField("New folder name", text: $newFolderName)
+                .tint(Color.themePrimaryAccent)
+                .accentColor(Color.themePrimaryAccent)
                 .font(.body).foregroundStyle(Color.themeTextPrimary)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 16).frame(minHeight: 56)
@@ -130,7 +132,9 @@ struct FolderManagementSheet: View {
         #else
         HStack(spacing: 8) {
             TextField("New folder name", text: $newFolderName)
-                .textFieldStyle(.roundedBorder)
+                .tint(Color.themePrimaryAccent)
+                .accentColor(Color.themePrimaryAccent)
+                .modifier(JotleyFormInputStyle())
                 .onSubmit(createFolder)
             Button("Create Folder") { createFolder() }
                 .disabled(newFolderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -145,7 +149,9 @@ struct FolderManagementSheet: View {
                 .foregroundColor(Color.themePrimaryAccent)
             if renamingFolder?.objectID == folder.objectID {
                 TextField("Name", text: $renameText)
-                    .textFieldStyle(.roundedBorder)
+                    .tint(Color.themePrimaryAccent)
+                    .accentColor(Color.themePrimaryAccent)
+                    .modifier(JotleyFormInputStyle())
                     .onSubmit { commitRename(folder) }
                 Button("Save") { commitRename(folder) }
                     .buttonStyle(.borderless)

@@ -75,6 +75,8 @@ struct AddTagSheetView: View {
                     .focused($isTextFieldFocused)
                     .autocapitalization(.none)
                     .autocorrectionDisabled()
+                    .tint(Color.themePrimaryAccent)
+                    .submitLabel(.done).onSubmit(addTag)
                     .onChange(of: newTagText) { _, newValue in
                         let formatted = getFormattedTag(newValue)
                         if newTagText != formatted {
@@ -233,7 +235,7 @@ struct LocalAskNoteView: View {
     @EnvironmentObject private var store: SharedPersistenceController
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @FocusState private var inputFocused: Bool
+    @State private var inputFocused = false
     @State private var messages: [LocalChatMessage] = []
     @State private var input = ""
     @State private var preview = ""
@@ -254,6 +256,8 @@ struct LocalAskNoteView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                header
+                Divider()
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 16) {
@@ -285,39 +289,29 @@ struct LocalAskNoteView: View {
                         .accessibilityIdentifier("askAIStatus")
                 }
                 Divider()
-                HStack(alignment: .bottom, spacing: 12) {
-                    TextField("Ask about this note…", text: $input, axis: .vertical)
-                        .lineLimit(1...5).padding(12)
-                        .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
-                        .focused($inputFocused).disabled(generation != nil)
-                        .accessibilityIdentifier("askAIQuestionField")
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack(alignment: .topLeading) {
+                        if input.isEmpty {
+                            Text("Ask about this note…").foregroundStyle(Color.themeTextSecondary)
+                                .allowsHitTesting(false).accessibilityHidden(true)
+                        }
+                        MobileAskQuestionInput(text: $input, focused: $inputFocused,
+                                               isEnabled: generation == nil, onSend: send)
+                    }
+                    .padding(12).frame(minHeight: 44)
+                    .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
+                    .contentShape(RoundedRectangle(cornerRadius: 20))
+                    .onTapGesture { if generation == nil { inputFocused = true } }
                     Button(action: send) {
                         Image(systemName: "arrow.up.circle.fill").font(.system(size: 32))
+                            .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
-                    }.disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
+                    }.buttonStyle(.plain).disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
             .background(Color.themeBackground)
-            .navigationTitle("Ask AI").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    MobileDoneButton { dismiss() }.accessibilityIdentifier("askAIDoneButton")
-                }.sharedBackgroundVisibility(.hidden)
-                ToolbarItemGroup(placement: .cancellationAction) {
-                    Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
-                        .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
-                        .accessibilityIdentifier("askAIClearButton")
-                }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Copy Conversation", systemImage: "doc.on.doc") { UIPasteboard.general.string = conversation }
-                        .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
-                        .accessibilityIdentifier("askAICopyConversationButton")
-                    Button("Share Conversation", systemImage: "square.and.arrow.up") { share = LocalSharePayload(items: [conversation]) }
-                        .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
-                        .accessibilityIdentifier("askAIShareConversationButton")
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .alert("Clear Chat History?", isPresented: $showingClear) {
                 Button("Cancel", role: .cancel) { }
                 Button("Clear", role: .destructive) {
@@ -338,6 +332,25 @@ struct LocalAskNoteView: View {
             .tint(.themeActionText).observeThemeChanges()
         }
     }
+    private var header: some View {
+        HStack(spacing: 12) {
+            Text("Ask AI").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
+            Spacer(minLength: 8)
+            Button("Copy Conversation", systemImage: "doc.on.doc") { UIPasteboard.general.string = conversation }
+                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .accessibilityIdentifier("askAICopyConversationButton")
+            Button("Share Conversation", systemImage: "square.and.arrow.up") { share = LocalSharePayload(items: [conversation]) }
+                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .accessibilityIdentifier("askAIShareConversationButton")
+            Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
+                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .accessibilityIdentifier("askAIClearButton")
+            Button("Done") { dismiss() }
+                .accessibilityIdentifier("askAIDoneButton")
+        }
+        .font(.system(size: 15)).buttonStyle(JotleyGlassButtonStyle()).padding(16)
+    }
+
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: "bubble.left.and.bubble.right.fill").font(.system(size: 40)).foregroundStyle(Color.themePrimaryAccent)
@@ -369,7 +382,9 @@ struct LocalAskNoteView: View {
         }
     }
     private func send() {
-        guard generation == nil, let id = note.id, !note.isDeleted else { return }
+        guard generation == nil, unavailable == nil,
+              !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let id = note.id, !note.isDeleted else { return }
         let question = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = source, history = messages
         do {
@@ -399,5 +414,90 @@ struct LocalAskNoteView: View {
     }
     private func cancel() {
         task?.cancel(); task = nil; generation = nil; preview = ""
+    }
+}
+
+
+/// Multiline chat entry with an actual Send return key. SwiftUI's vertical
+/// TextField still inserts a newline with submitLabel(.send) on iPad/iPhone.
+private struct MobileAskQuestionInput: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var focused: Bool
+    let isEnabled: Bool
+    let onSend: () -> Void
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    final class TextView: UITextView {
+        var insertingLineBreak = false
+        override var keyCommands: [UIKeyCommand]? {
+            let lineBreaks = [UIKeyModifierFlags.shift, .alternate].map { modifiers in
+                let command = UIKeyCommand(input: "\r", modifierFlags: modifiers, action: #selector(insertQuestionLineBreak))
+                command.wantsPriorityOverSystemBehavior = true
+                return command
+            }
+            return lineBreaks + (super.keyCommands ?? [])
+        }
+        @objc private func insertQuestionLineBreak() {
+            insertingLineBreak = true
+            insertText("\n")
+            insertingLineBreak = false
+        }
+    }
+
+    func makeUIView(context: Context) -> TextView {
+        let view = TextView()
+        view.delegate = context.coordinator
+        view.backgroundColor = .clear
+        view.font = .preferredFont(forTextStyle: .body)
+        view.adjustsFontForContentSizeCategory = true
+        view.textContainerInset = .zero
+        view.textContainer.lineFragmentPadding = 0
+        view.returnKeyType = .send
+        view.enablesReturnKeyAutomatically = true
+        view.isScrollEnabled = false
+        view.accessibilityIdentifier = "askAIQuestionField"
+        view.accessibilityLabel = "Ask about this note"
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return view
+    }
+    func updateUIView(_ view: TextView, context: Context) {
+        context.coordinator.parent = self
+        if view.text != text { view.text = text; view.invalidateIntrinsicContentSize() }
+        view.textColor = UIColor(Color.themeTextPrimary)
+        view.tintColor = UIColor(themeManager.currentThemeColor.color)
+        view.isEditable = isEnabled
+        if focused && isEnabled && !view.isFirstResponder { view.becomeFirstResponder() }
+        else if !focused && view.isFirstResponder { view.resignFirstResponder() }
+    }
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: TextView, context: Context) -> CGSize? {
+        guard let width = proposal.width else { return nil }
+        let lineHeight = uiView.font?.lineHeight ?? 22
+        let fullHeight = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+        let maximum = lineHeight * 5
+        uiView.isScrollEnabled = fullHeight > maximum
+        return CGSize(width: width, height: max(lineHeight, min(fullHeight, maximum)))
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: MobileAskQuestionInput
+        init(_ parent: MobileAskQuestionInput) { self.parent = parent }
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+            textView.invalidateIntrinsicContentSize()
+        }
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            if !parent.focused { parent.focused = true }
+        }
+        func textViewDidEndEditing(_ textView: UITextView) {
+            if parent.focused { parent.focused = false }
+        }
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText replacement: String) -> Bool {
+            if replacement == "\n", textView.markedTextRange == nil,
+               (textView as? TextView)?.insertingLineBreak != true {
+                parent.onSend()
+                return false
+            }
+            return true
+        }
     }
 }

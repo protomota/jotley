@@ -343,3 +343,24 @@ struct MobileActionLabel: View {
     }
 }
 #endif
+
+
+/// Use an app-colored outline instead of the platform's fixed focus-ring color.
+struct JotleyFormInputStyle: ViewModifier {
+    @FocusState private var focused: Bool
+    @ObservedObject private var themeManager = ThemeManager.shared
+    func body(content: Content) -> some View {
+        content.textFieldStyle(.plain)
+            .foregroundStyle(Color.themeTextPrimary)
+            .tint(themeManager.currentThemeColor.color)
+            .accentColor(themeManager.currentThemeColor.color)
+            .padding(8)
+            .background(Color.themeBackground, in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(focused ? themeManager.currentThemeColor.color : Color.themeTextSecondary.opacity(0.25), lineWidth: focused ? 2 : 1)
+                    .allowsHitTesting(false)
+            }
+            .focused($focused)
+    }
+}
