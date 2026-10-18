@@ -140,7 +140,7 @@ private struct MacSupportPreviewRoot: View {
             await runChecks()
             exit(0)
         }
-        dispatchMain()
+        NSApplication.shared.run()
     }
     @MainActor private static func runChecks() async {
         do {
