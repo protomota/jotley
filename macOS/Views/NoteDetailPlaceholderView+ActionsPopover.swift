@@ -141,20 +141,6 @@ extension NoteDetailPlaceholderView {
                         isPresented = false
                     }
 
-                    if note.sourceURL?.hasPrefix("Recordings/") == true {
-                        MenuItemView(
-                            icon: "waveform.badge.magnifyingglass",
-                            title: "Transcribe Saved Audio",
-                            disabled: viewModel.recorder.isRecording || viewModel.recorder.isBusy ||
-                                viewModel.isGeneratingSummary || viewModel.operationInProgress || LocalAppModel.shared.busy
-                        ) {
-                            isPresented = false
-                            viewModel.retrySavedAudio(note: note)
-                        }
-                        .accessibilityIdentifier("retrySavedAudioButton")
-                        .help("Recover the transcript from audio captured on this Mac.")
-                    }
-
                     // Save to File — inline-expanding submenu
                     MenuItemView(
                         icon: "square.and.arrow.up",
@@ -168,6 +154,38 @@ extension NoteDetailPlaceholderView {
                     }
 
                     if showExportSubmenu {
+                        if hasSummary {
+                            MenuItemView(
+                                icon: "doc.richtext",
+                                title: "Summary as PDF"
+                            ) {
+                                parent.exportSummaryPDF()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportSummaryPDFButton")
+
+                            MenuItemView(
+                                icon: "text.badge.checkmark",
+                                title: "Summary Only"
+                            ) {
+                                parent.exportSummary()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportSummaryButton")
+                        }
+
+                        if let transcription = note.transcription,
+                           !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            MenuItemView(
+                                icon: "text.badge.checkmark",
+                                title: "Transcript Only"
+                            ) {
+                                parent.exportTranscript()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportTranscriptButton")
+                        }
+
                         MenuItemView(
                             icon: "doc.plaintext",
                             title: "Full Note (Plain Text)"
@@ -182,38 +200,6 @@ extension NoteDetailPlaceholderView {
                         ) {
                             parent.exportAsMarkdown()
                             isPresented = false
-                        }
-
-                        if hasSummary {
-                            MenuItemView(
-                                icon: "text.badge.checkmark",
-                                title: "Summary Only"
-                            ) {
-                                parent.exportSummary()
-                                isPresented = false
-                            }
-                            .accessibilityIdentifier("exportSummaryButton")
-
-                            MenuItemView(
-                                icon: "doc.richtext",
-                                title: "Summary as PDF"
-                            ) {
-                                parent.exportSummaryPDF()
-                                isPresented = false
-                            }
-                            .accessibilityIdentifier("exportSummaryPDFButton")
-                        }
-
-                        if let transcription = note.transcription,
-                           !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            MenuItemView(
-                                icon: "text.badge.checkmark",
-                                title: "Transcript Only"
-                            ) {
-                                parent.exportTranscript()
-                                isPresented = false
-                            }
-                            .accessibilityIdentifier("exportTranscriptButton")
                         }
                     }
 

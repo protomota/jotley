@@ -155,10 +155,6 @@ import Combine
     func summaryLoadingStartedAt(for noteID: NSManagedObjectID) -> Date? { generatingSummaryNoteID == noteID ? generatingSummaryStartedAt : nil }
     func beginSummaryGeneration(for id: NSManagedObjectID) { isGeneratingSummary = true; generatingSummaryNoteID = id; generatingSummaryStartedAt = Date() }
     func endSummaryGeneration(for id: NSManagedObjectID) { if generatingSummaryNoteID == id { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil } }
-    func retrySavedAudio(note: Note) {
-        guard !recorder.isRecording, !recorder.isBusy, !isGeneratingSummary, !operationInProgress else { return }
-        LocalAppModel.shared.selected = note.id; LocalAppModel.shared.transcribe()
-    }
 
     func toggleSelection(for note: Note, isCommandKeyPressed: Bool = false) {
         LocalAppModel.shared.selected = note.id

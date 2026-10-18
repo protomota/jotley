@@ -87,8 +87,16 @@ struct LocalMacAskNoteView: View {
                 Divider()
                 HStack(alignment: .bottom, spacing: 12) {
                     TextField("Ask about this note…", text: $input, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .tint(Color.themePrimaryAccent)
+                        .accentColor(Color.themePrimaryAccent)
                         .lineLimit(1...5).padding(12)
                         .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20)
+                                .strokeBorder(inputFocused ? Color.themePrimaryAccent : .clear, lineWidth: 2)
+                                .allowsHitTesting(false)
+                        }
                         .focused($inputFocused).disabled(generation != nil)
                         .accessibilityIdentifier("askAIQuestionField")
                     Button(action: send) {

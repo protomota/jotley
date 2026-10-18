@@ -132,6 +132,10 @@ private struct MacSupportPreviewRoot: View {
             previewRecordingControls()
             return
         }
+        if CommandLine.arguments.contains("--detail-fixes-preview") {
+            previewCompletedTranscript()
+            return
+        }
         if CommandLine.arguments.contains("--summary-progress-preview") {
             previewSummaryProgress()
             return
@@ -755,6 +759,38 @@ private struct MacSupportPreviewRoot: View {
         }
         print("PASS: production support card renders at 600×780 with readable headings in five themes, Light and Dark.")
     }
+    @MainActor private static func previewCompletedTranscript() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.regular)
+        let delegate = RecordingLayoutDelegate(); app.delegate = delegate
+        ThemeManager.shared.setAppearanceMode(.dark)
+        ThemeManager.shared.currentThemeColor = .magenta
+        app.appearance = NSAppearance(named: .darkAqua)
+        let store = LocalAppModel.shared.store!
+        let utterances: [TranscriptUtterance] = (1...30).map { index in
+            let text = index == 30
+                ? "Final passage: these completed words must remain fully readable above the footer gradient and Continue Transcription button."
+                : "Passage \(index). Review the complete transcript at your own pace, then ask questions about the note or export its summary."
+            return TranscriptUtterance(text: text, start: Double(index * 10), end: Double(index * 10 + 7))
+        }
+        let note = try! store.create(title: "Completed transcript layout", text: utterances.map(\.text).joined(separator: "\n\n")) as! Note
+        note.setTranscriptUtterances(utterances)
+        note.summary = "## Summary\n\n- Review the completed transcript.\n- Export a summary as PDF."
+        // Historical metadata must not revive the retired saved-audio action.
+        note.sourceURL = "Recordings/legacy-preview.m4a"
+        try! store.save()
+        defer { try? store.deleteNoteAndAudio(note) }
+        let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
+        model.selectedNoteIDs = [note.objectID]; model.selectedDetailTab = DetailTab.transcript.rawValue
+        let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note, selectedTab: Binding(get: { model.selectedDetailTab }, set: { model.selectedDetailTab = $0 }), viewModel: model)
+            .environmentObject(store).environment(\.managedObjectContext, store.context))
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 100, width: 760, height: 700), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Jotley Detail Fixes Preview"; window.isReleasedWhenClosed = false
+        window.contentView = host; window.makeKeyAndOrderFront(nil)
+        app.activate(ignoringOtherApps: true)
+        withExtendedLifetime(delegate) { app.run() }
+    }
+
     @MainActor private static func previewSummaryProgress() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)

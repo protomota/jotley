@@ -38,6 +38,16 @@ extension NoteDetailPlaceholderView {
         "note-detail-live-bottom-anchor"
     }
 
+    // Keep the final transcript above the entire footer fade, while the scroll
+    // view and its scrollbar continue to reach the bottom of the window.
+    var transcriptFooterFadeHeight: CGFloat { 120 }
+
+    var detailBottomPadding: CGFloat {
+        if viewModel.recorder.isRecording { return 88 }
+        if selectedTab == DetailTab.transcript.rawValue { return transcriptFooterFadeHeight + 16 }
+        return 16
+    }
+
     var bodyContentView: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
@@ -60,7 +70,7 @@ extension NoteDetailPlaceholderView {
                                 .frame(maxWidth: .infinity, minHeight: max(400, geometry.size.height - 150))
                                 .padding(.top, 8)
                         }
-                        .padding(.bottom, viewModel.recorder.isRecording ? 88 : 16)
+                        .padding(.bottom, detailBottomPadding)
 
                         Color.clear
                             .frame(height: 1)
@@ -255,7 +265,7 @@ extension NoteDetailPlaceholderView {
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(height: 120)
+                        .frame(height: transcriptFooterFadeHeight)
                         .padding(.trailing, 16) // Leave space for scrollbar
                         .allowsHitTesting(false),
                         alignment: .bottom
