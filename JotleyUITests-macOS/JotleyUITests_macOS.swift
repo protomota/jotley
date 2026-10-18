@@ -126,7 +126,7 @@ private struct MacSupportPreviewRoot: View {
 /// Compile this existing source against the built app with the harness flag to
 /// exercise its actual view model without adding a second implementation.
 @main private struct MacRoutingHarness {
-    @MainActor static func main() async {
+    @MainActor static func main() {
         UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey)
         if CommandLine.arguments.contains("--layout-preview") {
             previewRecordingControls()
@@ -136,6 +136,13 @@ private struct MacSupportPreviewRoot: View {
             previewSupportCard()
             return
         }
+        Task { @MainActor in
+            await runChecks()
+            exit(0)
+        }
+        dispatchMain()
+    }
+    @MainActor private static func runChecks() async {
         do {
             if CommandLine.arguments.contains("--compact-only") {
                 guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
@@ -581,6 +588,9 @@ private struct MacSupportPreviewRoot: View {
         guard note.transcription == [updated.text, speech.text].joined(separator: " ") else { throw LocalError.message("Continuing replaced the saved transcript.") }
         var follow = MacTranscriptFollowState()
         guard follow.shouldFollow else { throw LocalError.message("Live transcript must initially follow.") }
+        follow.bottomChanged(false)
+        follow.scrollPhaseChanged(isUserScrolling: false)
+        guard follow.shouldFollow else { throw LocalError.message("Layout/programmatic phases disabled initial following.") }
         follow.scrollPhaseChanged(isUserScrolling: true)
         follow.bottomChanged(false)
         guard !follow.shouldFollow else { throw LocalError.message("Follow interrupted an active user scroll.") }

@@ -64,8 +64,13 @@ struct MacTranscriptFollowState {
     private(set) var isAtBottom = true
     var shouldFollow: Bool { isFollowing && !isUserScrolling }
     mutating func scrollPhaseChanged(isUserScrolling: Bool) {
-        self.isUserScrolling = isUserScrolling
-        isFollowing = isUserScrolling ? false : isAtBottom
+        if isUserScrolling {
+            self.isUserScrolling = true
+            isFollowing = false
+        } else if self.isUserScrolling {
+            self.isUserScrolling = false
+            isFollowing = isAtBottom
+        }
     }
     mutating func bottomChanged(_ atBottom: Bool) {
         isAtBottom = atBottom
