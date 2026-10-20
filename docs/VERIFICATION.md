@@ -313,3 +313,12 @@ Public implementation `6eef11f`, private release source `21064d5`. [Universal up
 The notes-list Delete swipe action now has an explicit red tint. Its destructive role and deletion behavior are unchanged, and the list can retain its readable action-text tint without making Delete gray in Dark appearance. The shared notes list covers iPhone and iPad.
 
 The iOS Simulator Debug build passed. The existing Settings neutral-glass regression passed across all five accent themes in Light and Dark. No TestFlight, App Store or Mac release was created for this change.
+
+
+## App Privacy correction — 2026-10-20
+
+App Store Connect still declared Email Address (App Functionality), Product Interaction (Analytics) and Crash Data (Other Purposes). Reviewed the native app source and its package list: there is no app analytics or third-party crash-reporting SDK, support counters are device-local, and note sync uses the user's private CloudKit database. Voluntary user-sent feedback and direct-download Mac update delivery are separate from automatic app telemetry.
+
+Saved “No, we do not collect data from this app” in App Store Connect. The page confirmed the answers were published, and its product-page preview now reads **Data Not Collected** with no collected data types. This app-level privacy correction did not require withdrawing or resubmitting 2.1.1 (401), which remains Waiting for Review; 2.1.2 (402) remains the latest available TestFlight build. The public US storefront still showed its older cached labels at the subsequent browser check; the published Connect state is verified, but public-storefront propagation is not claimed.
+
+The live privacy policy now explicitly distinguishes the native apps' lack of contact-information collection, usage analytics, diagnostics and cross-app tracking from optional iCloud, user-sent feedback, website analytics and Mac update requests. Website source `64b9b44f` passed the production build and deployed READY to production as `dpl_9x3fAcb7xrtAFgWic4kXhVr5FLq8`; the live browser showed the new October 20 text. No app build or release was created. Screenshots are preserved in the task's `jotley-privacy-20261020` evidence directory.
