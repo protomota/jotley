@@ -891,7 +891,7 @@ struct JotleyOnboardingView: View {
                 }
                 .scrollIndicators(.hidden)
                 #endif
-                footer.frame(maxWidth: wide ? 380 : 480)
+                footer.frame(maxWidth: wide ? wideFooterWidth : 480)
                     .frame(maxWidth: .infinity, alignment: wide ? .trailing : .center)
             }
             .padding(.horizontal, wide ? 38 : 24)
@@ -1108,19 +1108,31 @@ struct JotleyOnboardingView: View {
         .background(colorScheme == .dark ? Color.white.opacity(0.065) : .white, in: RoundedRectangle(cornerRadius: 23))
         .shadow(color: accent.opacity(colorScheme == .dark ? 0.1 : 0.12), radius: 24, y: 12)
     }
+    private var wideFooterWidth: CGFloat {
+        #if os(macOS)
+        344
+        #else
+        380
+        #endif
+    }
     private var footer: some View {
-        VStack(spacing: 13) {
+        // Keep progress and alternate actions on the primary action's centerline.
+        let backButtonWidth: CGFloat = 54
+        let actionInset: CGFloat = step > 0 ? backButtonWidth + 12 : 0
+        return VStack(spacing: 13) {
             HStack(spacing: 6) {
                 ForEach(0..<steps.count, id: \.self) { index in
                     Capsule().fill(index == step ? accent : ink.opacity(0.13)).frame(width: index == step ? 25 : 6, height: 6)
                 }
                 Text("\(step + 1) of \(steps.count) · \(steps[step])").font(.caption).foregroundStyle(muted).padding(.leading, 5)
             }
+            .padding(.leading, actionInset)
             .accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of \(steps.count), \(steps[step])")
             HStack(spacing: 12) {
                 if step > 0 {
                     Button { changeStep(step - 1) } label: { Image(systemName: "chevron.left").frame(width: 30, height: 40) }
-                        .buttonStyle(.glass).buttonBorderShape(.capsule).accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
+                        .buttonStyle(.glass).buttonBorderShape(.capsule).frame(width: backButtonWidth)
+                        .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
                         .disabled(settingUpSpeech || requestingMicrophone)
                 }
                 Button {
@@ -1147,12 +1159,13 @@ struct JotleyOnboardingView: View {
             }
             if step == 3 && !microphoneAllowed && !microphoneDenied {
                 Button("Not now") { advancePastMicrophone() }.buttonStyle(.glass).buttonBorderShape(.capsule)
-                    .frame(minHeight: 36).accessibilityIdentifier("onboardingNotNow")
+                    .frame(minHeight: 36).padding(.leading, actionInset).accessibilityIdentifier("onboardingNotNow")
             }
             #if os(macOS)
             if step == 4 {
                 Button("Use Microphone Only") { includeSystemAudio = false; finish() }
                     .buttonStyle(.glass).buttonBorderShape(.capsule).frame(minHeight: 36)
+                    .padding(.leading, actionInset)
                     .accessibilityIdentifier("onboardingMicrophoneOnly")
             }
             #endif
