@@ -891,8 +891,16 @@ struct JotleyOnboardingView: View {
                 }
                 .scrollIndicators(.hidden)
                 #endif
-                footer.frame(maxWidth: wide ? wideFooterWidth : 480)
-                    .frame(maxWidth: .infinity, alignment: wide ? .trailing : .center)
+                if wide {
+                    HStack(spacing: 38) {
+                        Color.clear.frame(width: 300, height: 0)
+                        footer(wide: true).frame(maxWidth: wideFooterWidth)
+                            .frame(maxWidth: 380, alignment: .leading)
+                    }
+                } else {
+                    footer(wide: false).frame(maxWidth: 480)
+                        .frame(maxWidth: .infinity)
+                }
             }
             .padding(.horizontal, wide ? 38 : 24)
             .padding(.vertical, 18)
@@ -1110,15 +1118,22 @@ struct JotleyOnboardingView: View {
     }
     private var wideFooterWidth: CGFloat {
         #if os(macOS)
-        344
+        278
         #else
-        380
+        314
         #endif
     }
-    private var footer: some View {
-        // Keep progress and alternate actions on the primary action's centerline.
-        let backButtonWidth: CGFloat = 54
-        let actionInset: CGFloat = step > 0 ? backButtonWidth + 12 : 0
+    private var onboardingBackButton: some View {
+        Button { changeStep(step - 1) } label: {
+            Image(systemName: "chevron.left").frame(width: 30, height: 40)
+        }
+        .buttonStyle(.glass).buttonBorderShape(.capsule).frame(width: 54)
+        .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
+        .disabled(settingUpSpeech || requestingMicrophone)
+    }
+    private func footer(wide: Bool) -> some View {
+        // Wide layouts align the primary action with the copy; Back sits outside that column.
+        let actionInset: CGFloat = !wide && step > 0 ? 66 : 0
         return VStack(spacing: 13) {
             HStack(spacing: 6) {
                 ForEach(0..<steps.count, id: \.self) { index in
@@ -1129,12 +1144,7 @@ struct JotleyOnboardingView: View {
             .padding(.leading, actionInset)
             .accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of \(steps.count), \(steps[step])")
             HStack(spacing: 12) {
-                if step > 0 {
-                    Button { changeStep(step - 1) } label: { Image(systemName: "chevron.left").frame(width: 30, height: 40) }
-                        .buttonStyle(.glass).buttonBorderShape(.capsule).frame(width: backButtonWidth)
-                        .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
-                        .disabled(settingUpSpeech || requestingMicrophone)
-                }
+                if step > 0 && !wide { onboardingBackButton }
                 Button {
                     if step == 3 {
                         if microphoneAllowed || microphoneDenied { advancePastMicrophone() }
@@ -1156,6 +1166,9 @@ struct JotleyOnboardingView: View {
                 .buttonStyle(.plain).tint(accent)
                 .disabled(settingUpSpeech || requestingMicrophone)
                 .accessibilityIdentifier("onboardingContinue")
+            }
+            .overlay(alignment: .leading) {
+                if wide && step > 0 { onboardingBackButton.offset(x: -66) }
             }
             if step == 3 && !microphoneAllowed && !microphoneDenied {
                 Button("Not now") { advancePastMicrophone() }.buttonStyle(.glass).buttonBorderShape(.capsule)

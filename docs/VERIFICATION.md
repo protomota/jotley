@@ -339,3 +339,7 @@ Evidence: `/tmp/jotley-onboarding-iphone-checked.xcresult`, `/tmp/jotley-onboard
 ### Welcome footer alignment — 2026-10-20
 
 Narrowed the native Mac welcome footer from 380 to 344 points. Progress and secondary actions now share the primary action’s centerline, with an explicit 54-point space for Back and a 12-point gap. Verified all five Mac pages in the actual rebuilt app; the system-audio primary action, progress and Use Microphone Only align, with no scrollbar. No permissions were requested and no release was created. Proof: `mac-system-audio-aligned.png` in the onboarding preview directory. Mac Debug build passed; iOS Simulator compatibility build also checked before commit.
+
+### Welcome action aligned with copy — 2026-10-20
+
+Wide onboarding layouts now use the same illustration/spacing/content columns for the footer and page copy. The primary button starts at the copy’s left edge; progress and alternate actions center on the primary button, with Back positioned outside the content column. Compact phone layouts retain their existing arrangement. Actual Mac preview confirmed the system-audio page, no scrollbar, and no permission request. Mac and iOS Simulator Debug builds passed. Proof: `mac-system-audio-copy-aligned.png` in the onboarding preview directory. No release created.
