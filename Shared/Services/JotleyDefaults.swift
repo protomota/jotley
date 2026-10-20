@@ -933,11 +933,11 @@ struct JotleyOnboardingView: View {
     @ViewBuilder private func pageLayout(wide: Bool) -> some View {
         if wide {
             HStack(alignment: .center, spacing: 38) {
-                illustration.frame(width: 300)
+                illustration(compact: false).frame(width: 300)
                 pageContent.frame(maxWidth: 380, alignment: .leading)
             }
         } else {
-            VStack(spacing: 25) { illustration; pageContent }.frame(maxWidth: 480)
+            VStack(spacing: 25) { illustration(compact: true); pageContent }.frame(maxWidth: 480)
         }
     }
     private var header: some View {
@@ -1070,13 +1070,36 @@ struct JotleyOnboardingView: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityElement(children: .combine)
     }
-    private var illustration: some View {
+    private func illustration(compact: Bool) -> some View {
         VStack(spacing: 18) {
             if step == 0 {
-                Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 62, height: 62)
-                    .shadow(color: accent.opacity(0.35), radius: 24)
                 sampleNote(icon: "waveform", title: "Live transcription", text: "Let’s meet Friday.\nI’ll bring the first draft.")
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 23).strokeBorder(accent.opacity(0.18), lineWidth: 1)
+                    }
                     .rotationEffect(.degrees(-4))
+                HStack(spacing: 7) {
+                    Circle().fill(accent).frame(width: 5, height: 5)
+                    Capsule().fill(accent.opacity(0.3)).frame(width: 28, height: 2)
+                    Image(systemName: "sparkles").foregroundStyle(accent).font(.caption)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Your next step", systemImage: "sparkles")
+                        .font(.callout.weight(.semibold)).foregroundStyle(accent)
+                    if !compact {
+                        Text("Ready for Friday")
+                            .font(.system(.title3, design: .rounded).weight(.semibold))
+                    }
+                    HStack(alignment: .top, spacing: 9) {
+                        Image(systemName: "circle").foregroundStyle(accent)
+                        Text("Bring the first draft.").font(.callout).foregroundStyle(muted)
+                    }
+                }
+                .padding(compact ? 14 : 18).frame(width: 248, alignment: .leading)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(accent.opacity(0.2), lineWidth: 1) }
+                .rotationEffect(.degrees(3)).offset(x: 12)
+                .shadow(color: accent.opacity(0.12), radius: 22, y: 10)
             } else if step == 1 {
                 sampleNote(icon: "sparkles", title: "A little clarity", text: "Meet Friday.\nBring the first draft.")
                     .rotationEffect(.degrees(3))

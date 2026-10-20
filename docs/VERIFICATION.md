@@ -343,3 +343,9 @@ Narrowed the native Mac welcome footer from 380 to 344 points. Progress and seco
 ### Welcome action aligned with copy — 2026-10-20
 
 Wide onboarding layouts now use the same illustration/spacing/content columns for the footer and page copy. The primary button starts at the copy’s left edge; progress and alternate actions center on the primary button, with Back positioned outside the content column. Compact phone layouts retain their existing arrangement. Actual Mac preview confirmed the system-audio page, no scrollbar, and no permission request. Mac and iOS Simulator Debug builds passed. Proof: `mac-system-audio-copy-aligned.png` in the onboarding preview directory. No release created.
+
+### Welcome artwork and logo sampling — 2026-10-20
+
+Removed the duplicate logo from the welcome illustration. The first page now shows the same three-bar live-transcription preview flowing into a summary/action card, while the Jotley identity appears once in the header. Prepared the original first-party logo at its actual 34-point display size with separate 34/68/102-pixel 1x/2x/3x renditions using Lanczos filtering and alpha preservation. This avoids rendering the 1024-pixel source directly at a tiny UI size; no brand shape or app icon was changed. Mac and iOS Simulator Debug builds passed. Native Mac preview confirms the single smoother logo and preserved copy/button alignment, with no scrollbar. Proof: `mac-welcome-refreshed.png` in the onboarding preview directory. No release created.
+
+The shared welcome illustration uses a shorter summary card on compact phones. Targeted iPhone checks passed with the first artwork revision in Light/Dark and accessibility-size Yellow (2 tests, 0 failures); the final compact-layout Light/Dark language/persistence/replay check also passed (1 test, 0 failures; `/tmp/jotley-welcome-artwork-iphone-final.xcresult`).
