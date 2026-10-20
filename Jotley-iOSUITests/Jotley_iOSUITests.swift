@@ -989,105 +989,72 @@ final class Jotley_iOSUITests: XCTestCase {
 
     #if DEBUG
 
-    @MainActor private func openRatingsCardFromSettings(_ app: XCUIApplication) {
+    @MainActor private func openInlineSupportSettings(_ app: XCUIApplication) {
         let settings = app.buttons["notesListSettingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10)); settings.tap()
-        let openCard = app.buttons["settingsSupportJotleyCard"]
-        for _ in 0..<8 where !openCard.isHittable { app.swipeUp() }
-        XCTAssertTrue(app.descendants(matching: .any)["settingsRateJotley"].firstMatch.exists)
-        XCTAssertTrue(openCard.isHittable, app.debugDescription); openCard.tap()
-        XCTAssertTrue(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.state, .runningForeground, "Opening the card must not activate another Settings link")
+        let feedback = app.buttons["settingsFeedbackJotley"]
+        for _ in 0..<8 where !feedback.isHittable { app.swipeUp() }
+        XCTAssertTrue(feedback.isHittable, app.debugDescription)
+        XCTAssertTrue(app.buttons["settingsDoneButton"].isHittable)
+        XCTAssertFalse(app.buttons["settingsSupportJotleyCard"].exists)
+        XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }
 
-    @MainActor func testRatingsCardOpensFromSettingsAndStaysAvailableAfterRelaunch() throws {
+    @MainActor func testSupportActionsLiveDirectlyInSettingsAndShareReturnsThere() throws {
         let app = XCUIApplication()
-        let fixture: [[String: Any]] = [["title": "Support verification", "folder": "Work", "tags": [], "transcript": "Locally recorded words", "summary": "# Summary\nLocal notes stay private."]]
-        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Support verification","folder":"Work","tags":[],"transcript":"Local notes stay private.","summary":"A useful summary."}] "#
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "6"
         app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = "USA"
-        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
-        app.launch()
-        XCTAssertTrue(app.buttons["notesListNewNoteButton"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3), "The review menu must be user-opened, not an automatic custom review prompt")
-        openRatingsCardFromSettings(app)
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "free for personal and paid work")).firstMatch.exists)
-        XCTAssertTrue(app.buttons["jotleySupportShare"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["jotleySupportFeedback"].firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["jotleySupportTitle"].label.contains("Supported by people."))
-        XCTAssertTrue(app.staticTexts["Support is optional. All features stay free."].exists)
-        XCTAssertTrue(app.staticTexts["Optional · jotley.ai/tips"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["jotleyStyledSupportPrompt"].exists)
-        XCTAssertFalse(app.alerts.firstMatch.exists, "Support must use the app's themed card rather than a system alert")
-        XCTAssertTrue(app.descendants(matching: .any)["jotleySupportTip"].firstMatch.waitForExistence(timeout: 5))
-        let card = app.descendants(matching: .any)["jotleyStyledSupportPrompt"].firstMatch
-        XCTAssertLessThan(card.frame.height, app.frame.height * 0.85, "The normal-size support card should leave the app visible")
-        XCTAssertGreaterThanOrEqual(app.buttons["jotleySupportShare"].frame.height, 58)
-        XCTAssertEqual(app.staticTexts["jotleySupportTitle"].frame.minX,
-                       app.staticTexts["Support is optional. All features stay free."].frame.minX,
-                       accuracy: 2, "The heading and footer should share a leading edge")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Protomota Software")).firstMatch.exists)
-        XCTAssertFalse(app.buttons["settingsSupportJotleyCard"].isHittable, "The modal must prevent interaction with underlying actions")
-        let dismissButton = app.buttons["jotleySupportDismiss"]
-        XCTAssertTrue(dismissButton.isHittable)
-        XCTAssertGreaterThanOrEqual(dismissButton.frame.height, 44)
-        let feedbackRow = app.descendants(matching: .any)["jotleySupportFeedback"].firstMatch
-        XCTAssertTrue(feedbackRow.isHittable)
-        XCTAssertLessThanOrEqual(feedbackRow.frame.maxY,
-                                 app.staticTexts["Support is optional. All features stay free."].frame.minY - 12,
-                                 "All four actions must fit above the pinned footer at normal text size")
-        XCTAssertLessThanOrEqual(dismissButton.frame.maxY, app.frame.maxY - 12, "Dismissal must remain fully visible above the screen edge")
-        let reviewRow = app.descendants(matching: .any)["jotleySupportReview"].firstMatch
-        let tipRow = app.descendants(matching: .any)["jotleySupportTip"].firstMatch
-        let shareRow = app.buttons["jotleySupportShare"]
-        XCTAssertTrue(reviewRow.isHittable)
-        XCTAssertGreaterThanOrEqual(reviewRow.frame.height, 74)
-        XCTAssertLessThan(reviewRow.frame.minY, tipRow.frame.minY)
-        XCTAssertLessThan(tipRow.frame.minY, shareRow.frame.minY)
-        XCTAssertLessThan(shareRow.frame.minY, feedbackRow.frame.minY)
-        XCTAssertGreaterThan(reviewRow.frame.height, tipRow.frame.height)
-        XCTAssertEqual(reviewRow.label, "Rate and review Jotley on the App Store")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Your rating and review help others discover Jotley")).firstMatch.exists)
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "First-time Jotley support message"
-        attachment.lifetime = .keepAlways; add(attachment)
-        app.buttons["jotleySupportDismiss"].tap()
-        XCTAssertTrue(app.buttons["settingsSupportJotleyCard"].waitForExistence(timeout: 5))
-        app.terminate()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        for mode in ["Dark", "Light"] {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+            app.launch()
+            XCTAssertTrue(app.buttons["notesListNewNoteButton"].waitForExistence(timeout: 15))
+            XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
+            openInlineSupportSettings(app)
+            let actions = ["settingsRateJotley", "settingsTipJotley", "settingsShareJotley", "settingsFeedbackJotley"].map { app.buttons[$0] }
+            XCTAssertTrue(actions[1].waitForExistence(timeout: 10))
+            for action in actions {
+                XCTAssertTrue(action.isHittable)
+                XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+                XCTAssertGreaterThan(action.frame.width, 200)
+                XCTAssertEqual(action.frame.minX, actions[0].frame.minX, accuracy: 2)
+            }
+            for index in 1..<actions.count { XCTAssertLessThanOrEqual(actions[index - 1].frame.maxY, actions[index].frame.minY) }
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Inline Settings support - \(mode)"; attachment.lifetime = .keepAlways; add(attachment)
+            if mode == "Light" {
+                actions[2].tap()
+                let copyCell = app.cells["Copy"]
+                if copyCell.waitForExistence(timeout: 10) { copyCell.tap() }
+                else {
+                    let copyButton = app.buttons["Copy"]
+                    XCTAssertTrue(copyButton.waitForExistence(timeout: 5), app.debugDescription); copyButton.tap()
+                }
+                XCTAssertTrue(app.buttons["settingsFeedbackJotley"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.buttons["settingsDoneButton"].isHittable)
+                XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
+            }
+            app.terminate()
+        }
         app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_ENGAGEMENT_COUNT")
-        app.launch()
-        XCTAssertTrue(app.buttons["notesListNewNoteButton"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3))
-        openRatingsCardFromSettings(app)
-        XCTAssertTrue(app.descendants(matching: .any)["jotleySupportReview"].firstMatch.isHittable)
-        app.buttons["jotleySupportClose"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["settingsRateJotley"].firstMatch.exists)
+        app.launch(); openInlineSupportSettings(app)
+        XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
     }
-    @MainActor func testRestrictedStorefrontKeepsStyledSupportWithoutWebTips() throws {
+
+    @MainActor func testRestrictedStorefrontKeepsInlineSupportWithoutWebTips() throws {
         let app = XCUIApplication()
-        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"""
-        [{"title":"Regional support verification","folder":"Work","tags":[],"transcript":"Local transcript","summary":""}]
-        """#
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Regional support","folder":"Work","tags":[],"transcript":"Local transcript","summary":""}] "#
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "6"
         app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = "GBR"
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
         app.launch()
-        XCTAssertTrue(app.buttons["notesListNewNoteButton"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3), "The review menu must be user-opened, not an automatic custom review prompt")
-        openRatingsCardFromSettings(app)
-        XCTAssertTrue(app.buttons["jotleySupportShare"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["jotleySupportTip"].firstMatch.waitForExistence(timeout: 3))
-        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Optional tips")).firstMatch.exists)
-        XCTAssertTrue(app.descendants(matching: .any)["jotleySupportFeedback"].firstMatch.exists)
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Styled support in a restricted storefront"
-        attachment.lifetime = .keepAlways; add(attachment)
-        let reviewRow = app.descendants(matching: .any)["jotleySupportReview"].firstMatch
-        XCTAssertTrue(reviewRow.isHittable)
-        XCTAssertLessThan(reviewRow.frame.minY, app.buttons["jotleySupportShare"].frame.minY)
-        XCTAssertEqual(reviewRow.label, "Rate and review Jotley on the App Store")
-        app.buttons["jotleySupportClose"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["settingsRateJotley"].firstMatch.exists)
+        openInlineSupportSettings(app)
+        XCTAssertTrue(app.buttons["settingsRateJotley"].isHittable)
+        XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
+        XCTAssertFalse(app.buttons["settingsTipJotley"].exists)
+        XCTAssertTrue(app.buttons["settingsFeedbackJotley"].isHittable)
+        XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }
     @MainActor func testActualSummaryCompletionDoesNotInterruptWithCustomReviewMenu() throws {
         guard case .available = SystemLanguageModel.default.availability else {

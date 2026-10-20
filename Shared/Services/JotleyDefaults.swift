@@ -700,7 +700,11 @@ private struct JotleySupportShareAnchor: NSViewRepresentable {
 struct JotleySupportLinks: View {
     @State private var showingSupport = false
     @Environment(\.openURL) private var openURL
+    @State private var allowsWebsiteTips = false
     var body: some View {
+        #if os(iOS)
+        mobileRows
+        #else
         VStack(alignment: .leading, spacing: 16) {
             Group {
                 #if os(macOS)
@@ -723,7 +727,48 @@ struct JotleySupportLinks: View {
         .tint(Color.themeActionText)
         #endif
         .modifier(JotleySupportCardPresentation(isPresented: $showingSupport))
+        #endif
     }
+    #if os(iOS)
+    private var mobileRows: some View {
+        Group {
+            Button { visit(.review, url: JotleyEngagement.reviewURL) } label: {
+                supportRow("Rate on the App Store", systemImage: "star")
+            }
+            .accessibilityIdentifier("settingsRateJotley")
+            if allowsWebsiteTips {
+                Button { visit(.tip, url: JotleyEngagement.tipURL) } label: {
+                    supportRow("Tip the Developer", systemImage: "cup.and.saucer")
+                }
+                .accessibilityIdentifier("settingsTipJotley")
+            }
+            ShareLink(item: JotleyEngagement.website) {
+                supportRow("Share Jotley", systemImage: "square.and.arrow.up")
+            }
+            .simultaneousGesture(TapGesture().onEnded { JotleyEngagement.shared.recordClick(.share) })
+            .accessibilityIdentifier("settingsShareJotley")
+            Button { visit(.feedback, url: JotleyEngagement.feedbackURL) } label: {
+                supportRow("Send Feedback", systemImage: "bubble.left.and.bubble.right")
+            }
+            .accessibilityIdentifier("settingsFeedbackJotley")
+            Link(destination: JotleyEngagement.website) {
+                supportRow("Jotley's Website", systemImage: "globe")
+            }
+            .accessibilityIdentifier("settingsJotleyWebsite")
+        }
+        .buttonStyle(.plain)
+        .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
+    }
+    private func supportRow(_ title: String, systemImage: String) -> some View {
+        MobileActionLabel(title, systemImage: systemImage)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+    }
+    private func visit(_ action: JotleyEngagement.Action, url: URL) {
+        JotleyEngagement.shared.recordClick(action)
+        openURL(url)
+    }
+    #endif
     private var reviewLabel: some View {
         Label("Rate & Review Jotley on the App Store", systemImage: "star")
             .font(.body.weight(.semibold)).frame(minHeight: 44)
