@@ -122,6 +122,8 @@ struct NotesListView: View {
                 .padding(.bottom, 12)
                 .padding(.horizontal, 16)
                 .background(Color.themeBackground)
+                // Keep the iPhone gear shadow above the list's opaque scroll surface.
+                .zIndex(usesIPadLayout ? 0 : 1)
 
                 // Combined folder + tag scope indicator (single scrollable row,
                 // folder pill first when present, then one pill per selected tag).
