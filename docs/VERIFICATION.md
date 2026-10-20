@@ -306,3 +306,10 @@ Rate on the App Store, Tip the Developer, Share Jotley and Send Feedback are sep
 Passed targeted iPhone and iPad UI tests in Light and Dark, including row order/alignment/touch targets, absence of the extra support modal, native Share → Copy → Settings and relaunch. Both devices also passed the restricted-storefront check: rate/share/feedback stay inline while website tips are omitted. The shared change passed the native Mac Debug build.
 
 Public implementation `6eef11f`, private release source `21064d5`. [Universal upload 39438865773](https://github.com/protomota/jotley-app/actions/runs/39438865773) succeeded. Apple confirms **2.1.2 (402), VALID / IN_BETA_TESTING, available in Jotley Home**, with matching English TestFlight notes. Exported app/widget versions are 2.1.2/402; original identifiers, iPhone/iPad device families, strict/deep code signatures, production iCloud, disabled debugging, summary background registration and Foundation Models linkage checks passed. IPA: 6,314,588 bytes; SHA-256 `7af181a6a8a11e31e3f529f89e7881f9bf04763057794fcef07c10604b5ead0b`. The existing **2.1.1 (401), WAITING_FOR_REVIEW** App Store submission was read back unchanged.
+
+
+## Mobile swipe-delete tint — 2026-10-20
+
+The notes-list Delete swipe action now has an explicit red tint. Its destructive role and deletion behavior are unchanged, and the list can retain its readable action-text tint without making Delete gray in Dark appearance. The shared notes list covers iPhone and iPad.
+
+The iOS Simulator Debug build passed. The existing Settings neutral-glass regression passed across all five accent themes in Light and Dark. No TestFlight, App Store or Mac release was created for this change.

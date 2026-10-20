@@ -247,6 +247,8 @@ struct NotesListView: View {
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
+                                        // Keep the destructive fill independent of the list's readable text tint.
+                                        .tint(.red)
                                     }
 
 
