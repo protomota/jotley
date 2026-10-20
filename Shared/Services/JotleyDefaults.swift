@@ -797,21 +797,29 @@ enum JotleyOnboarding {
 }
 
 struct JotleyOnboardingPresentation: ViewModifier {
-    var onDismiss: () -> Void = {}
+    @Binding var replay: Bool
+    var onDismiss: () -> Void
+    init(replay: Binding<Bool> = .constant(false), onDismiss: @escaping () -> Void = {}) {
+        _replay = replay
+        self.onDismiss = onDismiss
+    }
     @AppStorage(JotleyOnboarding.completedKey) private var completed = false
-    @State private var showing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var showing: Bool { replay || (!completed && !JotleyOnboarding.bypassForFixture) }
     func body(content: Content) -> some View {
-        content
-            .onAppear { showing = !completed && !JotleyOnboarding.bypassForFixture }
-            #if os(iOS)
-            .fullScreenCover(isPresented: $showing, onDismiss: onDismiss) {
-                JotleyOnboardingView { showing = false }
+        ZStack {
+            // Preserve the open note and navigation state while setup owns the window.
+            content.opacity(showing ? 0 : 1)
+                .disabled(showing).accessibilityHidden(showing)
+            if showing {
+                JotleyOnboardingView { replay = false; onDismiss() }
+                    .transition(.opacity).zIndex(1)
             }
-            #else
-            .sheet(isPresented: $showing, onDismiss: onDismiss) {
-                JotleyOnboardingView { showing = false }.frame(width: 820, height: 650)
-            }
-            #endif
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: showing)
+        #if os(macOS)
+        .toolbarBackgroundVisibility(showing ? .hidden : .automatic, for: .windowToolbar)
+        #endif
     }
 }
 
@@ -917,7 +925,6 @@ struct JotleyOnboardingView: View {
         .foregroundStyle(ink)
         .preferredColorScheme(theme.effectiveColorScheme)
         .observeThemeChanges()
-        .interactiveDismissDisabled()
         .task(id: language) { await refreshModels() }
         .onAppear { refreshMicrophone() }
         .onChange(of: scenePhase) { _, phase in

@@ -21,7 +21,7 @@ struct SettingsView: View {
     @AppStorage("recordSystemAudio") var recordSystemAudio = true
     @State var selectedSection: SettingsSection = .general
     @State var showingThemeColorPicker = false
-    @State var showingWelcome = false
+    var onShowWelcome: () -> Void = {}
     @State var speechStatus = "Checking on-device models…"
     @State var speechNeedsSetup = false
     @State var speechLanguages: [LocalSpeech.Language] = []
@@ -93,8 +93,5 @@ struct SettingsView: View {
             .frame(minWidth: 800, idealWidth: 900, maxWidth: 1200, minHeight: 560, idealHeight: 640, maxHeight: 820)
             .buttonStyle(JotleyGlassButtonStyle())
             .observeThemeChanges()
-            .sheet(isPresented: $showingWelcome) {
-                JotleyOnboardingView { showingWelcome = false }.frame(width: 820, height: 650)
-            }
     }
 }

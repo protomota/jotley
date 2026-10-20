@@ -7,6 +7,12 @@ struct MainTabView: View {
     @State private var summaryNavigationID = UUID()
     @State private var navigationPath = NavigationPath()
     @State private var showingSettings = false
+    @State private var showingWelcome = false
+    @State private var replayAfterSettings = false
+    @State private var returnToSettingsAfterWelcome = false
+    private var onboardingInProgress: Bool {
+        showingWelcome || replayAfterSettings || (!onboardingCompleted && !JotleyOnboarding.bypassForFixture)
+    }
     @AppStorage(JotleyOnboarding.completedKey) private var onboardingCompleted = false
     @State private var selectedNoteId: UUID?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -51,7 +57,11 @@ struct MainTabView: View {
         }
         .preferredColorScheme(themeManager.effectiveColorScheme)
         .observeThemeChanges()
-        .modifier(JotleyOnboardingPresentation(onDismiss: {
+        .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
+            if returnToSettingsAfterWelcome {
+                returnToSettingsAfterWelcome = false
+                if pendingWidgetAction == nil && summaryNotifications.noteToOpen == nil { showingSettings = true }
+            }
             if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }
             openNotifiedSummary()
         }))
@@ -67,21 +77,28 @@ struct MainTabView: View {
         .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, _ in openNotifiedSummary() }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
-            if !onboardingCompleted && !JotleyOnboarding.bypassForFixture { pendingWidgetAction = action }
+            if onboardingInProgress { pendingWidgetAction = action }
             else if showingSettings { pendingWidgetAction = action; showingSettings = false }
             else { handleWidgetAction(action) }
         }
         .sheet(isPresented: $showingSettings, onDismiss: {
+            if replayAfterSettings { replayAfterSettings = false; showingWelcome = true; return }
             if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }
             openNotifiedSummary()
         }) {
-            NavigationStack { SettingsView() }
+            NavigationStack {
+                SettingsView(onShowWelcome: {
+                    returnToSettingsAfterWelcome = true
+                    replayAfterSettings = true
+                    showingSettings = false
+                })
+            }
                 .presentationDetents([.large]).presentationDragIndicator(.visible)
         }
         .alert("Jotley", isPresented: Binding(get: { transcriptionManager.errorMessage != nil && !transcriptionManager.captureScreenVisible && newTranscriptionNote == nil && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy }, set: { if !$0 { Task { @MainActor in transcriptionManager.errorMessage = nil } } })) {
             Button("OK", role: .cancel) { transcriptionManager.errorMessage = nil }
         } message: { Text(transcriptionManager.errorMessage ?? "") }
-        .modifier(JotleyEngagementPrompts(isIdle: (onboardingCompleted || JotleyOnboarding.bypassForFixture) && !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
+        .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
     }
     private func handleWidgetAction(_ action: MobileTranscriptionAction) {
         switch action {
@@ -108,7 +125,7 @@ struct MainTabView: View {
         }
     }
     private func openNotifiedSummary() {
-        guard onboardingCompleted || JotleyOnboarding.bypassForFixture,
+        guard !onboardingInProgress,
               !showingSettings, !showingTranscriptionModal, let id = summaryNotifications.noteToOpen else { return }
         summaryNavigationID = UUID()
         openNote(id)

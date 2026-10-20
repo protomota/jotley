@@ -15,7 +15,7 @@ struct SettingsView: View {
     @State private var speechLanguages: [LocalSpeech.Language] = []
     @State private var speechDetails = ""
     @State private var speechIsReady = false
-    @State private var showingWelcome = false
+    var onShowWelcome: () -> Void = {}
     @EnvironmentObject private var persistenceController: SharedPersistenceController
     @AppStorage(NoteSyncMode.preferenceKey) private var iCloudSyncEnabled = true
     private let macDownloadURL = URL(string: "https://jotley.ai/download")!
@@ -155,7 +155,7 @@ struct SettingsView: View {
             Section("Notifications") { JotleySummaryNotificationSettings() }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
-                Button { showingWelcome = true } label: {
+                Button { onShowWelcome() } label: {
                     MobileActionLabel("Welcome to Jotley", systemImage: "sparkles")
                 }.accessibilityIdentifier("settingsWelcomeJotley")
                 Text("Jotley · Free · Offline")
@@ -171,9 +171,6 @@ struct SettingsView: View {
             MobileDoneButton { dismiss() }.accessibilityIdentifier("settingsDoneButton")
         }.sharedBackgroundVisibility(.hidden) }
         .task(id: transcriptionLanguage) { await checkModels() }
-        .fullScreenCover(isPresented: $showingWelcome) {
-            JotleyOnboardingView { showingWelcome = false }
-        }
         .onDisappear { speechSetupTask?.cancel() }
         .preferredColorScheme(themeManager.effectiveColorScheme).observeThemeChanges()
     }

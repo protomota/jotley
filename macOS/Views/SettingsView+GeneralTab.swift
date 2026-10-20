@@ -157,7 +157,7 @@ extension SettingsView {
                             }
                         }
                         Divider()
-                        Button("Welcome to Jotley", systemImage: "sparkles") { showingWelcome = true }
+                        Button("Welcome to Jotley", systemImage: "sparkles") { onShowWelcome() }
                             .accessibilityIdentifier("settingsWelcomeJotley")
                         JotleySupportLinks()
                     }
