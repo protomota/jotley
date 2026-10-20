@@ -8,6 +8,101 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testWelcomeSetupPersistsAndCanBeReopenedWithoutLosingNotes() throws {
+        let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
+        XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Keep this note","folder":"","tags":[],"transcript":"Existing words remain safe while setting up Jotley.","summary":"A saved note."}]"###
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        for mode in ["Dark", "Light"] {
+            let selectedLanguage = mode == "Dark" ? "English (United Kingdom)" : "English (United States)"
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+            app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+            app.launch()
+            let title = app.staticTexts["onboardingTitle"]
+            XCTAssertTrue(title.waitForExistence(timeout: 15))
+            for expected in ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place."] {
+                XCTAssertEqual(title.label, expected)
+                XCTAssertTrue(app.buttons["onboardingContinue"].isHittable, "The primary action must remain visible")
+                XCTAssertLessThanOrEqual(app.buttons["onboardingContinue"].frame.maxX, app.frame.maxX - 12, "The action must fit completely inside the window")
+                XCTAssertGreaterThanOrEqual(app.buttons["onboardingContinue"].frame.minX, app.frame.minX + 12)
+                XCTAssertEqual(app.alerts.count, 0, "No permission alert should appear without an explicit request")
+                if expected == "Start with your language." {
+                    let picker = app.buttons["onboardingLanguagePicker"]
+                    XCTAssertTrue(picker.waitForExistence(timeout: 10))
+                    let enabled = NSPredicate(format: "enabled == true")
+                    expectation(for: enabled, evaluatedWith: picker)
+                    waitForExpectations(timeout: 15)
+                    picker.tap()
+                    let choice = app.buttons[selectedLanguage]
+                    XCTAssertTrue(choice.waitForExistence(timeout: 5))
+                    choice.tap()
+                    XCTAssertTrue(picker.label.contains(selectedLanguage))
+                }
+                let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                attachment.name = "Jotley welcome \(mode) - \(expected)"
+                attachment.lifetime = .keepAlways; add(attachment)
+                if expected != "Give your words a place." { app.buttons["onboardingContinue"].tap() }
+            }
+            if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
+            else { app.buttons["onboardingContinue"].tap() }
+            XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 8))
+            app.terminate()
+            app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
+            app.launch()
+            XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 10))
+            XCTAssertFalse(title.exists, "Completed setup must not appear again on launch")
+            app.buttons["notesListSettingsButton"].tap()
+            XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 8))
+            let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+            XCTAssertTrue(form.waitForExistence(timeout: 5))
+            let savedLanguage = app.descendants(matching: .any)["settingsLanguagePicker"].firstMatch
+            for _ in 0..<9 {
+                if savedLanguage.exists && savedLanguage.isHittable { break }
+                form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+                    .press(forDuration: 0.1, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)))
+            }
+            XCTAssertTrue(savedLanguage.waitForExistence(timeout: 3), app.debugDescription)
+            XCTAssertEqual(savedLanguage.value as? String, selectedLanguage, "Settings and onboarding must use the same saved language")
+            let replay = app.buttons["settingsWelcomeJotley"]
+            for _ in 0..<8 {
+                if replay.isHittable { break }
+                app.swipeUp()
+            }
+            XCTAssertTrue(replay.isHittable)
+            replay.tap()
+            XCTAssertTrue(title.waitForExistence(timeout: 5))
+            XCTAssertEqual(title.label, "Stay in the conversation.")
+            app.buttons["onboardingSkip"].tap()
+            XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
+            app.buttons["settingsDoneButton"].tap()
+            XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    @MainActor func testWelcomeSkipRemainsAccessibleWithLargeTextAndYellowTheme() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Yellow", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["onboardingSkip"].isHittable)
+        XCTAssertTrue(app.buttons["onboardingContinue"].isHittable)
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "Welcome with accessibility text and Yellow theme"
+        attachment.lifetime = .keepAlways; add(attachment)
+        app.buttons["onboardingSkip"].tap()
+        XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.alerts.count, 0)
+    }
+
     @MainActor func testIPadSplitSelectionHighlightsOnlyTheOpenNote() throws {
         guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else {
             throw XCTSkip("Split selection requires iPad")

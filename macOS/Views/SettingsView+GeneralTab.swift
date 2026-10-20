@@ -71,10 +71,10 @@ extension SettingsView {
                         VStack(alignment: .leading, spacing: 12) {
 
                             HStack {
-                                Text("Language")
+                                Text("Preferred Language")
                                     .frame(width: 120, alignment: .leading)
 
-                                Picker("", selection: Binding(
+                                Picker("Transcription Language", selection: Binding(
                                     get: { speechLanguages.contains(where: { $0.id == transcriptionLanguage }) ? transcriptionLanguage : "" },
                                     set: { transcriptionLanguage = $0 }
                                 )) {
@@ -84,11 +84,13 @@ extension SettingsView {
                                     ForEach(speechLanguages) { language in Text(language.name).tag(language.id) }
                                 }
                                 .pickerStyle(.menu)
+                                .labelsHidden()
                                 .frame(width: 220)
                                 .disabled(isSettingUpSpeech)
+                                .accessibilityIdentifier("settingsLanguagePicker")
                             }
 
-                            Text("Select the language for audio transcription. Availability depends on installed Apple speech assets.")
+                            Text("Choose the language you speak, here or during welcome setup. You can change it at any time. Apple speech may need a one-time setup for a new language; existing notes and the app’s interface language stay unchanged.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Toggle("Transcribe microphone and system audio", isOn: $recordSystemAudio)
@@ -155,6 +157,8 @@ extension SettingsView {
                             }
                         }
                         Divider()
+                        Button("Welcome to Jotley", systemImage: "sparkles") { showingWelcome = true }
+                            .accessibilityIdentifier("settingsWelcomeJotley")
                         JotleySupportLinks()
                     }
 

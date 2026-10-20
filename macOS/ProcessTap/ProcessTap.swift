@@ -18,6 +18,55 @@ enum TapTarget {
     }
 }
 
+/// Core Audio asks for consent when a tap-backed device starts I/O.
+/// This short-lived setup probe discards every buffer. It creates no note/file,
+/// never includes a microphone, and leaves the user's speaker output unmuted.
+final class JotleySystemAudioPermissionProbe {
+    private var tap: AudioObjectID = 0
+    private var device: AudioObjectID = 0
+    private var io: AudioDeviceIOProcID?
+    func start() throws {
+        stop()
+        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        description.uuid = UUID()
+        description.isPrivate = true
+        description.muteBehavior = .unmuted
+        try require(AudioHardwareCreateProcessTap(description, &tap))
+        do {
+            let output = try AudioDeviceID.readDefaultOutputDevice().readDeviceUID()
+            let aggregate: [String: Any] = [
+                kAudioAggregateDeviceNameKey: "Jotley System Audio Setup",
+                kAudioAggregateDeviceUIDKey: UUID().uuidString,
+                kAudioAggregateDeviceIsPrivateKey: true,
+                kAudioAggregateDeviceMainSubDeviceKey: output,
+                kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: output]],
+                kAudioAggregateDeviceTapAutoStartKey: false,
+                kAudioAggregateDeviceTapListKey: [[kAudioSubTapUIDKey: description.uuid.uuidString,
+                                                 kAudioSubTapDriftCompensationKey: true]]
+            ]
+            try require(AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &device))
+            try require(AudioDeviceCreateIOProcIDWithBlock(&io, device,
+                DispatchQueue(label: "ai.jotley.system-audio-permission")) { _, _, _, _, _ in
+                    // Intentionally discard all input; onboarding never transcribes or saves it.
+                })
+            try require(AudioDeviceStart(device, io))
+        } catch { stop(); throw error }
+    }
+    private func require(_ result: OSStatus) throws {
+        guard result == noErr else {
+            stop()
+            throw LocalError.message("macOS could not start system audio setup. You can use microphone-only transcription and enable app audio later.")
+        }
+    }
+    func stop() {
+        if let io { AudioDeviceStop(device, io); AudioDeviceDestroyIOProcID(device, io) }
+        io = nil
+        if device != 0 { AudioHardwareDestroyAggregateDevice(device); device = 0 }
+        if tap != 0 { AudioHardwareDestroyProcessTap(tap); tap = 0 }
+    }
+    deinit { stop() }
+}
+
 @Observable
 final class ProcessTap {
 

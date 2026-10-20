@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var speechLanguages: [LocalSpeech.Language] = []
     @State private var speechDetails = ""
     @State private var speechIsReady = false
+    @State private var showingWelcome = false
     @EnvironmentObject private var persistenceController: SharedPersistenceController
     @AppStorage(NoteSyncMode.preferenceKey) private var iCloudSyncEnabled = true
     private let macDownloadURL = URL(string: "https://jotley.ai/download")!
@@ -93,9 +94,9 @@ struct SettingsView: View {
             }
 
             // Transcription Settings
-            Section("Transcription") {
+            Section {
                 Menu {
-                    Picker("Language", selection: Binding(
+                    Picker("Transcription Language", selection: Binding(
                         get: { speechLanguages.contains(where: { $0.id == transcriptionLanguage }) ? transcriptionLanguage : "" },
                         set: { transcriptionLanguage = $0 }
                     )) {
@@ -105,10 +106,16 @@ struct SettingsView: View {
                         ForEach(speechLanguages) { language in Text(language.name).tag(language.id) }
                     }
                 } label: {
-                    selectionLabel("Language", value: speechLanguages.first(where: { $0.id == transcriptionLanguage })?.name ?? "Choose a supported language")
+                    selectionLabel("Transcription Language", value: speechLanguages.first(where: { $0.id == transcriptionLanguage })?.name ?? "Choose a supported language")
                 }
                 .accessibilityIdentifier("settingsLanguagePicker")
+                .accessibilityLabel("Transcription Language")
+                .accessibilityValue(Locale.current.localizedString(forIdentifier: transcriptionLanguage) ?? transcriptionLanguage)
                 .disabled(isSettingUpSpeech)
+            } header: {
+                Text("Transcription")
+            } footer: {
+                Text("Choose the language you speak. This is the same preference used during welcome setup, and you can change it here at any time. Changing it does not translate existing notes or change the app’s interface language.")
             }
 
             Section("Built-in Models") {
@@ -148,11 +155,15 @@ struct SettingsView: View {
             Section("Notifications") { JotleySummaryNotificationSettings() }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
+                Button { showingWelcome = true } label: {
+                    MobileActionLabel("Welcome to Jotley", systemImage: "sparkles")
+                }.accessibilityIdentifier("settingsWelcomeJotley")
                 Text("Jotley · Free · Offline")
                 Text(versionLine).lineLimit(1).accessibilityIdentifier("settingsAppVersion")
                 Text("Requires iOS or iPadOS 27 and Apple Intelligence-capable hardware: iPhone 15 Pro/Pro Max, iPhone 16 or newer, iPhone Air, iPad with M1 or later, or iPad mini with A17 Pro.").font(.caption)
             }
         }
+        .accessibilityIdentifier("settingsForm")
         .scrollContentBackground(.hidden).background(Color.themeBackground)
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
         .tint(Color.themeActionText)
@@ -160,6 +171,9 @@ struct SettingsView: View {
             MobileDoneButton { dismiss() }.accessibilityIdentifier("settingsDoneButton")
         }.sharedBackgroundVisibility(.hidden) }
         .task(id: transcriptionLanguage) { await checkModels() }
+        .fullScreenCover(isPresented: $showingWelcome) {
+            JotleyOnboardingView { showingWelcome = false }
+        }
         .onDisappear { speechSetupTask?.cancel() }
         .preferredColorScheme(themeManager.effectiveColorScheme).observeThemeChanges()
     }

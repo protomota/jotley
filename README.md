@@ -40,6 +40,7 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 
 | | |
 | --- | --- |
+| **Make yourself at home** | Guided setup for private notes, Apple Intelligence, your transcription language and microphone access. Mac also offers separate system-audio setup. Replay it from Settings → Welcome to Jotley. |
 | **Live transcription** | Start with **+** on iPhone/iPad. Timestamped cards follow new words; the waveform shows microphone input. Mac supports microphone and system audio. |
 | **Summaries that finish** | Choose **Auto** or a template. Long notes become one consolidated summary. See preparation progress while sections are reviewed, then follow the summary as it is written. **Cancel Generation** stays visible; regeneration starts with one tap. |
 | **Ask your notes** | On iPhone and iPad, tap **Ask AI** on the Summary tab; on Mac, use **More → Ask AI**. Find answers, pull out action items or clarify a detail using on-device Apple Intelligence. |

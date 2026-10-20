@@ -6,13 +6,15 @@ struct RootView: View {
     @ObservedObject private var local = LocalAppModel.shared
     @State private var searchText = ""
     @State private var showingSettingsSheet = false
+    @AppStorage(JotleyOnboarding.completedKey) private var onboardingCompleted = false
     var body: some View {
         NotesListView(recorder: recorder, searchText: $searchText, showingSettingsSheet: $showingSettingsSheet, persistenceController: persistenceController)
             .background(Color.themeContentBackground.ignoresSafeArea())
             .sheet(isPresented: $showingSettingsSheet) { SettingsView().buttonStyle(JotleyGlassButtonStyle()) }
             .buttonStyle(JotleyGlassButtonStyle())
             .observeThemeChanges()
-            .modifier(JotleyEngagementPrompts(isIdle: !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))
+            .modifier(JotleyOnboardingPresentation())
+            .modifier(JotleyEngagementPrompts(isIdle: (onboardingCompleted || JotleyOnboarding.bypassForFixture) && !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))
             .safeAreaInset(edge: .bottom) {
                 if !local.message.isEmpty {
                     HStack {

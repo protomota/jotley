@@ -3,6 +3,7 @@ import StoreKit
 import FoundationModels
 import Combine
 import UserNotifications
+import AVFoundation
 #if os(iOS)
 import UIKit
 #else
@@ -779,5 +780,506 @@ struct JotleySupportLinks: View {
         #else
         return "More Ways to Support Jotley"
         #endif
+    }
+}
+
+// One local completion flag across windows; replay never changes notes or permissions.
+enum JotleyOnboarding {
+    static let completedKey = "jotleyWelcomeCompleted.v1"
+    static var bypassForFixture: Bool {
+        #if DEBUG
+        let environment = ProcessInfo.processInfo.environment
+        return environment["JOTLEY_SCREENSHOT_DATA"] != nil && environment["JOTLEY_TEST_ONBOARDING"] != "1"
+        #else
+        return false
+        #endif
+    }
+}
+
+struct JotleyOnboardingPresentation: ViewModifier {
+    var onDismiss: () -> Void = {}
+    @AppStorage(JotleyOnboarding.completedKey) private var completed = false
+    @State private var showing = false
+    func body(content: Content) -> some View {
+        content
+            .onAppear { showing = !completed && !JotleyOnboarding.bypassForFixture }
+            #if os(iOS)
+            .fullScreenCover(isPresented: $showing, onDismiss: onDismiss) {
+                JotleyOnboardingView { showing = false }
+            }
+            #else
+            .sheet(isPresented: $showing, onDismiss: onDismiss) {
+                JotleyOnboardingView { showing = false }.frame(width: 820, height: 650)
+            }
+            #endif
+    }
+}
+
+struct JotleyOnboardingView: View {
+    let onFinish: () -> Void
+    @AppStorage(JotleyOnboarding.completedKey) private var completed = false
+    @AppStorage("transcriptionLanguage") private var language = "en-US"
+    @ObservedObject private var theme = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var step = 0
+    @State private var languages: [LocalSpeech.Language] = []
+    @State private var speechReady = false
+    @State private var speechCanSetUp = false
+    @State private var checkingSpeech = true
+    @State private var summaryReason: String? = "Checking Apple Intelligence…"
+    @State private var settingUpSpeech = false
+    @State private var setupProgress = 0.0
+    @State private var setupError: String?
+    @State private var setupTask: Task<Void, Never>?
+    @State private var microphoneAllowed = false
+    @State private var microphoneDenied = false
+    @State private var requestingMicrophone = false
+    #if os(macOS)
+    @AppStorage("recordSystemAudio") private var includeSystemAudio = true
+    @State private var systemAudioProbe: JotleySystemAudioPermissionProbe?
+    @State private var systemAudioRequested = false
+    @State private var systemAudioMessage: String?
+    @State private var systemAudioTimeout: Task<Void, Never>?
+    #endif
+    private var steps: [String] {
+        #if os(macOS)
+        ["Welcome", "Intelligence", "Language", "Microphone", "System audio"]
+        #else
+        ["Welcome", "Intelligence", "Language", "Microphone"]
+        #endif
+    }
+    private var accent: Color { theme.currentThemeColor.color }
+    private var ink: Color { colorScheme == .dark ? .white : Color(red: 0.14, green: 0.11, blue: 0.19) }
+    private var muted: Color { ink.opacity(colorScheme == .dark ? 0.7 : 0.68) }
+    private var primaryInk: Color {
+        [.purple, .magenta].contains(theme.currentThemeColor) ? .white : .black.opacity(0.88)
+    }
+    private var title: String {
+        switch step {
+        case 0: "Stay in the conversation."
+        case 1: "Find the useful parts."
+        case 2: "Start with your language."
+        case 3: "Give your words a place."
+        default: "Bring app audio along."
+        }
+    }
+    private var subtitle: String {
+        switch step {
+        case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
+        case 1: "Summaries, useful titles and answers.\nPowered by Apple Intelligence on your device."
+        case 2: "Choose the language you speak.\nJotley turns your voice into text locally."
+        case 3: "Allow microphone access for live transcription.\nYou can change this later in Settings."
+        default: "Meetings, videos and the apps you listen to.\nmacOS controls access to system audio."
+        }
+    }
+    var body: some View {
+        GeometryReader { geometry in
+            let wide = geometry.size.width >= 740
+            VStack(spacing: 16) {
+                header
+                #if os(macOS)
+                pageLayout(wide: wide)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.vertical, 12)
+                #else
+                ScrollView {
+                    pageLayout(wide: wide)
+                    .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 255))
+                    .padding(.vertical, 12)
+                }
+                .scrollIndicators(.hidden)
+                #endif
+                footer.frame(maxWidth: wide ? 380 : 480)
+                    .frame(maxWidth: .infinity, alignment: wide ? .trailing : .center)
+            }
+            .padding(.horizontal, wide ? 38 : 24)
+            .padding(.vertical, 18)
+            .frame(maxWidth: wide ? 820 : .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                ZStack(alignment: .topLeading) {
+                    (colorScheme == .dark ? Color(red: 0.075, green: 0.065, blue: 0.095) : Color(red: 0.985, green: 0.98, blue: 0.995))
+                    RadialGradient(colors: [accent.opacity(colorScheme == .dark ? 0.18 : 0.13), .clear],
+                                   center: .topLeading, startRadius: 20, endRadius: wide ? 700 : 560)
+                }.ignoresSafeArea()
+            }
+        }
+        .foregroundStyle(ink)
+        .preferredColorScheme(theme.effectiveColorScheme)
+        .observeThemeChanges()
+        .interactiveDismissDisabled()
+        .task(id: language) { await refreshModels() }
+        .onAppear { refreshMicrophone() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshMicrophone(); summaryReason = intelligenceReadiness() }
+        }
+        .onDisappear {
+            setupTask?.cancel()
+            #if os(macOS)
+            stopSystemAudioSetup()
+            #endif
+        }
+    }
+    @ViewBuilder private func pageLayout(wide: Bool) -> some View {
+        if wide {
+            HStack(alignment: .center, spacing: 38) {
+                illustration.frame(width: 300)
+                pageContent.frame(maxWidth: 380, alignment: .leading)
+            }
+        } else {
+            VStack(spacing: 25) { illustration; pageContent }.frame(maxWidth: 480)
+        }
+    }
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 34, height: 34)
+                .shadow(color: accent.opacity(0.3), radius: 10)
+                .accessibilityHidden(true)
+            Text("Jotley").font(.system(size: 23, weight: .semibold, design: .rounded))
+            Spacer()
+            Button { finish() } label: { Text("Skip setup").frame(minHeight: 32).padding(.horizontal, 5) }
+                .font(.subheadline.weight(.medium)).buttonStyle(.glass).buttonBorderShape(.capsule)
+                .disabled(settingUpSpeech || requestingMicrophone)
+                .accessibilityIdentifier("onboardingSkip")
+        }
+        .frame(minHeight: 44)
+    }
+    private var pageContent: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title).font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboardingTitle")
+                Text(subtitle).font(.body).foregroundStyle(muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            switch step {
+            case 0:
+                feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield")
+                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart")
+            case 1:
+                status(summaryReason == nil ? "Apple Intelligence is ready" : "Apple Intelligence needs setup",
+                       detail: summaryReason ?? "Your summaries and Ask AI answers are processed on this device.",
+                       ready: summaryReason == nil)
+                    .accessibilityIdentifier("onboardingIntelligenceStatus")
+                feature("From thoughts to next steps", detail: "Pull out decisions, action items and topic tags. Ask a question when you need more.", icon: "sparkles")
+                if summaryReason != nil {
+                    Text("Enable Apple Intelligence in your device’s Settings and let its model finish downloading. You can continue now and return to setup later.")
+                        .font(.callout).foregroundStyle(muted)
+                }
+            case 2:
+                languageSelection
+                if checkingSpeech {
+                    ProgressView("Checking Apple speech…").tint(accent)
+                } else {
+                    status(setupError != nil ? "Finish setup when you’re ready" : (speechReady ? "Ready to transcribe offline" : (speechCanSetUp ? "One-time speech setup" : "Choose another language")),
+                           detail: setupError ?? (speechReady ? "The selected language’s Apple speech model is installed." :
+                            (speechCanSetUp ? "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline." : "Apple speech is unavailable for this language on this device. Choose another language or revisit Built-in Models in Settings.")),
+                           ready: speechReady)
+                        .accessibilityIdentifier(setupError == nil ? "onboardingSpeechStatus" : "onboardingSpeechError")
+                }
+                if settingUpSpeech {
+                    ProgressView("Setting up Apple speech…", value: setupProgress).tint(accent)
+                    Button("Cancel setup") { setupTask?.cancel() }.buttonStyle(.glass)
+                        .accessibilityIdentifier("onboardingCancelSpeechSetup")
+                } else if speechCanSetUp && !speechReady {
+                    Button("Set Up On-Device Speech") { setUpSpeech() }
+                        .buttonStyle(.glass).tint(accent)
+                        .accessibilityIdentifier("onboardingSpeechSetup")
+                }
+                Text("You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted)
+            case 3:
+                status(microphoneAllowed ? "Microphone access is enabled" : (microphoneDenied ? "Microphone access is off" : "You’re in control"),
+                       detail: microphoneAllowed ? "Tap + in your notes list whenever you want to start transcribing." :
+                        (microphoneDenied ? "Enable Microphone for Jotley in your device’s privacy settings when you’re ready." : "Jotley listens only when you start a transcription. Browsing your notes doesn’t need microphone access."),
+                       ready: microphoneAllowed)
+                    .accessibilityIdentifier("onboardingMicrophoneStatus")
+                #if os(iOS)
+                feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft")
+                #else
+                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer")
+                #endif
+            default:
+                #if os(macOS)
+                status("A separate macOS permission",
+                       detail: "Let Jotley hear other apps. This is separate from microphone access and does not capture your screen.",
+                       ready: false)
+                feature(systemAudioMessage == nil ? "Nothing is saved during setup" : "macOS manages your access",
+                        detail: systemAudioMessage ?? "Request access now, or keep transcription microphone-only. Your choice can be changed in Settings.", icon: "lock.shield")
+                    .accessibilityIdentifier("onboardingSystemAudioStatus")
+                Button("Open Audio Privacy Settings") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                }.buttonStyle(.glass).buttonBorderShape(.capsule).accessibilityIdentifier("onboardingAudioPrivacySettings")
+                #endif
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var languageSelection: some View {
+        Menu {
+            Picker("Transcription language", selection: $language) {
+                if !languages.contains(where: { $0.id == language }) {
+                    Text(Locale.current.localizedString(forIdentifier: language) ?? language).tag(language).disabled(true)
+                }
+                ForEach(languages) { item in Text(item.name).tag(item.id) }
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "globe").font(.title2).foregroundStyle(accent)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Transcription language").font(.callout).foregroundStyle(muted)
+                    Text(Locale.current.localizedString(forIdentifier: language) ?? language).font(.body.weight(.semibold)).foregroundStyle(ink)
+                }
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(muted)
+            }.padding(16).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+        .disabled(settingUpSpeech || checkingSpeech)
+        .accessibilityIdentifier("onboardingLanguagePicker")
+    }
+    private func feature(_ title: String, detail: String, icon: String) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            Image(systemName: icon).font(.system(size: 21, weight: .medium)).foregroundStyle(accent).frame(width: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(.headline)
+                Text(detail).font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }.accessibilityElement(children: .combine)
+    }
+    private func status(_ title: String, detail: String, ready: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: ready ? "checkmark.circle.fill" : "info.circle").foregroundStyle(ready ? .green : accent)
+                .font(.title3).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(.headline)
+                Text(detail).font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            .accessibilityElement(children: .combine)
+    }
+    private var illustration: some View {
+        VStack(spacing: 18) {
+            if step == 0 {
+                Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 62, height: 62)
+                    .shadow(color: accent.opacity(0.35), radius: 24)
+                sampleNote(icon: "waveform", title: "Live transcription", text: "Let’s meet Friday.\nI’ll bring the first draft.")
+                    .rotationEffect(.degrees(-4))
+            } else if step == 1 {
+                sampleNote(icon: "sparkles", title: "A little clarity", text: "Meet Friday.\nBring the first draft.")
+                    .rotationEffect(.degrees(3))
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(accent)
+                    Text("One clear next step.").font(.callout.weight(.medium))
+                }
+            } else {
+                ZStack {
+                    Circle().fill(accent.opacity(0.09)).frame(width: 142, height: 142)
+                    Circle().stroke(accent.opacity(0.12), lineWidth: 1).frame(width: 174, height: 174)
+                    Image(systemName: step == 2 ? "globe" : (step == 3 ? "mic" : "desktopcomputer"))
+                        .font(.system(size: 65, weight: .light)).foregroundStyle(accent)
+                }
+                Text(step == 2 ? "Your voice. Your language." : (step == 3 ? "Ready when you are." : "More of the conversation."))
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+            }
+        }
+        .padding(.horizontal, 12)
+        .accessibilityHidden(true)
+    }
+    private func sampleNote(icon: String, title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                if step == 0 {
+                    HStack(spacing: 3) {
+                        ForEach(Array([12.0, 23.0, 16.0].enumerated()), id: \.offset) { _, height in
+                            Capsule().fill(accent).frame(width: 4, height: height)
+                        }
+                    }.frame(width: 24, height: 24)
+                } else { Image(systemName: icon).foregroundStyle(accent) }
+                Text(title).font(.callout.weight(.semibold)).foregroundStyle(muted)
+            }
+            Text(text).font(.system(.title3, design: .rounded).weight(.medium)).lineSpacing(4)
+        }
+        .padding(22).frame(maxWidth: 300, alignment: .leading)
+        .background(colorScheme == .dark ? Color.white.opacity(0.065) : .white, in: RoundedRectangle(cornerRadius: 23))
+        .shadow(color: accent.opacity(colorScheme == .dark ? 0.1 : 0.12), radius: 24, y: 12)
+    }
+    private var footer: some View {
+        VStack(spacing: 13) {
+            HStack(spacing: 6) {
+                ForEach(0..<steps.count, id: \.self) { index in
+                    Capsule().fill(index == step ? accent : ink.opacity(0.13)).frame(width: index == step ? 25 : 6, height: 6)
+                }
+                Text("\(step + 1) of \(steps.count) · \(steps[step])").font(.caption).foregroundStyle(muted).padding(.leading, 5)
+            }
+            .accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of \(steps.count), \(steps[step])")
+            HStack(spacing: 12) {
+                if step > 0 {
+                    Button { changeStep(step - 1) } label: { Image(systemName: "chevron.left").frame(width: 30, height: 40) }
+                        .buttonStyle(.glass).buttonBorderShape(.capsule).accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
+                        .disabled(settingUpSpeech || requestingMicrophone)
+                }
+                Button {
+                    if step == 3 {
+                        if microphoneAllowed || microphoneDenied { advancePastMicrophone() }
+                        else { allowMicrophone() }
+                    } else if step == 4 {
+                        #if os(macOS)
+                        if systemAudioRequested { finish() } else { requestSystemAudio() }
+                        #endif
+                    } else { changeStep(step + 1) }
+                } label: {
+                    HStack(spacing: 9) {
+                        if requestingMicrophone { ProgressView().controlSize(.small).tint(primaryInk) }
+                        Text(primaryTitle)
+                            .font(.body.weight(.semibold))
+                    }.frame(maxWidth: .infinity, minHeight: 52).foregroundStyle(primaryInk)
+                        .background(accent, in: Capsule())
+                        .glassEffect(.regular.tint(accent).interactive(), in: Capsule())
+                }
+                .buttonStyle(.plain).tint(accent)
+                .disabled(settingUpSpeech || requestingMicrophone)
+                .accessibilityIdentifier("onboardingContinue")
+            }
+            if step == 3 && !microphoneAllowed && !microphoneDenied {
+                Button("Not now") { advancePastMicrophone() }.buttonStyle(.glass).buttonBorderShape(.capsule)
+                    .frame(minHeight: 36).accessibilityIdentifier("onboardingNotNow")
+            }
+            #if os(macOS)
+            if step == 4 {
+                Button("Use Microphone Only") { includeSystemAudio = false; finish() }
+                    .buttonStyle(.glass).buttonBorderShape(.capsule).frame(minHeight: 36)
+                    .accessibilityIdentifier("onboardingMicrophoneOnly")
+            }
+            #endif
+        }
+    }
+    private var primaryTitle: String {
+        if step == 3 {
+            #if os(macOS)
+            return microphoneAllowed || microphoneDenied ? "Continue" : "Allow Microphone"
+            #else
+            return microphoneAllowed || microphoneDenied ? "Open Jotley" : "Allow Microphone"
+            #endif
+        }
+        #if os(macOS)
+        if step == 4 { return systemAudioRequested ? "Open Jotley" : "Request System Audio Access" }
+        #endif
+        return "Continue"
+    }
+    private func advancePastMicrophone() {
+        #if os(macOS)
+        changeStep(4)
+        #else
+        finish()
+        #endif
+    }
+    private func changeStep(_ next: Int) {
+        #if os(macOS)
+        stopSystemAudioSetup()
+        #endif
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { step = next }
+    }
+    private func finish() {
+        #if os(macOS)
+        stopSystemAudioSetup()
+        #endif
+        completed = true; onFinish()
+    }
+    #if os(macOS)
+    private func requestSystemAudio() {
+        let probe = JotleySystemAudioPermissionProbe()
+        do {
+            try probe.start()
+            systemAudioProbe = probe
+            includeSystemAudio = true
+            systemAudioRequested = true
+            systemAudioMessage = "Check the macOS prompt. If access is off, enable it in Privacy & Security. You can also continue with microphone-only transcription."
+            systemAudioTimeout = Task { @MainActor in
+                do { try await Task.sleep(for: .seconds(60)) } catch { return }
+                systemAudioProbe?.stop(); systemAudioProbe = nil
+            }
+        } catch {
+            probe.stop()
+            systemAudioMessage = error.localizedDescription
+        }
+    }
+    private func stopSystemAudioSetup() {
+        systemAudioTimeout?.cancel(); systemAudioTimeout = nil
+        systemAudioProbe?.stop(); systemAudioProbe = nil
+    }
+    #endif
+    private func refreshMicrophone() {
+        #if os(iOS)
+        microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
+        microphoneDenied = AVAudioApplication.shared.recordPermission == .denied
+        #else
+        microphoneAllowed = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        microphoneDenied = [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .audio))
+        #endif
+    }
+    private func allowMicrophone() {
+        guard !requestingMicrophone else { return }
+        requestingMicrophone = true
+        Task { @MainActor in
+            #if os(iOS)
+            _ = await AVAudioApplication.requestRecordPermission()
+            #else
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+            #endif
+            refreshMicrophone(); requestingMicrophone = false
+        }
+    }
+    private func refreshModels() async {
+        checkingSpeech = true
+        summaryReason = intelligenceReadiness()
+        let available = await LocalSpeech.languages()
+        let ready = await LocalSpeech.readiness(locale: Locale(identifier: language))
+        guard !Task.isCancelled else { return }
+        languages = available
+        // Keep the same canonical language used by Settings and live transcription.
+        if let matched = ready.configuration?.locale.identifier(.bcp47), matched != language,
+           !available.contains(where: { $0.id == language }), available.contains(where: { $0.id == matched }) {
+            language = matched
+            return
+        }
+        speechReady = ready.status == .installed && setupError == nil
+        speechCanSetUp = ready.needsSetup || setupError != nil
+        checkingSpeech = false
+    }
+    private func setUpSpeech() {
+        guard !settingUpSpeech else { return }
+        settingUpSpeech = true; setupProgress = 0; setupError = nil
+        setupTask = Task { @MainActor in
+            defer { settingUpSpeech = false; setupTask = nil }
+            do {
+                try await LocalSpeech.setUp(locale: Locale(identifier: language)) { progress in
+                    await MainActor.run { setupProgress = progress }
+                }
+            } catch is CancellationError {
+                setupError = "Setup paused. You can finish it later in Settings."
+            } catch {
+                setupError = "Speech setup couldn’t finish. Check your connection and try again, or continue and set it up later in Settings."
+            }
+            await Task { @MainActor in await refreshModels() }.value
+        }
+    }
+    private func intelligenceReadiness() -> String? {
+        let model = SystemLanguageModel.default
+        switch model.availability {
+        case .available:
+            return model.supportsLocale(Locale(identifier: language)) ? nil : "Apple Intelligence does not support the selected language for summaries. You can choose another language in Settings."
+        case .unavailable(let reason):
+            switch reason {
+            case .appleIntelligenceNotEnabled: return "Turn on Apple Intelligence in your device’s Settings to use summaries and Ask AI."
+            case .modelNotReady: return "Apple is still preparing its on-device model. Connect to Wi-Fi and check Apple Intelligence in Settings."
+            case .deviceNotEligible: return "Summaries and Ask AI require a device that supports Apple Intelligence."
+            @unknown default: return "Apple Intelligence is unavailable right now. Check its status in your device’s Settings."
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ struct MainTabView: View {
     @State private var summaryNavigationID = UUID()
     @State private var navigationPath = NavigationPath()
     @State private var showingSettings = false
+    @AppStorage(JotleyOnboarding.completedKey) private var onboardingCompleted = false
     @State private var selectedNoteId: UUID?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingTranscriptionModal = false
@@ -50,6 +51,10 @@ struct MainTabView: View {
         }
         .preferredColorScheme(themeManager.effectiveColorScheme)
         .observeThemeChanges()
+        .modifier(JotleyOnboardingPresentation(onDismiss: {
+            if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }
+            openNotifiedSummary()
+        }))
         .sheet(isPresented: $showingTranscriptionModal, onDismiss: {
             if let id = newTranscriptionNote?.id {
                 openNote(id)
@@ -62,7 +67,8 @@ struct MainTabView: View {
         .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, _ in openNotifiedSummary() }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
-            if showingSettings { pendingWidgetAction = action; showingSettings = false }
+            if !onboardingCompleted && !JotleyOnboarding.bypassForFixture { pendingWidgetAction = action }
+            else if showingSettings { pendingWidgetAction = action; showingSettings = false }
             else { handleWidgetAction(action) }
         }
         .sheet(isPresented: $showingSettings, onDismiss: {
@@ -75,7 +81,7 @@ struct MainTabView: View {
         .alert("Jotley", isPresented: Binding(get: { transcriptionManager.errorMessage != nil && !transcriptionManager.captureScreenVisible && newTranscriptionNote == nil && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy }, set: { if !$0 { Task { @MainActor in transcriptionManager.errorMessage = nil } } })) {
             Button("OK", role: .cancel) { transcriptionManager.errorMessage = nil }
         } message: { Text(transcriptionManager.errorMessage ?? "") }
-        .modifier(JotleyEngagementPrompts(isIdle: !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
+        .modifier(JotleyEngagementPrompts(isIdle: (onboardingCompleted || JotleyOnboarding.bypassForFixture) && !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
     }
     private func handleWidgetAction(_ action: MobileTranscriptionAction) {
         switch action {
@@ -102,7 +108,8 @@ struct MainTabView: View {
         }
     }
     private func openNotifiedSummary() {
-        guard !showingSettings, !showingTranscriptionModal, let id = summaryNotifications.noteToOpen else { return }
+        guard onboardingCompleted || JotleyOnboarding.bypassForFixture,
+              !showingSettings, !showingTranscriptionModal, let id = summaryNotifications.noteToOpen else { return }
         summaryNavigationID = UUID()
         openNote(id)
         summaryNotifications.noteToOpen = nil

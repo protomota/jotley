@@ -15,6 +15,9 @@ struct JotleyiOSApp: App {
         if failure == nil {
             do {
                 #if DEBUG && targetEnvironment(simulator)
+                if ProcessInfo.processInfo.environment["JOTLEY_TEST_RESET_ONBOARDING"] == "1" {
+                    UserDefaults.standard.removeObject(forKey: JotleyOnboarding.completedKey)
+                }
                 if let data = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_DATA"]?.data(using: .utf8) {
                     // Explicit simulator-only fixtures use a disposable in-memory store.
                     // No fixture path or data-loading hook is compiled into shipping builds.
