@@ -462,3 +462,7 @@ The iOS simulator build and focused Duo corner/capture and final-transcript chec
 ### Internal TestFlight 2.2 (405) delivered — October 21, 2026
 
 The owner-requested universal iPhone/iPad beta includes the current Duo layout, readable summary actions, native glass footer and extra Ask AI top padding. Apple confirmed 2.2 (405) as VALID / IN_BETA_TESTING in the existing Jotley Home internal group. The exported app/widget versions, original identifiers, iPhone/iPad families, strict signatures, production iCloud, background summary registration, Foundation Models linkage and exclusion of simulator fixtures were verified. IPA SHA-256: `a8cbf9562d28887663281711d8f4682b6575c5ecc9f1857c92c78abcf088328d` (6,647,843 bytes). The App Store submission and its release notes were not modified. This internal beta does not resolve the previously recorded broad UI regression findings.
+
+### App Store 2.2 (405) submitted — October 21, 2026
+
+At the owner's request, What’s New now leads with “New in 2.2: Optimized for iPhone Duo, with layouts that adapt as you fold and unfold,” while retaining the general Jotley 2 feature messaging. The existing draft now selects the verified 2.2 (405) binary, reviewer notes match it, and Apple confirmed the submission as Waiting for Review. Submission ID: `c0e14325-45ed-46fb-9798-c6e1f7a9832e`. Existing screenshots and automatic release-after-approval settings were preserved.
