@@ -424,3 +424,11 @@ Remaining release gate:
 The broad Duo UI suite is not green. The first 30-case pass reported 15 passed, 10 failed and 5 device-specific skips. Targeted fixes/rechecks subsequently passed the corner/capture/continuation cases above. Remaining automated failures include support-settings toolbar accessibility after scrolling, exact streaming-heading visibility, background/back navigation, and legacy summary/editor assertions. Direct operation succeeds on several of these paths, but that disagreement has not been fully resolved. Do not treat this receipt as full Duo regression approval or publish 2.2 from it.
 
 Capture lifecycle checks use simulator-only synthetic speech. Actual microphone recognition and Apple Intelligence generation still need supported physical-device verification; the synthetic hooks are excluded from shipping builds.
+
+### Duo portrait selection and simulator clock — October 21, 2026
+
+Selecting a note from an overlaid Notes column now dismisses that column on expanded iPhone layouts. Rotating into a wide layout restores automatic columns. Direct simulator operation confirmed the initial portrait selection closes the drawer.
+
+The DEBUG-only simulated microphone clock previously added one synthetic second on each 0.25-second progress tick. It now derives synthetic frames from monotonic elapsed time for each active segment. The production microphone path continues to use captured audio frames. The focused UI test `testSimulatedCaptureTimerMatchesElapsedTimeAndPauses` passed on iPhone Duo: elapsed duration matches wall time and remains unchanged while paused. The existing `testDuoCornerCaptureStaysClearOfNoteActions` also passed on the same build. Result: `/tmp/jotley-duo-realtime-timer-final.xcresult`. These two checks do not resolve the outstanding broad regression findings above.
+
+Screenshot fixtures can seed fictional Ask AI conversations and fixed live transcript examples in disposable in-memory stores. These hooks remain DEBUG/simulator-only and are excluded from Release. Marketing captures identify the conversation as scripted sample content.

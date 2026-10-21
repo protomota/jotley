@@ -59,6 +59,35 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
+    @MainActor func testSimulatedCaptureTimerMatchesElapsedTimeAndPauses() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let plus = app.buttons["notesListNewNoteButton"]
+        XCTAssertTrue(plus.waitForExistence(timeout: 15)); plus.tap()
+        let duration = app.staticTexts["transcriptionDurationText"]
+        XCTAssertTrue(duration.waitForExistence(timeout: 10))
+        func seconds() -> Int {
+            let numbers = duration.label.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+            return numbers.count == 2 ? numbers[0] * 60 + numbers[1] : -1
+        }
+        let before = seconds()
+        let started = ProcessInfo.processInfo.systemUptime
+        Thread.sleep(forTimeInterval: 3)
+        let after = seconds()
+        let elapsed = ProcessInfo.processInfo.systemUptime - started
+        XCTAssertEqual(Double(after - before), elapsed, accuracy: 1.5, "Simulator capture must advance at real time")
+        app.buttons["transcriptionPauseButton"].tap()
+        let paused = seconds()
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertEqual(seconds(), paused, "Pause must freeze the timer")
+        app.buttons["transcriptionCloseButton"].tap()
+        XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
+    }
+
     @MainActor func testWelcomeSetupPersistsAndCanBeReopenedWithoutLosingNotes() throws {
         let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
         XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait

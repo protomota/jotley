@@ -282,6 +282,7 @@ final class LiveTranscriptionManager: ObservableObject {
     // Explicit test injection only; no synthetic speech is compiled into releases.
     var simulatedSpeechStart: (@MainActor (@escaping @Sendable (LocalTranscript) async -> Void) async throws -> any MobileSpeechSession)?
     var simulatedCaptureStart: (@MainActor () async -> Void)?
+    private var simulatedSegmentStart: TimeInterval?
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
     var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
     #endif
@@ -445,7 +446,8 @@ final class LiveTranscriptionManager: ObservableObject {
         if simulatedSpeechStart != nil {
             await simulatedCaptureStart?()
             guard stopRequests == 0 else { return }
-            segmentRate = 1
+            segmentRate = 1000
+            simulatedSegmentStart = ProcessInfo.processInfo.systemUptime
             captureProgress = MicrophoneCaptureProgress()
             captureProgress?.received(frames: 1)
             return
@@ -497,7 +499,11 @@ final class LiveTranscriptionManager: ObservableObject {
     private func updateCaptureProgress() {
         guard transcriptionState == .listening, let progress = captureProgress, segmentRate > 0 else { return }
         #if DEBUG && targetEnvironment(simulator)
-        if simulatedSpeechStart != nil { progress.received(frames: 1) }
+        if simulatedSpeechStart != nil, let start = simulatedSegmentStart {
+            let expectedFrames = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * segmentRate)
+            let pendingFrames = expectedFrames - Int(progress.snapshot().frames)
+            if pendingFrames > 0 { progress.received(frames: pendingFrames) }
+        }
         #endif
         let captured = progress.snapshot()
         transcriptionDuration = previousDuration + Double(captured.frames) / segmentRate
@@ -523,6 +529,9 @@ final class LiveTranscriptionManager: ObservableObject {
         return samples.withUnsafeBytes { Data($0) }
     }
     private func closeSegment() {
+        #if DEBUG && targetEnvironment(simulator)
+        simulatedSegmentStart = nil
+        #endif
         if let engineObserver { notificationCenter.removeObserver(engineObserver); self.engineObserver = nil }
         engine?.stop()
         if tapInstalled { engine?.inputNode.removeTap(onBus: 0); tapInstalled = false }

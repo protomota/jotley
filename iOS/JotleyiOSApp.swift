@@ -36,6 +36,11 @@ struct JotleyiOSApp: App {
                             note.folder = Folder.getOrCreate(named: sample.folder, in: fixtureStore.context)
                             for tag in sample.tags { try note.addTagByName(tag, in: fixtureStore.context) }
                             note.setTranscriptUtterances(sample.transcript.components(separatedBy: "\n\n").enumerated().map { TranscriptUtterance(text: $0.element, start: Double($0.offset * 25), end: Double(($0.offset + 1) * 25)) })
+                            if let id = note.id {
+                                for message in sample.messages ?? [] {
+                                    try fixtureStore.saveChatMessage(LocalChatMessage(role: message.role, content: message.content), noteID: id)
+                                }
+                            }
                         }
                     }
                     try fixtureStore.save()
@@ -117,6 +122,8 @@ private struct ScreenshotNote: Decodable {
     let summary: String
     var template: String?
     var timestampOffset: Double?
+    var messages: [Message]?
+    struct Message: Decodable { let role: String; let content: String }
 }
 #endif
 
@@ -126,6 +133,14 @@ private struct SimulatorLifecycleSpeech: MobileSpeechSession {
     let snapshot: @Sendable (LocalTranscript) async -> Void
     nonisolated func append(_ data: Data, sampleRate: Double) {}
     func publishCards() async {
+        if let text = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_LIVE_TEXT"] {
+            var value = LocalTranscript()
+            for (index, paragraph) in text.components(separatedBy: "\n\n").enumerated() {
+                value.accept(text: paragraph, start: Double(index * 12), end: Double(index * 12 + 10), final: true)
+            }
+            await snapshot(value)
+            return
+        }
         if ProcessInfo.processInfo.environment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] == "layout" {
             var first = LocalTranscript()
             first.accept(text: "First spoken words.", start: 0, end: 1, final: false)

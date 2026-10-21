@@ -118,7 +118,11 @@ struct MainTabView: View {
                 .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
             }
         }
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { windowBounds = $0 }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bounds in
+            let becameWide = !windowBounds.isEmpty && windowBounds.width <= windowBounds.height && bounds.width > bounds.height
+            windowBounds = bounds
+            if usesExpandedPhoneLayout && becameWide { columnVisibility = .automatic }
+        }
         .preferredColorScheme(themeManager.effectiveColorScheme)
         .observeThemeChanges()
         .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
@@ -199,6 +203,9 @@ struct MainTabView: View {
         guard (try? persistenceController.notes().contains { $0.localNoteID == id }) == true else { return }
         selectedNoteId = id
         preferredCompactColumn = .detail
+        if usesExpandedPhoneLayout && !usesSideBySideFooter {
+            withAnimation { columnVisibility = .detailOnly }
+        }
     }
     private var cornerCaptureFooter: some View {
         HStack {
