@@ -452,3 +452,9 @@ Generate Summary and Regenerate Summary reserve their full, unscaled 15-point se
 The Duo footer now measures the complete viewport including the system toolbar safe area, aligns using the current detail bounds, and retains natural height. This fixes the left-clipped template after unfolding and avoids stale footer height when folding back. Native simulator checks covered closed portrait → open landscape → closed portrait with the same note open. Both summary and no-summary/transcript states were captured.
 
 Seven focused UI checks passed: Duo action/capture continuation, summary label padding and control bounds through rotations without relaunch, and final transcript clearance in Light/Dark; the latter two also passed on standard iPhone 17 Pro Max and iPad Pro 13-inch. Results: `/tmp/jotley-footer-safe-area-duo.xcresult`, `/tmp/jotley-footer-safe-area-iphone.xcresult`, `/tmp/jotley-footer-safe-area-ipad.xcresult`. This does not clear the earlier broad regression release gate. No build was uploaded or released.
+
+### Glass footer and TestFlight preparation — October 21, 2026
+
+The note action area now has one native, white-tinted Liquid Glass background with rounded top corners. Content blurs behind the entire panel, including the gaps between controls. The existing opaque button surfaces and shadows remain. The glass never intercepts input and follows Reduce Transparency with a solid theme background. Ask AI / Continue Transcription have 16 points of top padding, an increase of 8.
+
+The iOS simulator build and focused Duo corner/capture and final-transcript checks passed (`/tmp/jotley-footer-glass.xcresult`). After the extra padding, Light/Dark final-transcript clearance passed again (`/tmp/jotley-footer-glass-padding.xcresult`). The owner subsequently requested a TestFlight build; this authorizes internal beta distribution of the current changes, without resolving the earlier broad UI regression findings or submitting an App Store release.

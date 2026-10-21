@@ -180,6 +180,7 @@ extension NoteDetailView {
             if summaryIsRunning { summaryProgressFooter }
             else { transcriptionAndSummaryFooter }
         }
+        .background { FloatingNoteGlassBackground() }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
 
@@ -252,7 +253,7 @@ extension NoteDetailView {
             }
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-        .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
+        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
         .frame(maxWidth: .infinity)
     }
 

@@ -71,6 +71,27 @@ struct FloatingNoteSecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// A shared glass shelf blurs scrolling content between the floating controls.
+struct FloatingNoteGlassBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private let shape = UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24)
+
+    var body: some View {
+        Group {
+            if reduceTransparency {
+                shape.fill(Color.themeBackground)
+            } else {
+                Color.clear
+                    .glassEffect(.regular.tint(.white.opacity(colorScheme == .dark ? 0.06 : 0.18)), in: shape)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 struct FloatingNoteControlShadow: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
