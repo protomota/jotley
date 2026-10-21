@@ -466,3 +466,7 @@ The owner-requested universal iPhone/iPad beta includes the current Duo layout, 
 ### App Store 2.2 (405) submitted — October 21, 2026
 
 At the owner's request, What’s New now leads with “New in 2.2: Optimized for iPhone Duo, with layouts that adapt as you fold and unfold,” while retaining the general Jotley 2 feature messaging. The existing draft now selects the verified 2.2 (405) binary, reviewer notes match it, and Apple confirmed the submission as Waiting for Review. Submission ID: `c0e14325-45ed-46fb-9798-c6e1f7a9832e`. Existing screenshots and automatic release-after-approval settings were preserved.
+
+### Bottom-safe-area glass coverage — October 21, 2026
+
+Build 405 left the standard iPhone home-indicator area outside the note footer’s glass background. Only the background now ignores the bottom container safe area; the controls retain their existing padding and scroll-clearance measurements. This applies to summary, transcript and generation-progress states on iPhone/iPad. The iOS build passed. Focused summary-action/rotation and final-transcript Light/Dark checks passed on iPhone 17 Pro Max and iPad Pro 13-inch; Duo corner/capture/continuation passed too. Native test captures confirm glass reaches the bottom edge in both appearances on iPhone and iPad. Results: `/tmp/jotley-glass-bottom-iphone.xcresult`, `/tmp/jotley-glass-bottom-ipad.xcresult`, `/tmp/jotley-glass-bottom-duo.xcresult`. The owner requested replacement TestFlight and App Store submission as 2.2 (406).

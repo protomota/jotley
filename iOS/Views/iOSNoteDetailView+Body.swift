@@ -180,7 +180,9 @@ extension NoteDetailView {
             if summaryIsRunning { summaryProgressFooter }
             else { transcriptionAndSummaryFooter }
         }
-        .background { FloatingNoteGlassBackground() }
+        // Extend only the glass beneath the home indicator; keep the controls
+        // inside their existing safe-area padding.
+        .background { FloatingNoteGlassBackground().ignoresSafeArea(.container, edges: .bottom) }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
 
