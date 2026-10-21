@@ -239,48 +239,61 @@ extension NoteDetailView {
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
             }
-            if hasTranscript || newTranscriptionAction != nil {
-                HStack(spacing: newTranscriptionAction == nil ? 8 : 12) {
-                    if hasTranscript {
-                    Menu {
-                        ForEach(LocalSummaryTemplate.allCases) { template in
-                            Button { selectTemplate(template) } label: {
-                                if selectedTemplate == template { Label(template.title, systemImage: "checkmark") }
-                                else { Text(template.title) }
-                            }.accessibilityIdentifier("noteTemplate-\(template.key)")
-                        }
-                    } label: {
-                        MobileActionLabel(selectedTemplate.title, systemImage: "sparkles")
-                            .font(.system(size: 15, weight: .medium))
-                            .lineLimit(1).truncationMode(.tail)
-                            .frame(width: 136, height: 44)
-                    }.buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent).disabled(!transcriptionManager.canStart)
-                        .modifier(FloatingNoteControlShadow())
-                        .accessibilityLabel("Templates: \(selectedTemplate.title)")
-                        .accessibilityIdentifier("noteDetailTemplatesButton")
-                    Button {
-                        generateSummary()
-                    } label: {
-                        Text(hasSummary ? "Regenerate Summary" : "Generate Summary")
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                            .font(.system(size: 15, weight: .semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }.buttonStyle(.borderedProminent).tint(.themePrimaryAccent)
-                        .modifier(FloatingNoteControlShadow())
-                        .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .accessibilityIdentifier("noteDetailGenerateSummaryButton")
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
-                        }
-                    } else { Spacer() }
+            if hasTranscript {
+                NoteSummaryActionsLayout(spacing: newTranscriptionAction == nil ? 8 : 12) {
+                    summaryTemplateButton
+                    primarySummaryButton
                     if let newTranscriptionAction {
                         NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction)
                     }
                 }
+            } else if let newTranscriptionAction {
+                HStack { Spacer(); NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction) }
             }
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
         .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
         .frame(maxWidth: .infinity)
+    }
+
+    private var summaryTemplateButton: some View {
+        Menu {
+            ForEach(LocalSummaryTemplate.allCases) { template in
+                Button { selectTemplate(template) } label: {
+                    if selectedTemplate == template { Label(template.title, systemImage: "checkmark") }
+                    else { Text(template.title) }
+                }.accessibilityIdentifier("noteTemplate-\(template.key)")
+            }
+        } label: {
+            MobileActionLabel(selectedTemplate.title, systemImage: "sparkles")
+                .font(.system(size: 15, weight: .medium))
+                .lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
+        .disabled(!transcriptionManager.canStart)
+        .modifier(FloatingNoteControlShadow())
+        .accessibilityLabel("Templates: \(selectedTemplate.title)")
+        .accessibilityIdentifier("noteDetailTemplatesButton")
+    }
+
+    private var primarySummaryButton: some View {
+        Button { generateSummary() } label: {
+            Text(hasSummary ? "Regenerate Summary" : "Generate Summary")
+                .font(.system(size: 15, weight: .semibold))
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, minHeight: 58)
+                .foregroundStyle(.white)
+                .background(Capsule().fill(Color.themePrimaryAccent))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .modifier(FloatingNoteControlShadow())
+        .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .accessibilityIdentifier("noteDetailGenerateSummaryButton")
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
+        }
     }
 }

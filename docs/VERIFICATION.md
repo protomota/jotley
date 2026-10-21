@@ -444,3 +444,11 @@ Results: `/tmp/jotley-duo-floating-final.xcresult`, `/tmp/jotley-iphone-scroll-f
 ### Opaque floating button surfaces — October 21, 2026
 
 Template, Ask AI, Continue Transcription and Cancel Generation now use a capsule with an opaque theme-background base beneath the accent tint. Scrolling text cannot show through the button, including its disabled state; the space around each control remains transparent. Light mode uses the app's near-white base and dark mode uses its solid dark base. Existing shadows and corner spacing remain. The iOS Simulator build and the focused Duo corner/capture and final-transcript checks passed, including Light/Dark (`/tmp/jotley-opaque-pills.xcresult`). No build was uploaded or released.
+
+### Readable summary actions and fold-safe footer — October 21, 2026
+
+Generate Summary and Regenerate Summary reserve their full, unscaled 15-point semibold labels plus 20 points of horizontal padding per side. A width-aware layout gives the template a compact slot when needed, or moves it above the primary row on narrower windows. The + remains 58 points tall and aligned with the primary action; secondary controls retain their opaque backing.
+
+The Duo footer now measures the complete viewport including the system toolbar safe area, aligns using the current detail bounds, and retains natural height. This fixes the left-clipped template after unfolding and avoids stale footer height when folding back. Native simulator checks covered closed portrait → open landscape → closed portrait with the same note open. Both summary and no-summary/transcript states were captured.
+
+Seven focused UI checks passed: Duo action/capture continuation, summary label padding and control bounds through rotations without relaunch, and final transcript clearance in Light/Dark; the latter two also passed on standard iPhone 17 Pro Max and iPad Pro 13-inch. Results: `/tmp/jotley-footer-safe-area-duo.xcresult`, `/tmp/jotley-footer-safe-area-iphone.xcresult`, `/tmp/jotley-footer-safe-area-ipad.xcresult`. This does not clear the earlier broad regression release gate. No build was uploaded or released.

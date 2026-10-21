@@ -59,6 +59,46 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
+    @MainActor func testSummaryActionsKeepPaddingAcrossWindowChanges() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        for hasSummary in [true, false] {
+            let title = hasSummary ? "Summary ready" : "Transcript ready"
+            let fixture: [[String: Any]] = [["title": title, "folder": "Work", "tags": [],
+                "transcript": "Maya will review Friday’s launch plan. Alex will finish the accessibility checks.",
+                "summary": hasSummary ? "## Key Points\n- Review Friday’s launch plan." : ""]]
+            app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+            XCUIDevice.shared.orientation = .portrait
+            app.launch()
+            let row = app.buttons.containing(.staticText, identifier: title).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .portrait] {
+                XCUIDevice.shared.orientation = orientation
+                let primary = app.buttons["noteDetailGenerateSummaryButton"]
+                XCTAssertTrue(primary.waitForExistence(timeout: 5))
+                let title = hasSummary ? "Regenerate Summary" : "Generate Summary"
+                let textWidth = (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)]).width
+                XCTAssertTrue(primary.isHittable)
+                XCTAssertEqual(primary.label, title)
+                XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 39, "The unscaled label needs 20 points of padding on each side")
+                for identifier in ["noteDetailTemplatesButton", "noteDetailGenerateSummaryButton", "notesListNewNoteButton"] {
+                    let button = app.buttons[identifier]
+                    if button.exists {
+                        XCTAssertGreaterThanOrEqual(button.frame.minX, app.frame.minX)
+                        XCTAssertLessThanOrEqual(button.frame.maxX, app.frame.maxX)
+                    }
+                }
+                for (index, screen) in XCUIScreen.screens.enumerated() {
+                    let capture = XCTAttachment(screenshot: screen.screenshot())
+                    capture.name = "\(hasSummary ? "Regenerate" : "Generate") Summary - \(orientation.rawValue) - screen \(index)"
+                    capture.lifetime = .keepAlways; add(capture)
+                }
+            }
+            app.terminate()
+        }
+    }
+
     @MainActor func testNotesListLastNoteScrollsAboveCaptureButton() throws {
         defer { XCUIDevice.shared.orientation = .portrait }
         let app = XCUIApplication()

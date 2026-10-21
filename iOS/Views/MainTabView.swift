@@ -8,7 +8,8 @@ struct MainTabView: View {
     @State private var summaryNavigationID = UUID()
     @State private var duoFooterHeight: CGFloat = 92
     @State private var windowBounds: CGRect = .zero
-    @State private var detailLeadingEdge: CGFloat = 0
+    @State private var windowContentBounds: CGRect = .zero
+    @State private var detailBounds: CGRect = .zero
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
     @State private var showingSettings = false
     @State private var showingWelcome = false
@@ -35,7 +36,7 @@ struct MainTabView: View {
     }
 
     private var usesSideBySideFooter: Bool {
-        usesExpandedPhoneLayout && detailLeadingEdge > windowBounds.minX + 1
+        usesExpandedPhoneLayout && detailBounds.minX > windowBounds.minX + 1
     }
 
     private var usesWindowFooter: Bool {
@@ -68,25 +69,22 @@ struct MainTabView: View {
                 }
             }
             .toolbar(.visible, for: .navigationBar)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { detailLeadingEdge = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { detailBounds = $0 }
             // Keep the footer inside the native detail presentation. The Notes
             // drawer and its dimming layer must cover all detail controls.
             .overlayPreferenceValue(NoteFooterContentKey.self, alignment: .bottomTrailing) { footers in
                 if usesCornerCaptureButton && !usesWindowFooter {
-                    GeometryReader { geometry in
-                        Group {
-                            if let selectedNoteId, let footer = footers[selectedNoteId] { footer }
-                            else { cornerCaptureFooter }
-                        }
-                        .frame(width: windowBounds.width > 0 ? windowBounds.width : geometry.size.width)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
-                        .offset(x: windowBounds.isEmpty ? 0 : windowBounds.maxX - geometry.frame(in: .global).maxX)
+                    Group {
+                        if let selectedNoteId, let footer = footers[selectedNoteId] { footer }
+                        else { cornerCaptureFooter }
                     }
-                    // A full-height GeometryReader intercepts swipes over the list.
-                    // Keep the native drawer above the footer, with only the
-                    // controls' actual height participating in hit testing.
-                    .frame(height: duoFooterHeight)
-                    .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
+                    .frame(width: windowBounds.isEmpty ? nil : windowBounds.width)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
+                    // The overlay aligns the footer's trailing edge with the
+                    // detail. Translate that edge to the current window edge,
+                    // retaining natural height as the device folds or rotates.
+                    .offset(x: windowBounds.isEmpty || detailBounds.isEmpty ? 0 : windowBounds.maxX - detailBounds.maxX)
+                    .ignoresSafeArea(.container, edges: .bottom)
                 }
             }
             .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
@@ -100,12 +98,21 @@ struct MainTabView: View {
                        let footer = footers[selectedNoteId] { footer }
                     else { cornerCaptureFooter }
                 }
+                .frame(width: windowBounds.isEmpty ? nil : windowBounds.width)
+                .offset(x: windowBounds.isEmpty ? 0 : windowBounds.midX - windowContentBounds.midX)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
-                .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
+                .ignoresSafeArea(.container, edges: .bottom)
             }
         }
         .ignoresSafeArea(.container, edges: usesWindowFooter ? .bottom : [])
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bounds in
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { windowContentBounds = $0 }
+        .onGeometryChange(for: CGRect.self) { geometry in
+            let frame = geometry.frame(in: .global)
+            let insets = geometry.safeAreaInsets
+            return CGRect(x: frame.minX - insets.leading, y: frame.minY - insets.top,
+                          width: frame.width + insets.leading + insets.trailing,
+                          height: frame.height + insets.top + insets.bottom)
+        } action: { bounds in
             let becameWide = !windowBounds.isEmpty && windowBounds.width <= windowBounds.height && bounds.width > bounds.height
             windowBounds = bounds
             if usesExpandedPhoneLayout && becameWide { columnVisibility = .automatic }

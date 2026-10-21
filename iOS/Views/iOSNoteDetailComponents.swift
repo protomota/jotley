@@ -15,6 +15,41 @@ struct NoteFooterContentKey: PreferenceKey {
     }
 }
 
+/// Reserve readable primary-action text before assigning space to the template.
+/// On very narrow windows the template moves above the primary action and +.
+struct NoteSummaryActionsLayout: Layout {
+    var spacing: CGFloat
+
+    private func arrangement(width: CGFloat, subviews: Subviews) -> (templateWidth: CGFloat, stacked: Bool, rowHeight: CGFloat) {
+        let primaryWidth = subviews[1].sizeThatFits(.unspecified).width
+        let captureWidth = subviews.count > 2 ? subviews[2].sizeThatFits(.unspecified).width + spacing : 0
+        let remaining = width - primaryWidth - captureWidth - spacing
+        return (remaining >= 164 ? 164 : 112, remaining < 112, 58)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 500
+        let layout = arrangement(width: width, subviews: subviews)
+        return CGSize(width: width, height: layout.stacked ? layout.rowHeight * 2 + 8 : layout.rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let layout = arrangement(width: bounds.width, subviews: subviews)
+        let captureWidth = subviews.count > 2 ? subviews[2].sizeThatFits(.unspecified).width : 0
+        let rowY = bounds.maxY - layout.rowHeight
+        let primaryX = layout.stacked ? bounds.minX : bounds.minX + layout.templateWidth + spacing
+        let primaryWidth = bounds.maxX - primaryX - (captureWidth > 0 ? captureWidth + spacing : 0)
+        subviews[0].place(at: CGPoint(x: layout.stacked ? bounds.midX - 82 : bounds.minX,
+                                     y: layout.stacked ? bounds.minY : rowY),
+                          proposal: ProposedViewSize(width: layout.stacked ? 164 : layout.templateWidth, height: layout.rowHeight))
+        subviews[1].place(at: CGPoint(x: primaryX, y: rowY), proposal: ProposedViewSize(width: primaryWidth, height: layout.rowHeight))
+        if subviews.count > 2 {
+            subviews[2].place(at: CGPoint(x: bounds.maxX - captureWidth, y: rowY),
+                              proposal: ProposedViewSize(width: captureWidth, height: layout.rowHeight))
+        }
+    }
+}
+
 /// Keep the tinted pill opaque while content scrolls underneath the controls.
 struct FloatingNoteSecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
