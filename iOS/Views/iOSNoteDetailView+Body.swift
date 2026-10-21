@@ -202,7 +202,7 @@ extension NoteDetailView {
                         MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 48)
-                    }.buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    }.buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
                         .modifier(FloatingNoteControlShadow())
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
@@ -225,7 +225,7 @@ extension NoteDetailView {
                     MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
                 }
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
                     .modifier(FloatingNoteControlShadow())
                     .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                     .accessibilityIdentifier("noteDetailSummaryAskAIButton")
@@ -234,7 +234,7 @@ extension NoteDetailView {
                     MobileActionLabel("Continue Transcription", systemImage: "waveform")
                 }
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
                     .modifier(FloatingNoteControlShadow())
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
@@ -254,7 +254,7 @@ extension NoteDetailView {
                             .font(.system(size: 15, weight: .medium))
                             .lineLimit(1).truncationMode(.tail)
                             .frame(width: 136, height: 44)
-                    }.buttonStyle(.bordered).tint(.themePrimaryAccent).disabled(!transcriptionManager.canStart)
+                    }.buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent).disabled(!transcriptionManager.canStart)
                         .modifier(FloatingNoteControlShadow())
                         .accessibilityLabel("Templates: \(selectedTemplate.title)")
                         .accessibilityIdentifier("noteDetailTemplatesButton")

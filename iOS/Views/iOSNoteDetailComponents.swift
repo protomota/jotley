@@ -15,6 +15,27 @@ struct NoteFooterContentKey: PreferenceKey {
     }
 }
 
+/// Keep the tinted pill opaque while content scrolls underneath the controls.
+struct FloatingNoteSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(isEnabled ? 1 : 0.5)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .frame(minHeight: 44)
+            .background {
+                Capsule()
+                    .fill(Color.themeBackground)
+                    .overlay {
+                        Capsule().fill(Color.themePrimaryAccent.opacity(configuration.isPressed ? 0.22 : 0.12))
+                    }
+            }
+            .contentShape(Capsule())
+    }
+}
+
 struct FloatingNoteControlShadow: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
