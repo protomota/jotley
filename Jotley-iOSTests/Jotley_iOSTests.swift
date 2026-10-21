@@ -373,6 +373,26 @@ struct Jotley_iOSTests {
         #expect(progress.snapshot(at: 106).frames == 72000)
         #expect(!progress.snapshot(at: 106).stalled)
     }
+    @Test func languageChoicesRequireSpeechAndIntelligenceAndCollapseRegionalVariants() async throws {
+        let locales = ["en-US", "en-GB", "fr-FR", "fr-CA", "zh-CN", "zh-TW", "zh-HK", "ar-SA", "ru-RU", "hi-IN", "pl-PL"].map { Locale(identifier: $0) }
+        let choices = LocalSpeech.languages(speechLocales: locales, preferredLocale: Locale(identifier: "en-GB"),
+                                           supportsLocale: { $0.language.languageCode?.identifier != "fr" })
+        #expect(Set(choices.map(\.id)) == ["en-GB", "zh-CN", "zh-TW"])
+        #expect(LocalSpeech.selectedLanguage(locale: Locale(identifier: "en-AU"), in: choices)?.id == "en-GB")
+        #expect(LocalSpeech.selectedLanguage(locale: Locale(identifier: "ar-SA"), in: choices) == nil)
+        #expect(LocalSpeech.selectedLanguage(locale: Locale(identifier: "zh-HK"), in: choices)?.id == "zh-TW")
+        let all = await LocalSpeech.languages()
+        #expect(all.count <= 16)
+        #expect(Set(all.compactMap { LocalSpeech.languageKey(for: Locale(identifier: $0.id)) }).count == all.count)
+        for choice in all { #expect(SystemLanguageModel.default.supportsLocale(Locale(identifier: choice.id))) }
+        // Legacy choices must fail before asset reservation, installation or capture.
+        for id in ["ar-SA", "ru-RU", "hi-IN", "pl-PL"] {
+            let readiness = await LocalSpeech.readiness(locale: Locale(identifier: id))
+            #expect(readiness.status == .unsupported && readiness.configuration == nil && !readiness.needsSetup)
+            await #expect(throws: (any Error).self) { try await LocalSpeech.configuration(locale: Locale(identifier: id)) }
+        }
+    }
+
     @MainActor @Test func unsupportedSpeechStopsBeforeMicrophoneCaptureAndCreatesNoAudio() async throws {
         let previous = UserDefaults.standard.string(forKey: "transcriptionLanguage")
         UserDefaults.standard.set("zxx", forKey: "transcriptionLanguage")

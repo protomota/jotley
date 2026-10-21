@@ -67,7 +67,7 @@ Once the Apple models are ready, these features work offline. A speech language 
 | **iPhone** | iOS **27+**, iPhone **15 Pro/Pro Max**, **16 or later**, or **iPhone Air** |
 | **iPad** | iPadOS **27+**, **M1 or later**, or iPad mini with **A17 Pro** |
 
-Apple Intelligence must be enabled and its model ready. Transcription also needs a supported language with its separate Apple speech model installed. Hardware compatibility alone does not complete model setup.
+Apple Intelligence must be enabled and its model ready. Language choices are limited to Apple Intelligence’s 16 supported languages, intersected with the on-device speech languages available on your device. Regional variants are grouped; Simplified and Traditional Chinese remain separate. Transcription also needs the selected language’s separate Apple speech model installed. Hardware compatibility alone does not complete model setup.
 
 **Jotley 2.1.2 (403) for Mac is available at [jotley.ai/download](https://jotley.ai/download), and iPhone/iPad 2.1.2 (403) is available in the Jotley Home internal TestFlight group.** The App Store submission was not changed for this release. [Watch the onboarding walkthrough](https://media.jotley.ai/clips/jotley-onboarding-main-window-20261020.mp4). You can build both apps from this source.
 

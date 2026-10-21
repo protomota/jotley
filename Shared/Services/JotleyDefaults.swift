@@ -877,7 +877,7 @@ struct JotleyOnboardingView: View {
         switch step {
         case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
         case 1: "Summaries, useful titles and answers.\nPowered by Apple Intelligence on your device."
-        case 2: "Choose the language you speak.\nJotley turns your voice into text locally."
+        case 2: "Choose your Apple Intelligence language.\nTranscription, summaries and Ask AI stay on-device."
         case 3: "Allow microphone access for live transcription.\nYou can change this later in Settings."
         default: "Meetings, videos and the apps you listen to.\nmacOS controls access to system audio."
         }
@@ -991,7 +991,7 @@ struct JotleyOnboardingView: View {
                 } else {
                     status(setupError != nil ? "Finish setup when you’re ready" : (speechReady ? "Ready to transcribe offline" : (speechCanSetUp ? "One-time speech setup" : "Choose another language")),
                            detail: setupError ?? (speechReady ? "The selected language’s Apple speech model is installed." :
-                            (speechCanSetUp ? "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline." : "Apple speech is unavailable for this language on this device. Choose another language or revisit Built-in Models in Settings.")),
+                            (speechCanSetUp ? "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline." : "Choose an Apple Intelligence language supported by this device. You can also change it later in Settings.")),
                            ready: speechReady)
                         .accessibilityIdentifier(setupError == nil ? "onboardingSpeechStatus" : "onboardingSpeechError")
                 }
@@ -1036,7 +1036,7 @@ struct JotleyOnboardingView: View {
         Menu {
             Picker("Transcription language", selection: $language) {
                 if !languages.contains(where: { $0.id == language }) {
-                    Text(Locale.current.localizedString(forIdentifier: language) ?? language).tag(language).disabled(true)
+                    Text("Choose a supported language").tag(language).disabled(true)
                 }
                 ForEach(languages) { item in Text(item.name).tag(item.id) }
             }
@@ -1045,7 +1045,7 @@ struct JotleyOnboardingView: View {
                 Image(systemName: "globe").font(.title2).foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Transcription language").font(.callout).foregroundStyle(muted)
-                    Text(Locale.current.localizedString(forIdentifier: language) ?? language).font(.body.weight(.semibold)).foregroundStyle(ink)
+                    Text(languages.first(where: { $0.id == language })?.name ?? "Choose a supported language").font(.body.weight(.semibold)).foregroundStyle(ink)
                 }
                 Spacer()
                 Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(muted)
@@ -1298,8 +1298,7 @@ struct JotleyOnboardingView: View {
         guard !Task.isCancelled else { return }
         languages = available
         // Keep the same canonical language used by Settings and live transcription.
-        if let matched = ready.configuration?.locale.identifier(.bcp47), matched != language,
-           !available.contains(where: { $0.id == language }), available.contains(where: { $0.id == matched }) {
+        if let matched = LocalSpeech.selectedLanguage(locale: Locale(identifier: language), in: available)?.id, matched != language {
             language = matched
             return
         }

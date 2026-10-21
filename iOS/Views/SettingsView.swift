@@ -110,12 +110,12 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settingsLanguagePicker")
                 .accessibilityLabel("Transcription Language")
-                .accessibilityValue(Locale.current.localizedString(forIdentifier: transcriptionLanguage) ?? transcriptionLanguage)
+                .accessibilityValue(speechLanguages.first(where: { $0.id == transcriptionLanguage })?.name ?? "Choose a supported language")
                 .disabled(isSettingUpSpeech)
             } header: {
                 Text("Transcription")
             } footer: {
-                Text("Choose the language you speak. This is the same preference used during welcome setup, and you can change it here at any time. Changing it does not translate existing notes or change the app’s interface language.")
+                Text("Choose an Apple Intelligence language supported by this device for transcription, summaries and Ask AI. This is the same preference used during welcome setup. Changing it does not translate existing notes or change the app’s interface language.")
             }
 
             Section("Built-in Models") {
@@ -193,10 +193,8 @@ struct SettingsView: View {
         let languages = await LocalSpeech.languages()
         guard !Task.isCancelled else { return }
         speechLanguages = languages
-        if let matched = speech.configuration?.locale.identifier(.bcp47),
-           matched != transcriptionLanguage,
-           !languages.contains(where: { $0.id == transcriptionLanguage }),
-           languages.contains(where: { $0.id == matched }) {
+        if let matched = LocalSpeech.selectedLanguage(locale: locale, in: languages)?.id,
+           matched != transcriptionLanguage {
             transcriptionLanguage = matched
             return
         }

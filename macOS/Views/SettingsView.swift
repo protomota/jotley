@@ -49,10 +49,8 @@ struct SettingsView: View {
         let languages = await LocalSpeech.languages()
         guard !Task.isCancelled else { return }
         speechLanguages = languages
-        if let matched = speech.configuration?.locale.identifier(.bcp47),
-           matched != transcriptionLanguage,
-           !languages.contains(where: { $0.id == transcriptionLanguage }),
-           languages.contains(where: { $0.id == matched }) {
+        if let matched = LocalSpeech.selectedLanguage(locale: Locale(identifier: transcriptionLanguage), in: languages)?.id,
+           matched != transcriptionLanguage {
             transcriptionLanguage = matched
             return
         }

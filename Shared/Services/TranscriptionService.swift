@@ -2,6 +2,7 @@ import Foundation
 import Speech
 import AVFoundation
 import CoreMedia
+import FoundationModels
 
 @available(macOS 26.0, iOS 26.0, *)
 public enum LocalSpeech {
@@ -13,7 +14,7 @@ public enum LocalSpeech {
     }
     public struct Language: Identifiable, Sendable {
         public let id: String
-        public var name: String { Locale.current.localizedString(forIdentifier: id) ?? id }
+        public var name: String { Locale.current.localizedString(forIdentifier: LocalSpeech.languageKey(for: Locale(identifier: id)) ?? id) ?? id }
     }
     public struct Readiness: Sendable {
         public enum Status: Sendable { case unsupported, downloading, supported, installed }
@@ -37,7 +38,7 @@ public enum LocalSpeech {
             if needsSetup {
                 return "The Apple speech model for this language needs setup. Open Settings and choose Set Up On-Device Speech. Apple Intelligence uses a separate model."
             }
-            return "Apple speech is unavailable for the selected language on this device. Choose a language listed in Settings, or refresh speech availability."
+            return "Transcription is unavailable for the selected language on this device. Choose a supported Apple Intelligence language in Settings, or refresh speech availability."
         }
     }
     // Prefer an installed fallback over downloading a better engine. Otherwise
@@ -46,15 +47,51 @@ public enum LocalSpeech {
         statuses.firstIndex(of: .installed) ?? statuses.firstIndex(where: { $0 == .supported || $0 == .downloading }) ?? statuses.indices.first
     }
     static func exactLocale(_ requested: Locale, in supported: [Locale]) -> Locale? {
-        supported.first { $0.identifier(.bcp47) == requested.identifier(.bcp47) }
+        supported.first { $0.language.maximalIdentifier == requested.language.maximalIdentifier }
     }
     public static func languages() async -> [Language] {
         let speech = await SpeechTranscriber.supportedLocales
         let dictation = await DictationTranscriber.supportedLocales
-        return Set((speech + dictation).map { $0.identifier(.bcp47) }).sorted().map { Language(id: $0) }
+        return languages(speechLocales: speech + dictation, supportsLocale: SystemLanguageModel.default.supportsLocale)
+    }
+    // Apple's 16 published Intelligence languages, with Chinese scripts kept distinct.
+    // The runtime model and on-device speech inventory must both support a choice.
+    // Regional speech variants are implementations of a language, not extra choices.
+    static let intelligenceLanguageKeys: Set<String> = [
+        "en", "da", "nl", "fr", "de", "it", "nb", "pt", "es", "sv", "tr",
+        "zh-Hans", "zh-Hant", "ja", "ko", "vi"
+    ]
+    static func languageKey(for locale: Locale) -> String? {
+        guard let code = locale.language.languageCode?.identifier else { return nil }
+        let key = code == "zh" ? "zh-\(locale.language.script?.identifier ?? "")" : code
+        return intelligenceLanguageKeys.contains(key) ? key : nil
+    }
+    static func languages(speechLocales: [Locale], preferredLocale: Locale = .current,
+                          supportsLocale: (Locale) -> Bool) -> [Language] {
+        let supported = speechLocales.filter { languageKey(for: $0) != nil && supportsLocale($0) }
+        let groups = Dictionary(grouping: supported) { languageKey(for: $0)! }
+        return groups.compactMap { key, locales in
+            let defaultLocale = Locale(identifier: Locale(identifier: key).language.maximalIdentifier)
+            let preferred = languageKey(for: preferredLocale) == key ? preferredLocale : defaultLocale
+            let selected = exactLocale(preferred, in: locales) ?? exactLocale(defaultLocale, in: locales)
+                ?? locales.sorted { $0.identifier(.bcp47) < $1.identifier(.bcp47) }.first
+            return selected.map { Language(id: $0.identifier(.bcp47)) }
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+    /// Normalize older regional choices, without silently changing an unsupported language.
+    public static func selectedLanguage(locale: Locale, in languages: [Language]) -> Language? {
+        guard let key = languageKey(for: locale) else { return nil }
+        return languages.first { languageKey(for: Locale(identifier: $0.id)) == key }
+    }
+    static func supportsIntelligence(locale: Locale) -> Bool {
+        languageKey(for: locale) != nil && SystemLanguageModel.default.supportsLocale(locale)
     }
     /// A local availability check only: never initiates an installation or download.
     public static func readiness(locale: Locale) async -> Readiness {
+        guard supportsIntelligence(locale: locale) else {
+            return .init(configuration: nil, status: .unsupported,
+                         details: "Requested language: \(locale.identifier(.bcp47))\nNot supported by Apple Intelligence. Choose a supported language in Settings.")
+        }
         var candidates: [(Configuration, AssetInventory.Status)] = []
         let speechAvailable = SpeechTranscriber.isAvailable
         let speechLocales = await SpeechTranscriber.supportedLocales
@@ -71,13 +108,13 @@ public enum LocalSpeech {
                        "SpeechTranscriber available: \(speechAvailable)",
                        "SpeechTranscriber languages: \(speechLocales.map { $0.identifier(.bcp47) }.sorted().joined(separator: ", "))",
                        "DictationTranscriber languages: \(dictationLocales.map { $0.identifier(.bcp47) }.sorted().joined(separator: ", "))"]
-        if speechAvailable, let equivalent = speechEquivalent {
+        if speechAvailable, let equivalent = speechEquivalent, supportsIntelligence(locale: equivalent) {
             let module = SpeechTranscriber(locale: equivalent, preset: .timeIndexedProgressiveTranscription)
             let status = await AssetInventory.status(forModules: [module])
             candidates.append((.init(module: module, engine: .speech, locale: equivalent), status))
             details.append("SpeechTranscriber \(equivalent.identifier(.bcp47)): \(status)")
         }
-        if let equivalent = dictationEquivalent {
+        if let equivalent = dictationEquivalent, supportsIntelligence(locale: equivalent) {
             let module = DictationTranscriber(locale: equivalent, contentHints: [],
                 transcriptionOptions: [.punctuation], reportingOptions: [.volatileResults], attributeOptions: [.audioTimeRange])
             let status = await AssetInventory.status(forModules: [module])

@@ -90,7 +90,7 @@ extension SettingsView {
                                 .accessibilityIdentifier("settingsLanguagePicker")
                             }
 
-                            Text("Choose the language you speak, here or during welcome setup. You can change it at any time. Apple speech may need a one-time setup for a new language; existing notes and the app’s interface language stay unchanged.")
+                            Text("Choose an Apple Intelligence language supported by this Mac for transcription, summaries and Ask AI. Apple speech may need a one-time setup; existing notes and the app’s interface language stay unchanged.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Toggle("Transcribe microphone and system audio", isOn: $recordSystemAudio)

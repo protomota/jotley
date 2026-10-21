@@ -152,6 +152,8 @@ private struct MacSupportPreviewRoot: View {
     }
     @MainActor private static func runChecks() async {
         do {
+            try await verifyLanguageChoices()
+            if CommandLine.arguments.contains("--languages-only") { return }
             if CommandLine.arguments.contains("--compact-only") {
                 guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
                 try await verifyCompactTranscription(store: store)
@@ -164,6 +166,33 @@ private struct MacSupportPreviewRoot: View {
             } else { try await verifyRouting() }
         }
         catch { fputs("FAIL: \(error.localizedDescription)\n", stderr); exit(1) }
+    }
+    @MainActor private static func verifyLanguageChoices() async throws {
+        let locales = ["en-US", "en-GB", "fr-FR", "fr-CA", "zh-CN", "zh-TW", "zh-HK", "ar-SA", "ru-RU", "hi-IN", "pl-PL"].map { Locale(identifier: $0) }
+        let choices = LocalSpeech.languages(speechLocales: locales, preferredLocale: Locale(identifier: "en-GB"),
+                                           supportsLocale: { $0.language.languageCode?.identifier != "fr" })
+        guard Set(choices.map(\.id)) == ["en-GB", "zh-CN", "zh-TW"],
+              LocalSpeech.selectedLanguage(locale: Locale(identifier: "en-AU"), in: choices)?.id == "en-GB",
+              LocalSpeech.selectedLanguage(locale: Locale(identifier: "zh-HK"), in: choices)?.id == "zh-TW",
+              LocalSpeech.selectedLanguage(locale: Locale(identifier: "ar-SA"), in: choices) == nil else {
+            throw LocalError.message("Language intersection, regional deduplication or legacy selection failed")
+        }
+        let actual = await LocalSpeech.languages()
+        guard !actual.isEmpty, actual.count <= 16,
+              Set(actual.compactMap { LocalSpeech.languageKey(for: Locale(identifier: $0.id)) }).count == actual.count,
+              actual.allSatisfy({ LocalSpeech.supportsIntelligence(locale: Locale(identifier: $0.id)) }) else {
+            throw LocalError.message("The runtime picker offered an unsupported or duplicate language")
+        }
+        for id in ["ar-SA", "ru-RU", "hi-IN", "pl-PL"] {
+            let ready = await LocalSpeech.readiness(locale: Locale(identifier: id))
+            guard ready.status == .unsupported, ready.configuration == nil, !ready.needsSetup else {
+                throw LocalError.message("A legacy unsupported language reached speech setup")
+            }
+            do { _ = try await LocalSpeech.configuration(locale: Locale(identifier: id)) }
+            catch { continue }
+            throw LocalError.message("A legacy unsupported language reached capture configuration")
+        }
+        print("PASS: speech/Intelligence intersection, regional deduplication, Chinese scripts, legacy language rejection; runtime choices (\(actual.count)): \(actual.map { "\($0.name) [\($0.id)]" }.joined(separator: ", ")).")
     }
     @MainActor private static func verifyRouting() async throws {
         let watchdog = Task.detached {

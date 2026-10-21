@@ -17,7 +17,7 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Keep this note","folder":"","tags":[],"transcript":"Existing words remain safe while setting up Jotley.","summary":"A saved note."}]"###
         app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
         for mode in ["Dark", "Light"] {
-            let selectedLanguage = mode == "Dark" ? "English (United Kingdom)" : "English (United States)"
+            let selectedLanguage = mode == "Dark" ? "French" : "German"
             app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
             app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
             app.launch()
@@ -36,6 +36,10 @@ final class Jotley_iOSUITests: XCTestCase {
                     expectation(for: enabled, evaluatedWith: picker)
                     waitForExpectations(timeout: 15)
                     picker.tap()
+                    for unsupported in ["Arabic", "Russian", "Hindi", "Polish", "Ukrainian"] {
+                        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", unsupported)).firstMatch.exists)
+                    }
+                    XCTAssertFalse(app.buttons["English (United Kingdom)"].exists, "Regional variants must not become extra languages")
                     let choice = app.buttons[selectedLanguage]
                     XCTAssertTrue(choice.waitForExistence(timeout: 5))
                     choice.tap()
