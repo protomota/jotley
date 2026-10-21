@@ -6,6 +6,7 @@ struct NotesListView: View {
     let onSelectNote: (UUID) -> Void
     let showsNewTranscriptionButton: Bool
     let usesSplitView: Bool
+    var bottomContentInset: CGFloat = 0
     @Binding var showingSettings: Bool
     @Binding var selectedNoteId: UUID?
     @Binding var showingTranscriptionModal: Bool
@@ -263,6 +264,7 @@ struct NotesListView: View {
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
+            .contentMargins(.bottom, max(bottomContentInset, showsNewTranscriptionButton || usesIPadLayout ? 84 : 0), for: .scrollContent)
             .background(Color.themeBackground)
             .navigationBarTitleDisplayMode(.inline)
             } // End of VStack

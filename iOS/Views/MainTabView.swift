@@ -69,55 +69,42 @@ struct MainTabView: View {
             }
             .toolbar(.visible, for: .navigationBar)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { detailLeadingEdge = $0 }
-            .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
-            .safeAreaPadding(.bottom, usesCornerCaptureButton && !usesWindowFooter ? duoFooterHeight : 0)
             // Keep the footer inside the native detail presentation. The Notes
             // drawer and its dimming layer must cover all detail controls.
-            .overlayPreferenceValue(NoteFooterContentKey.self) { footers in
+            .overlayPreferenceValue(NoteFooterContentKey.self, alignment: .bottomTrailing) { footers in
                 if usesCornerCaptureButton && !usesWindowFooter {
                     GeometryReader { geometry in
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 0)
-                            Group {
-                                if let selectedNoteId, let footer = footers[selectedNoteId] {
-                                    footer
-                                } else {
-                                    cornerCaptureFooter
-                                }
-                            }
-                            .frame(width: windowBounds.width > 0 ? windowBounds.width : geometry.size.width)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
+                        Group {
+                            if let selectedNoteId, let footer = footers[selectedNoteId] { footer }
+                            else { cornerCaptureFooter }
                         }
-                        .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottomTrailing)
+                        .frame(width: windowBounds.width > 0 ? windowBounds.width : geometry.size.width)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
                         .offset(x: windowBounds.isEmpty ? 0 : windowBounds.maxX - geometry.frame(in: .global).maxX)
                     }
+                    // A full-height GeometryReader intercepts swipes over the list.
+                    // Keep the native drawer above the footer, with only the
+                    // controls' actual height participating in hit testing.
+                    .frame(height: duoFooterHeight)
                     .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
                 }
             }
+            .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
         }
         .navigationSplitViewStyle(.balanced)
-        .ignoresSafeArea(.container, edges: usesWindowFooter ? .bottom : [])
-        .safeAreaPadding(.bottom, usesWindowFooter ? duoFooterHeight : 0)
-        .overlayPreferenceValue(NoteFooterContentKey.self) { footers in
-            // Adjacent columns share a device-wide bar. A drawer instead uses
-            // the detail-hosted bar above, beneath the system's presentation.
+        .overlayPreferenceValue(NoteFooterContentKey.self, alignment: .bottom) { footers in
             if usesWindowFooter {
-                GeometryReader { geometry in
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        Group {
-                            if let selectedNoteId,
-                               usesExpandedPhoneLayout || preferredCompactColumn == .detail,
-                               let footer = footers[selectedNoteId] { footer }
-                            else { cornerCaptureFooter }
-                        }
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                Group {
+                    if let selectedNoteId,
+                       usesExpandedPhoneLayout || preferredCompactColumn == .detail,
+                       let footer = footers[selectedNoteId] { footer }
+                    else { cornerCaptureFooter }
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
                 .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
             }
         }
+        .ignoresSafeArea(.container, edges: usesWindowFooter ? .bottom : [])
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bounds in
             let becameWide = !windowBounds.isEmpty && windowBounds.width <= windowBounds.height && bounds.width > bounds.height
             windowBounds = bounds
@@ -213,11 +200,10 @@ struct MainTabView: View {
             NotesNewTranscriptionButton(diameter: 58) { handleWidgetAction(.start) }
         }
         .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 26)
-        .background(Color.themeBackground)
     }
 
     private var notesList: some View {
-        NotesListView(onSelectNote: openNote, showsNewTranscriptionButton: !usesCornerCaptureButton, usesSplitView: horizontalSizeClass == .regular, showingSettings: $showingSettings,
+        NotesListView(onSelectNote: openNote, showsNewTranscriptionButton: !usesCornerCaptureButton, usesSplitView: horizontalSizeClass == .regular, bottomContentInset: usesWindowFooter ? duoFooterHeight : 0, showingSettings: $showingSettings,
             selectedNoteId: $selectedNoteId,
             showingTranscriptionModal: $showingTranscriptionModal, columnVisibility: $columnVisibility, newTranscriptionNote: $newTranscriptionNote)
     }

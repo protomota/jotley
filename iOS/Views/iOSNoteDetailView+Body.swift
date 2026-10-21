@@ -22,7 +22,7 @@ extension NoteDetailView {
                     ContentUnavailableView("No Words Yet", systemImage: "text.bubble", description: Text("Tap Continue Transcription to add spoken words to this note."))
                 }
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, actionsFooterHeight + 16)
             Color.clear.frame(height: 1).id("summaryBottom")
         }
         .task(id: transcriptionManager.summaryPreview) {
@@ -37,7 +37,7 @@ extension NoteDetailView {
         }
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
+        .overlay(alignment: .bottom) {
             if newTranscriptionAction == nil { noteActionsFooter }
         }
         .preference(key: NoteFooterContentKey.self,
@@ -175,9 +175,12 @@ extension NoteDetailView {
                 .accessibilityIdentifier("noteDetailTranscriptContent")
         }
     }
-    @ViewBuilder private var noteActionsFooter: some View {
-        if summaryIsRunning { summaryProgressFooter }
-        else { transcriptionAndSummaryFooter }
+    private var noteActionsFooter: some View {
+        Group {
+            if summaryIsRunning { summaryProgressFooter }
+            else { transcriptionAndSummaryFooter }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
 
     private var summaryProgressFooter: some View {
@@ -200,6 +203,7 @@ extension NoteDetailView {
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }.buttonStyle(.bordered).tint(.themePrimaryAccent)
+                        .modifier(FloatingNoteControlShadow())
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                             if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
@@ -211,7 +215,7 @@ extension NoteDetailView {
                 }
                     .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
                     .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
-                    .frame(maxWidth: .infinity).background(Color.themeBackground)
+                    .frame(maxWidth: .infinity)
     }
 
     private var transcriptionAndSummaryFooter: some View {
@@ -222,6 +226,7 @@ extension NoteDetailView {
                 }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    .modifier(FloatingNoteControlShadow())
                     .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                     .accessibilityIdentifier("noteDetailSummaryAskAIButton")
             } else {
@@ -230,6 +235,7 @@ extension NoteDetailView {
                 }
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    .modifier(FloatingNoteControlShadow())
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
             }
@@ -249,6 +255,7 @@ extension NoteDetailView {
                             .lineLimit(1).truncationMode(.tail)
                             .frame(width: 136, height: 44)
                     }.buttonStyle(.bordered).tint(.themePrimaryAccent).disabled(!transcriptionManager.canStart)
+                        .modifier(FloatingNoteControlShadow())
                         .accessibilityLabel("Templates: \(selectedTemplate.title)")
                         .accessibilityIdentifier("noteDetailTemplatesButton")
                     Button {
@@ -259,6 +266,7 @@ extension NoteDetailView {
                             .font(.system(size: 15, weight: .semibold))
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }.buttonStyle(.borderedProminent).tint(.themePrimaryAccent)
+                        .modifier(FloatingNoteControlShadow())
                         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
@@ -273,6 +281,6 @@ extension NoteDetailView {
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
         .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
-        .frame(maxWidth: .infinity).background(Color.themeBackground)
+        .frame(maxWidth: .infinity)
     }
 }

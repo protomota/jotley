@@ -15,6 +15,16 @@ struct NoteFooterContentKey: PreferenceKey {
     }
 }
 
+struct FloatingNoteControlShadow: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: Color.themePrimaryAccent.opacity(colorScheme == .dark ? 0.30 : 0.18), radius: 10, y: 2)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.14), radius: 6, y: 3)
+    }
+}
+
 struct NotesNewTranscriptionButton: View {
     var diameter: CGFloat = 56
     let action: () -> Void
@@ -29,7 +39,7 @@ struct NotesNewTranscriptionButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+        .modifier(FloatingNoteControlShadow())
         .accessibilityIdentifier("notesListNewNoteButton")
         .accessibilityLabel("New live transcription")
     }

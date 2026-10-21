@@ -59,6 +59,82 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
+    @MainActor func testNotesListLastNoteScrollsAboveCaptureButton() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        let fixture: [[String: Any]] = (1...20).map { index in
+            ["title": "Scroll note \(index)", "folder": "", "tags": [],
+             "transcript": "Example note \(index).", "summary": "Summary \(index).",
+             "timestampOffset": -Double(index * 86_400)]
+        }
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            app.launch()
+            XCTAssertTrue(app.staticTexts["Scroll note 1"].waitForExistence(timeout: 15))
+            let last = app.buttons.containing(.staticText, identifier: "Scroll note 20").firstMatch
+            let plus = app.buttons["notesListNewNoteButton"]
+            let list = app.collectionViews.firstMatch
+            // An open portrait Duo drawer covers the detail footer; its rows
+            // can use the drawer's full height. Adjacent/compact lists clear it.
+            let isPortraitDrawer = app.frame.height > app.frame.width && UIDevice.current.userInterfaceIdiom == .phone && app.frame.width > 500
+            let bottomLimit = isPortraitDrawer ? list.frame.maxY - 8 : plus.frame.minY - 8
+            for _ in 0..<12 {
+                if last.exists && last.isHittable && last.frame.maxY < bottomLimit { break }
+                if list.exists { list.swipeUp() } else { app.swipeUp() }
+            }
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "Last library note above footer - \(orientation.rawValue)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            XCTAssertTrue(last.exists && last.isHittable, "The oldest note must be reachable by scrolling")
+            XCTAssertLessThan(last.frame.maxY, bottomLimit, "The complete last row must remain above visible controls or within the drawer")
+            last.tap()
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
+            XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Scroll note 20")
+        }
+    }
+
+    @MainActor func testTranscriptLastLineClearsFloatingControls() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        let text = (1...25).map { "Paragraph \($0): Review the next steps and keep a clear record of the conversation." }.joined(separator: "\n\n") + "\n\nFinal transcript line stays readable."
+        let fixture: [[String: Any]] = [["title": "Floating footer check", "folder": "", "tags": [], "transcript": text, "summary": "A long conversation."]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        for appearance in ["Light", "Dark"] {
+            XCUIDevice.shared.orientation = .portrait
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = appearance
+            app.launch()
+            let row = app.buttons.containing(.staticText, identifier: "Floating footer check").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            app.buttons["noteDetailTranscriptTab"].tap()
+            let last = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Final transcript line stays readable.")).firstMatch
+            let continueButton = app.buttons["noteDetailContinueTranscriptionButton"]
+            let content = app.scrollViews.firstMatch
+            for _ in 0..<14 {
+                if last.exists && last.isHittable && last.frame.maxY < continueButton.frame.minY - 8 { break }
+                content.swipeUp()
+            }
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "Transcript hierarchy - \(appearance)"
+            hierarchy.lifetime = .keepAlways; add(hierarchy)
+            for (index, screen) in XCUIScreen.screens.enumerated() {
+                let capture = XCTAttachment(screenshot: screen.screenshot())
+                capture.name = "Transcript screen \(index) - \(appearance)"
+                capture.lifetime = .keepAlways; add(capture)
+            }
+            XCTAssertTrue(last.exists && last.isHittable)
+            XCTAssertLessThan(last.frame.maxY, continueButton.frame.minY - 8, "The last line must scroll fully clear of the floating controls")
+            XCTAssertTrue(continueButton.isHittable)
+            XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].isHittable)
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "Floating controls with complete transcript - \(appearance)"
+            screenshot.lifetime = .keepAlways; add(screenshot)
+        }
+    }
+
     @MainActor func testSimulatedCaptureTimerMatchesElapsedTimeAndPauses() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
