@@ -389,3 +389,38 @@ After the owner withdrew build 403, selected 404 and resubmitted with their rene
 Final checks: full Mac routing/regression harness passed, including the actual 16-language runtime catalog; native Mac menu visually verified. iPhone and iPad Light/Dark onboarding UI tests passed, including unsupported/duplicate language exclusion, selecting French/German, language persistence into Settings and replay without losing the fixture note. The targeted iOS language policy regression passed (1 test, 0 failures), covering intersection, Chinese scripts, regional normalization and rejection of unsupported legacy configuration before assets/capture. Xcode's first-launch installation resolved the initial CoreSimulator mismatch. An additional existing capture test crashed in the hosted app's SwiftUI/CoreData fetch during XCTest; a retry was stopped and is not counted as passed. No test-only runtime changes were shipped. No physical microphone or system-audio permission was granted during these checks.
 
 Evidence: `/tmp/jotley-language-mac-build.log`, `/tmp/jotley-language-mac-routing.log`, `/tmp/jotley-language-iphone.xcresult`, `/tmp/jotley-language-ipad.xcresult`, `/tmp/jotley-language-ios-policy.xcresult`, `/tmp/jotley-language-site-tests.log`, and the task's `jotley-language-20261021` proof directory (native Mac language menu, iPhone/iPad language pages, live website and App Store submission receipt).
+
+
+## iPhone Duo 2.2 preparation — October 21, 2026
+
+The simulator build uses Xcode 27.1 / iOS SDK 27.1 with a marketing-version override of 2.2. No production binary or App Store submission was changed during these checks.
+
+Changes under verification:
+
+- Keep one NavigationSplitView through folds and rotations, preserving the selected note, tab and editor/sheet state.
+- Use a device-wide Duo action row with equal gaps. Measure the primary action's rendered height for the circular + button; mirror the gear's corner padding.
+- Center Ask AI / Continue Transcription on the device.
+- Host the footer beneath the native Notes drawer and its dimming layer. When the columns sit beside each other, share the full-width bottom row.
+- Use the SwiftUI color-scheme observation for dynamic theme colors and a more compact live-capture control area on short displays.
+
+Passing automated checks:
+
+- Duo corner controls in portrait and landscape: exactly one +, no overlap, matching primary-action height and vertical center, Share/More available, simulated pause/resume/stop/continue.
+- Continued-transcript flow saves and returns to the note.
+- Live transcript starts at the top, keeps a stable first-card position and follows incoming content at the bottom.
+- Standard iPhone appearance switching and persistence.
+- iPad split selection in both appearances and orientations.
+- Native Mac debug build and the real Mac routing harness (the shared appearance change).
+
+Direct simulator checks:
+
+- Opening Notes covers the left part of the footer and dims the exposed controls with the detail. Tapping the dimmed + dismisses the drawer without starting capture.
+- Opening and closing the drawer restores the full, aligned action row. Adjacent landscape columns retain the full device-wide row.
+- The selected note/tab and an open summary editor survive unfolding. Transcript editing saves and returns to the note. Settings Done remains visible during scrolling and closes the sheet.
+- The closed-display More menu, transcript/summary editors and their Cancel/Save controls open correctly.
+
+Remaining release gate:
+
+The broad Duo UI suite is not green. The first 30-case pass reported 15 passed, 10 failed and 5 device-specific skips. Targeted fixes/rechecks subsequently passed the corner/capture/continuation cases above. Remaining automated failures include support-settings toolbar accessibility after scrolling, exact streaming-heading visibility, background/back navigation, and legacy summary/editor assertions. Direct operation succeeds on several of these paths, but that disagreement has not been fully resolved. Do not treat this receipt as full Duo regression approval or publish 2.2 from it.
+
+Capture lifecycle checks use simulator-only synthetic speech. Actual microphone recognition and Apple Intelligence generation still need supported physical-device verification; the synthetic hooks are excluded from shipping builds.

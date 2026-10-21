@@ -166,6 +166,7 @@ struct SettingsView: View {
         .accessibilityIdentifier("settingsForm")
         .scrollContentBackground(.hidden).background(Color.themeBackground)
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .tint(Color.themeActionText)
         .toolbar { ToolbarItem(placement: .topBarTrailing) {
             MobileDoneButton { dismiss() }.accessibilityIdentifier("settingsDoneButton")

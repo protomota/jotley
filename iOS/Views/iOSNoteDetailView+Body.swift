@@ -38,30 +38,10 @@ extension NoteDetailView {
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            if summaryIsRunning {
-                VStack(spacing: 10) {
-                    HStack(spacing: 12) {
-                        ProgressView().tint(.themePrimaryAccent)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(transcriptionManager.summaryProgress.title).font(.body.weight(.semibold))
-                            if let detail = transcriptionManager.summaryProgress.detail {
-                                Text(detail).font(.subheadline).foregroundColor(.themeTextSecondary)
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }.accessibilityIdentifier("noteDetailSummaryProgress")
-                    if let fraction = transcriptionManager.summaryProgress.fraction {
-                        ProgressView(value: fraction).tint(.themePrimaryAccent)
-                    }
-                    Button { transcriptionManager.cancelProcessing() } label: {
-                        MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 48)
-                    }.buttonStyle(.bordered).tint(.themePrimaryAccent)
-                        .accessibilityIdentifier("noteDetailCancelGenerationButton")
-                }
-                    .padding(.horizontal,16).padding(.vertical,8).background(Color.themeBackground)
-            } else { transcriptionAndSummaryFooter }
+            if newTranscriptionAction == nil { noteActionsFooter }
         }
+        .preference(key: NoteFooterContentKey.self,
+                    value: newTranscriptionAction != nil ? note.id.map { [$0: AnyView(noteActionsFooter)] } ?? [:] : [:])
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
@@ -195,6 +175,45 @@ extension NoteDetailView {
                 .accessibilityIdentifier("noteDetailTranscriptContent")
         }
     }
+    @ViewBuilder private var noteActionsFooter: some View {
+        if summaryIsRunning { summaryProgressFooter }
+        else { transcriptionAndSummaryFooter }
+    }
+
+    private var summaryProgressFooter: some View {
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        ProgressView().tint(.themePrimaryAccent)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(transcriptionManager.summaryProgress.title).font(.body.weight(.semibold))
+                            if let detail = transcriptionManager.summaryProgress.detail {
+                                Text(detail).font(.subheadline).foregroundColor(.themeTextSecondary)
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }.accessibilityIdentifier("noteDetailSummaryProgress")
+                    if let fraction = transcriptionManager.summaryProgress.fraction {
+                        ProgressView(value: fraction).tint(.themePrimaryAccent)
+                    }
+                    HStack(spacing: newTranscriptionAction == nil ? 8 : 12) {
+                    Button { transcriptionManager.cancelProcessing() } label: {
+                        MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.bordered).tint(.themePrimaryAccent)
+                        .accessibilityIdentifier("noteDetailCancelGenerationButton")
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
+                        }
+                    if let newTranscriptionAction {
+                        NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction)
+                    }
+                    }
+                }
+                    .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
+                    .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
+                    .frame(maxWidth: .infinity).background(Color.themeBackground)
+    }
+
     private var transcriptionAndSummaryFooter: some View {
         VStack(spacing: 8) {
             if selectedTab == "Summary" {
@@ -214,8 +233,9 @@ extension NoteDetailView {
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
             }
-            if hasTranscript {
-                HStack(spacing: 8) {
+            if hasTranscript || newTranscriptionAction != nil {
+                HStack(spacing: newTranscriptionAction == nil ? 8 : 12) {
+                    if hasTranscript {
                     Menu {
                         ForEach(LocalSummaryTemplate.allCases) { template in
                             Button { selectTemplate(template) } label: {
@@ -241,8 +261,18 @@ extension NoteDetailView {
                     }.buttonStyle(.borderedProminent).tint(.themePrimaryAccent)
                         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
+                        }
+                    } else { Spacer() }
+                    if let newTranscriptionAction {
+                        NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction)
+                    }
                 }
             }
-        }.padding(.horizontal,16).padding(.vertical,8).background(Color.themeBackground)
+        }
+        .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
+        .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
+        .frame(maxWidth: .infinity).background(Color.themeBackground)
     }
 }

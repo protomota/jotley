@@ -1,11 +1,15 @@
 import SwiftUI
+import UIKit
 
 struct MainTabView: View {
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @ObservedObject private var summaryNotifications = JotleySummaryNotifications.shared
     @State private var summaryNavigationID = UUID()
-    @State private var navigationPath = NavigationPath()
+    @State private var duoFooterHeight: CGFloat = 92
+    @State private var windowBounds: CGRect = .zero
+    @State private var detailLeadingEdge: CGFloat = 0
+    @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
     @State private var showingSettings = false
     @State private var showingWelcome = false
     @State private var replayAfterSettings = false
@@ -22,39 +26,99 @@ struct MainTabView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    private var usesExpandedPhoneLayout: Bool {
+        horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    private var usesCornerCaptureButton: Bool {
+        usesExpandedPhoneLayout || MobileDeviceEligibility.identifier == "iPhone19,4"
+    }
+
+    private var usesSideBySideFooter: Bool {
+        usesExpandedPhoneLayout && detailLeadingEdge > windowBounds.minX + 1
+    }
+
+    private var usesWindowFooter: Bool {
+        usesCornerCaptureButton && (!usesExpandedPhoneLayout || usesSideBySideFooter)
+    }
+
     var body: some View {
-        ZStack {
-            if horizontalSizeClass == .regular {
-                NavigationSplitView(columnVisibility: $columnVisibility) {
-                    notesList
-                        .navigationSplitViewColumnWidth(min: 380, ideal: 420, max: 480)
-                        .overlay(alignment: .trailing) {
-                            Rectangle()
-                                .fill(Color.primary.opacity(0.2))
-                                .frame(width: 1)
-                                .ignoresSafeArea()
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
-                        }
-                } detail: {
-                    NavigationStack {
-                        if let selectedNoteId {
-                            // Reset the fetch and tab/editor state when another note is selected.
-                            NoteDetailByIdView(noteId: selectedNoteId).id(selectedNoteId).id(summaryNavigationID)
-                        }
-                        else { ContentUnavailableView("Select a Note", systemImage: "note.text", description: Text("Choose a note or tap + to transcribe live.")) }
+        // One navigation container survives folds, rotations and window resizing.
+        // Replacing a split view with a separate stack loses the current detail's
+        // tab, editor and sheet state when iPhone Duo changes displays.
+        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
+            notesList
+                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 420)
+                .overlay(alignment: .trailing) {
+                    if !usesExpandedPhoneLayout {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.2))
+                            .frame(width: 1)
+                            .ignoresSafeArea()
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
-                .navigationSplitViewStyle(.balanced)
-            } else {
-                NavigationStack(path: $navigationPath) {
-                    notesList
-                        .navigationDestination(for: UUID.self) { id in
-                            NoteDetailByIdView(noteId: id).id(summaryNavigationID)
+        } detail: {
+            Group {
+                if let selectedNoteId {
+                    NoteDetailByIdView(noteId: selectedNoteId, newTranscriptionAction: usesCornerCaptureButton ? { handleWidgetAction(.start) } : nil).id(selectedNoteId).id(summaryNavigationID)
+                } else {
+                    ContentUnavailableView("Select a Note", systemImage: "note.text", description: Text("Choose a note or tap + to transcribe live."))
+                }
+            }
+            .toolbar(.visible, for: .navigationBar)
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { detailLeadingEdge = $0 }
+            .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
+            .safeAreaPadding(.bottom, usesCornerCaptureButton && !usesWindowFooter ? duoFooterHeight : 0)
+            // Keep the footer inside the native detail presentation. The Notes
+            // drawer and its dimming layer must cover all detail controls.
+            .overlayPreferenceValue(NoteFooterContentKey.self) { footers in
+                if usesCornerCaptureButton && !usesWindowFooter {
+                    GeometryReader { geometry in
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            Group {
+                                if let selectedNoteId, let footer = footers[selectedNoteId] {
+                                    footer
+                                } else {
+                                    cornerCaptureFooter
+                                }
+                            }
+                            .frame(width: windowBounds.width > 0 ? windowBounds.width : geometry.size.width)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
                         }
+                        .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottomTrailing)
+                        .offset(x: windowBounds.isEmpty ? 0 : windowBounds.maxX - geometry.frame(in: .global).maxX)
+                    }
+                    .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
                 }
             }
         }
+        .navigationSplitViewStyle(.balanced)
+        .ignoresSafeArea(.container, edges: usesWindowFooter ? .bottom : [])
+        .safeAreaPadding(.bottom, usesWindowFooter ? duoFooterHeight : 0)
+        .overlayPreferenceValue(NoteFooterContentKey.self) { footers in
+            // Adjacent columns share a device-wide bar. A drawer instead uses
+            // the detail-hosted bar above, beneath the system's presentation.
+            if usesWindowFooter {
+                GeometryReader { geometry in
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Group {
+                            if let selectedNoteId,
+                               usesExpandedPhoneLayout || preferredCompactColumn == .detail,
+                               let footer = footers[selectedNoteId] { footer }
+                            else { cornerCaptureFooter }
+                        }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                }
+                .ignoresSafeArea(.container, edges: [.leading, .trailing, .bottom])
+            }
+        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { windowBounds = $0 }
         .preferredColorScheme(themeManager.effectiveColorScheme)
         .observeThemeChanges()
         .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
@@ -133,11 +197,20 @@ struct MainTabView: View {
     }
     private func openNote(_ id: UUID) {
         guard (try? persistenceController.notes().contains { $0.localNoteID == id }) == true else { return }
-        if horizontalSizeClass == .regular { selectedNoteId = id }
-        else { navigationPath = NavigationPath(); navigationPath.append(id) }
+        selectedNoteId = id
+        preferredCompactColumn = .detail
     }
+    private var cornerCaptureFooter: some View {
+        HStack {
+            Spacer()
+            NotesNewTranscriptionButton(diameter: 58) { handleWidgetAction(.start) }
+        }
+        .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 26)
+        .background(Color.themeBackground)
+    }
+
     private var notesList: some View {
-        NotesListView(navigationPath: $navigationPath, usesSplitView: horizontalSizeClass == .regular, showingSettings: $showingSettings,
+        NotesListView(onSelectNote: openNote, showsNewTranscriptionButton: !usesCornerCaptureButton, usesSplitView: horizontalSizeClass == .regular, showingSettings: $showingSettings,
             selectedNoteId: $selectedNoteId,
             showingTranscriptionModal: $showingTranscriptionModal, columnVisibility: $columnVisibility, newTranscriptionNote: $newTranscriptionNote)
     }

@@ -3,7 +3,8 @@ import CoreData
 import UIKit
 
 struct NotesListView: View {
-    @Binding var navigationPath: NavigationPath
+    let onSelectNote: (UUID) -> Void
+    let showsNewTranscriptionButton: Bool
     let usesSplitView: Bool
     @Binding var showingSettings: Bool
     @Binding var selectedNoteId: UUID?
@@ -118,7 +119,10 @@ struct NotesListView: View {
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: isSearching)
-                .padding(.top, 8)
+                // Align the custom header with the unfolded iPhone's status row.
+                // Settings stays 44 points; the whole header moves together.
+                .padding(.top, !showsNewTranscriptionButton && !usesIPadLayout ? 26 : 8)
+                .padding(.leading, !showsNewTranscriptionButton && !usesIPadLayout ? 8 : 0)
                 .padding(.bottom, 12)
                 .padding(.horizontal, 16)
                 .background(Color.themeBackground)
@@ -222,13 +226,7 @@ struct NotesListView: View {
                                         // the row openable — the old `if let note.id` silently dropped
                                         // the tap, so the note looked unselectable.
                                         let noteId = ensureStableNoteID(for: note)
-                                        selectedNoteId = noteId
-
-                                        // Use the container’s mode: the sidebar can report a
-                                        // compact size class even while the app is split.
-                                        if !usesSplitView {
-                                            navigationPath.append(noteId)
-                                        }
+                                        onSelectNote(noteId)
                                     } label: {
                                         NoteRowView(note: note, isSelected: rowIsSelected)
                                             .contentShape(Rectangle())
@@ -266,7 +264,6 @@ struct NotesListView: View {
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .background(Color.themeBackground)
-            .navigationBarHidden(!usesIPadLayout)
             .navigationBarTitleDisplayMode(.inline)
             } // End of VStack
 
@@ -278,28 +275,21 @@ struct NotesListView: View {
                         settingsButton.padding(.leading, 20).padding(.bottom, 8)
                     }
                     Spacer()
-                    Button(action: {
-                        handleCreateNewNoteTapped()
-                    }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.themePrimaryAccent)
-                                .frame(width: 56, height: 56)
-
-                            Image(systemName: "plus")
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                    if showsNewTranscriptionButton {
+                        NotesNewTranscriptionButton(action: handleCreateNewNoteTapped)
+                            .padding(.trailing, 20)
+                            .padding(.bottom, 8)
                     }
-                    .accessibilityIdentifier("notesListNewNoteButton")
-                    .accessibilityLabel("New live transcription")
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 8)
                 }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
+        // The custom header occupies the status/toolbar row on the inner display.
+        // Otherwise the portrait drawer reserves that row again above the gear.
+        .ignoresSafeArea(.container, edges: usesSplitView && !usesIPadLayout ? .top : [])
+        // Apply to the sidebar root, including its custom header. Hiding only
+        // the List leaves an empty navigation bar above the Duo portrait drawer.
+        .toolbar(usesIPadLayout ? .visible : .hidden, for: .navigationBar)
         .sheet(isPresented: $showingFolderManagement) {
             FolderManagementSheet()
         }

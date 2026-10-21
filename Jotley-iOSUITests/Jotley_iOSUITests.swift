@@ -8,6 +8,57 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testDuoCornerCaptureStaysClearOfNoteActions() throws {
+        guard ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4" else {
+            throw XCTSkip("Requires iPhone Duo")
+        }
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Duo interface checks","folder":"Work","tags":["Planning"],"transcript":"Maya will review the launch plan on Friday.","summary":"## Decisions\n- Review the launch plan Friday."}]"###
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            app.launch()
+            let row = app.buttons.containing(.staticText, identifier: "Duo interface checks").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            let plus = app.buttons["notesListNewNoteButton"]
+            XCTAssertTrue(plus.waitForExistence(timeout: 5)); XCTAssertTrue(plus.isHittable)
+            XCTAssertEqual(app.buttons.matching(identifier: "notesListNewNoteButton").count, 1)
+            XCTAssertGreaterThanOrEqual(plus.frame.width, 44)
+            XCTAssertLessThanOrEqual(plus.frame.width, 64)
+            XCTAssertGreaterThanOrEqual(app.frame.maxX - plus.frame.maxX, 0)
+            XCTAssertLessThanOrEqual(app.frame.maxX - plus.frame.maxX, 24)
+            for tab in ["noteDetailSummaryTab", "noteDetailTranscriptTab"] {
+                app.buttons[tab].tap()
+                let regenerate = app.buttons["noteDetailGenerateSummaryButton"]
+                XCTAssertTrue(regenerate.isHittable)
+                XCTAssertFalse(plus.frame.intersects(regenerate.frame), "The corner + must never cover Regenerate Summary")
+                XCTAssertEqual(plus.frame.height, regenerate.frame.height, accuracy: 1)
+                XCTAssertEqual(plus.frame.midY, regenerate.frame.midY, accuracy: 1,
+                               "The + and primary note action must share the same horizontal row")
+                XCTAssertTrue(app.buttons["noteDetailShareButton"].isHittable)
+                XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].isHittable)
+            }
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "Duo corner controls - \(orientation.rawValue)"
+            attachment.lifetime = .keepAlways; add(attachment)
+            plus.tap()
+            let pause = app.buttons["transcriptionPauseButton"]
+            XCTAssertTrue(pause.waitForExistence(timeout: 10)); pause.tap()
+            XCTAssertEqual(pause.label, "Resume transcription"); pause.tap()
+            XCTAssertEqual(pause.label, "Pause transcription")
+            app.buttons["transcriptionStopButton"].tap()
+            XCTAssertTrue(app.staticTexts["Completed transcript."].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].isHittable)
+            app.buttons["noteDetailContinueTranscriptionButton"].tap()
+            XCTAssertTrue(pause.waitForExistence(timeout: 10))
+            app.buttons["transcriptionCloseButton"].tap()
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
+            app.terminate()
+        }
+    }
+
     @MainActor func testWelcomeSetupPersistsAndCanBeReopenedWithoutLosingNotes() throws {
         let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
         XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
@@ -173,6 +224,7 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
         app.launchEnvironment["JOTLEY_TEST_SUMMARY_TAGS"] = "1"
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchArguments = ["-jotleySummaryNotificationsEnabled", "NO"]
         app.launch()
         let row = app.buttons.containing(.staticText, identifier: "Tag replacement").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
@@ -678,6 +730,7 @@ final class Jotley_iOSUITests: XCTestCase {
     #endif
 
     @MainActor func testLiveTranscriptFillsFromTopThenFollowsBottom() throws {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
@@ -691,7 +744,10 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(viewport.waitForExistence(timeout: 10))
         let first = viewport.staticTexts["First spoken words."].firstMatch
         XCTAssertTrue(first.waitForExistence(timeout: 10))
-        XCTAssertGreaterThan(viewport.frame.height, 100)
+        let roomyViewport = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in viewport.frame.height > 100 }, object: nil)
+        let layout = XCTAttachment(screenshot: app.screenshot()); layout.name = "Live capture viewport"; layout.lifetime = .keepAlways; add(layout)
+        wait(for: [roomyViewport], timeout: 10)
+        XCTAssertGreaterThan(viewport.frame.height, 100, app.debugDescription)
         let firstY = first.frame.minY
         XCTAssertGreaterThanOrEqual(firstY, viewport.frame.minY)
         XCTAssertLessThan(firstY - viewport.frame.minY, 60, "A new transcript must start near the top, with blank space below")
@@ -875,7 +931,7 @@ final class Jotley_iOSUITests: XCTestCase {
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Live-only preflight failure does not advertise active capture"
         screenshot.lifetime = .keepAlways; add(screenshot)
-        app.buttons["Close"].tap()
+        app.buttons["transcriptionCloseButton"].tap()
         XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["noteDetailTranscribeAudioButton"].exists)
         app.buttons["noteDetailMoreActionsButton"].tap()
@@ -887,7 +943,7 @@ final class Jotley_iOSUITests: XCTestCase {
 
     @MainActor func testSpeechSettingsExplainUnsupportedLanguage() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-transcriptionLanguage", "zxx"]
+        app.launchArguments = ["-transcriptionLanguage", "zxx", "-jotleyWelcomeCompleted.v1", "YES"]
         app.launch()
         let settings = app.buttons["notesListSettingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: 15)); settings.tap()
@@ -905,7 +961,9 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testAppearanceSwitchesBackAndForthAndPersists() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication()
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
         let settings = app.buttons["notesListSettingsButton"]
         let picker = app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch
         for mode in ["Light", "Dark", "Light", "Dark"] {
@@ -928,7 +986,9 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testSettingsShowsVersionAndBuildOnOneLine() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication()
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
         let settings = app.buttons["notesListSettingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: 15)); settings.tap()
         let version = app.staticTexts["settingsAppVersion"]
@@ -944,7 +1004,10 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testLocalNotesSearchAndControls() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
         let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? ""
         if !((model.hasPrefix("iPhone18,") || model.hasPrefix("iPhone19,")) || model.hasPrefix("iPad17,")) {
             XCTAssertTrue(app.staticTexts["Jotley Unavailable"].waitForExistence(timeout: 15))
@@ -995,7 +1058,7 @@ final class Jotley_iOSUITests: XCTestCase {
             alert.buttons["OK"].tap()
             XCTAssertEqual(app.staticTexts["transcriptionDurationText"].label, "0m 0s")
             XCTAssertFalse(app.buttons["transcriptionStopButton"].exists)
-            app.buttons["Close"].tap()
+            app.buttons["transcriptionCloseButton"].tap()
         } else {
             XCTAssertEqual(pause.label, "Pause transcription")
             app.buttons["transcriptionStopButton"].tap()
@@ -1006,9 +1069,11 @@ final class Jotley_iOSUITests: XCTestCase {
 
 
     @MainActor func testLiveOnlyNoteKeepsTemplatesAndContinueActionWithoutAudioControls() throws {
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["-transcriptionLanguage", "zxx"]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Live transcript","folder":"","tags":[],"transcript":"Mina ships Friday.","summary":""}]"##
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
         app.launch()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
@@ -1026,10 +1091,11 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(continued.exists); XCTAssertEqual(continued.label, "Continue Transcription")
         XCTAssertFalse(app.buttons["noteDetailPlayRecordingButton"].exists)
         continued.tap()
-        let failure = app.alerts["Transcription Needs Attention"]
-        XCTAssertTrue(failure.waitForExistence(timeout: 15)); failure.buttons["OK"].tap()
-        app.buttons["Close"].tap()
-        XCTAssertTrue(app.staticTexts["Mina ships Friday."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["transcriptionPauseButton"].waitForExistence(timeout: 10))
+        app.buttons["transcriptionCloseButton"].tap()
+        XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
+        app.buttons["noteDetailTranscriptTab"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Completed transcript.")).firstMatch.waitForExistence(timeout: 10))
     }
 
     @MainActor func testExistingTranscriptTemplatesStayVisibleWithoutChangingTabs() throws {
@@ -1056,7 +1122,10 @@ final class Jotley_iOSUITests: XCTestCase {
 
     @MainActor func testOriginalShareMenuExportsLocalMarkdownWithoutSending() throws {
         guard ["iPhone18,", "iPhone19,"].contains(where: { ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"]?.hasPrefix($0) == true }) else { return }
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
         XCTAssertTrue(app.buttons["notesListNewNoteButton"].waitForExistence(timeout: 15))
         app.buttons["notesListNewNoteButton"].tap()
         stopNewTranscriptionAndOpenNote(app)
@@ -1077,13 +1146,13 @@ final class Jotley_iOSUITests: XCTestCase {
         let close = app.buttons["Close"]
         XCTAssertTrue(close.exists); close.tap()
         XCTAssertTrue(share.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.otherElements["ActivityListView"].exists)
+        XCTAssertFalse(app.otherElements["ActivityListView"].isHittable)
         share.tap()
         let textShare = app.buttons["shareNoteButton"]
         XCTAssertTrue(textShare.waitForExistence(timeout: 5)); textShare.tap()
         XCTAssertTrue(app.cells["Copy"].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(close.exists); close.tap()
-        XCTAssertFalse(app.otherElements["ActivityListView"].exists)
+        XCTAssertFalse(app.otherElements["ActivityListView"].isHittable)
     }
 
     #if DEBUG
@@ -1092,9 +1161,13 @@ final class Jotley_iOSUITests: XCTestCase {
         let settings = app.buttons["notesListSettingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10)); settings.tap()
         let feedback = app.buttons["settingsFeedbackJotley"]
-        for _ in 0..<8 where !feedback.isHittable { app.swipeUp() }
+        let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+        for _ in 0..<12 where !feedback.isHittable {
+            if feedback.exists && feedback.frame.maxY < form.frame.minY { form.swipeDown() }
+            else { form.swipeUp() }
+        }
         XCTAssertTrue(feedback.isHittable, app.debugDescription)
-        XCTAssertTrue(app.buttons["settingsDoneButton"].isHittable)
+        XCTAssertTrue(app.buttons["settingsDoneButton"].isHittable, app.debugDescription)
         XCTAssertFalse(app.buttons["settingsSupportJotleyCard"].exists)
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }

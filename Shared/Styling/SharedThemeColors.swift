@@ -247,17 +247,24 @@ extension Color {
             }
             return true
             #else
-            // iOS: read the screen-level trait. The previous implementation
-            // walked UIApplication.shared.connectedScenes → UIWindowScene →
-            // windows → traitCollection on every cache miss; with the 1 s TTL
-            // above, that FrontBoard-backed walk ran once per second on the
-            // main thread mid-frame and visibly hitched the playback waveform
-            // (which resolves theme colors on every 10 Hz progress tick). No
-            // window in the app overrides userInterfaceStyle, so the screen's
-            // trait collection always gives the same answer as the key window.
-            return UIScreen.main.traitCollection.userInterfaceStyle == .dark
+            // SwiftUI reports the active view's appearance. There is no single
+            // main screen on a two-display iPhone, and polling scenes here also
+            // stalls frequent waveform updates.
+            darkThemeCacheLock.lock()
+            let isDark = observedSystemIsDark
+            darkThemeCacheLock.unlock()
+            return isDark
             #endif
         }
+    }
+
+    private static var observedSystemIsDark = false
+    static func recordSystemColorScheme(_ scheme: ColorScheme) {
+        darkThemeCacheLock.lock()
+        observedSystemIsDark = scheme == .dark
+        cachedDarkTheme = nil
+        darkThemeCacheGeneration &+= 1
+        darkThemeCacheLock.unlock()
     }
 
     // Dynamic theme primary accent color
@@ -291,7 +298,8 @@ struct ThemeObserver: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .themeDidChange)) { _ in
                 refreshToken = UUID()
             }
-            .onChange(of: colorScheme) { _, _ in
+            .onChange(of: colorScheme, initial: true) { _, scheme in
+                Color.recordSystemColorScheme(scheme)
                 // System appearance can change without a manual preference change.
                 themeManager.notifySystemAppearanceChanged()
             }

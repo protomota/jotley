@@ -3,11 +3,13 @@ import CoreData
 
 struct NoteDetailByIdView: View {
     @FetchRequest private var notes: FetchedResults<Note>
-    init(noteId: UUID) {
+    private let newTranscriptionAction: (() -> Void)?
+    init(noteId: UUID, newTranscriptionAction: (() -> Void)? = nil) {
+        self.newTranscriptionAction = newTranscriptionAction
         _notes = FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "id == %@", noteId as CVarArg))
     }
     var body: some View {
-        if let note = notes.first { NoteDetailView(note: note) }
+        if let note = notes.first { NoteDetailView(note: note, newTranscriptionAction: newTranscriptionAction) }
         else { ContentUnavailableView("Note Unavailable", systemImage: "note.text") }
     }
 }
@@ -15,9 +17,11 @@ struct NoteDetailByIdView: View {
 struct NoteDetailView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var note: Note
+    var newTranscriptionAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
+    @State var duoPrimaryActionHeight: CGFloat = 58
     @State var selectedTab = "Transcript"
     @State var isEditingTitle = false
     @State var editedTitle = ""

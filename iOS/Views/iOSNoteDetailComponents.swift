@@ -8,6 +8,33 @@ import CoreData
 
 import SwiftUI
 
+struct NoteFooterContentKey: PreferenceKey {
+    static var defaultValue: [UUID: AnyView] = [:]
+    static func reduce(value: inout [UUID: AnyView], nextValue: () -> [UUID: AnyView]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+struct NotesNewTranscriptionButton: View {
+    var diameter: CGFloat = 56
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: diameter / 2, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: diameter, height: diameter)
+                .background(Circle().fill(Color.themePrimaryAccent))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+        .accessibilityIdentifier("notesListNewNoteButton")
+        .accessibilityLabel("New live transcription")
+    }
+}
+
 // MARK: - iOS Tag View
 
 struct iOSTagView: View {

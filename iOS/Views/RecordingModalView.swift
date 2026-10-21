@@ -12,12 +12,14 @@ struct LiveTranscriptionView: View {
     @State private var hasStartedTranscription = false
     var isResuming: Bool { existingNote != nil && !isNewTranscription }
     var body: some View {
+        GeometryReader { geometry in
+        let compactControls = geometry.size.height < 740
         VStack(spacing: 0) {
             Capsule().fill(Color(white: 0.4)).frame(width: 36, height: 5).padding(.top,8)
             header
-            VStack(spacing: 24) {
-                Spacer().frame(height: 20)
-                waveformSection
+            VStack(spacing: compactControls ? 12 : 24) {
+                Spacer().frame(height: compactControls ? 4 : 20)
+                waveformSection.frame(height: compactControls ? 64 : 120)
                 Text(transcriptionManager.transcriptionState == .listening ? "Transcribing" : transcriptionManager.transcriptionState == .paused ? "Paused" : "Ready")
                     .font(.title3).fontWeight(.medium).foregroundColor(.gray)
                     .opacity(transcriptionManager.transcriptionState == .idle && !hasStartedTranscription ? 0 : 1)
@@ -25,9 +27,11 @@ struct LiveTranscriptionView: View {
                     .accessibilityIdentifier("transcriptionStatusText")
                 timeDisplay
                 transcriptionControls
-                if transcriptionManager.busy {
-                    ProgressView().accessibilityLabel(transcriptionManager.transcriptionState == .idle ? "Preparing on-device speech" : "Saving transcript")
-                }
+                ProgressView()
+                    .frame(height: 20)
+                    .opacity(transcriptionManager.busy ? 1 : 0)
+                    .accessibilityHidden(!transcriptionManager.busy)
+                    .accessibilityLabel(transcriptionManager.transcriptionState == .idle ? "Preparing on-device speech" : "Saving transcript")
             }.padding(.horizontal,20).padding(.bottom,16)
             ScrollViewReader { proxy in
                 ScrollView {
@@ -50,7 +54,9 @@ struct LiveTranscriptionView: View {
                     proxy.scrollTo("liveTranscriptBottom", anchor: .bottom)
                 }
             }
-            Spacer()
+            .frame(maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.themeBackground)
         .presentationDetents([.large])

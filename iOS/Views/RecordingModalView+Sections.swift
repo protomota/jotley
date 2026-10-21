@@ -27,7 +27,6 @@ extension LiveTranscriptionView {
             isTranscribing: transcriptionManager.transcriptionState == .listening,
             isPaused: transcriptionManager.transcriptionState == .paused
         )
-        .frame(height: 120)
     }
 
     // MARK: - Time Display
