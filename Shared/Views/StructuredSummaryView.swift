@@ -491,10 +491,12 @@ struct StructuredSummaryBlockView: View {
     }
 
     private func row(_ section: StructuredSummary.Section, group: [StructuredSummary.Item]) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        // Align to the task's first text baseline, including when a padded
+        // owner chip makes the text group taller or the task wraps.
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: Self.rowImage(section.style))
-                .font(.title3).foregroundStyle(palette.accent)
-                .frame(width: 26).padding(.top, 1).accessibilityHidden(true)
+                .font(.body).foregroundStyle(palette.accent)
+                .frame(width: 26).accessibilityHidden(true)
             groupText(group, emphasizeLabel: false)
         }.padding(.vertical, 12)
     }
