@@ -43,12 +43,17 @@ extension LiveTranscriptionView {
 
     var transcriptionControls: some View {
         HStack(spacing: 24) {
-            Color.clear.frame(width: 44, height: 44)
+            Color.clear.frame(width: 60, height: 60)
             Button(action: toggleTranscriptionPause) {
                 Image(systemName: transcriptionManager.transcriptionState == .listening ? "pause.fill" : transcriptionManager.transcriptionState == .paused ? "play.fill" : "arrow.clockwise")
-                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themePrimaryAccent)
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 84, height: 84)
+                    .background(Color.themePrimaryAccent, in: Circle())
+                    .contentShape(Circle())
+                    .shadow(color: Color.themePrimaryAccent.opacity(0.3), radius: 10, y: 3)
             }
-            .buttonStyle(JotleyGlassButtonStyle(circular: true))
+            .buttonStyle(.plain)
             .disabled(transcriptionManager.busy || isFinishing)
             .accessibilityIdentifier("transcriptionPauseButton")
             .accessibilityLabel(transcriptionManager.transcriptionState == .listening ? "Pause transcription" : transcriptionManager.transcriptionState == .paused ? "Resume transcription" : "Try transcription again")
@@ -56,14 +61,15 @@ extension LiveTranscriptionView {
             if transcriptionManager.transcriptionState != .idle {
                 Button(action: finishAndClose) {
                     Image(systemName: "stop.fill")
-                        .font(.system(size: 18)).foregroundStyle(Color.themePrimaryAccent)
+                        .font(.system(size: 22)).foregroundStyle(Color.themePrimaryAccent)
+                        .frame(width: 60, height: 60)
                 }
-                .buttonStyle(JotleyGlassButtonStyle(circular: true))
+                .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 60))
                 .disabled(transcriptionManager.busy || isFinishing)
                 .accessibilityLabel("Stop transcription")
                 .accessibilityIdentifier("transcriptionStopButton")
             } else {
-                Color.clear.frame(width: 44, height: 44)
+                Color.clear.frame(width: 60, height: 60)
             }
         }
     }

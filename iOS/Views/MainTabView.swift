@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct MainTabView: View {
+    private let minimumSidebarWidth: CGFloat = 280
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @ObservedObject private var summaryNotifications = JotleySummaryNotifications.shared
@@ -36,11 +37,23 @@ struct MainTabView: View {
     }
 
     private var usesSideBySideFooter: Bool {
-        usesExpandedPhoneLayout && detailBounds.minX > windowBounds.minX + 1
+        usesExpandedPhoneLayout && detailBounds.minX >= windowBounds.minX + minimumSidebarWidth
     }
 
     private var usesWindowFooter: Bool {
-        usesCornerCaptureButton && (!usesExpandedPhoneLayout || usesSideBySideFooter)
+        // Keep the native overlay-drawer route on Duo. A landscape phone's
+        // leading safe area also needs the window host, without being a sidebar.
+        usesCornerCaptureButton && (!usesExpandedPhoneLayout || detailBounds.minX > windowBounds.minX + 1)
+    }
+
+    private var footerBounds: CGRect {
+        // A persistent sidebar owns its own space. Only single-column screens
+        // and overlay drawers use controls centered on the whole window.
+        guard usesSideBySideFooter else { return windowBounds }
+        // The detail's trailing safe area reserves the system toolbar above.
+        // Bottom actions can extend below that rail to the actual window edge.
+        return CGRect(x: detailBounds.minX, y: windowBounds.minY,
+                      width: windowBounds.maxX - detailBounds.minX, height: windowBounds.height)
     }
 
     var body: some View {
@@ -49,7 +62,7 @@ struct MainTabView: View {
         // tab, editor and sheet state when iPhone Duo changes displays.
         NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
             notesList
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 420)
+                .navigationSplitViewColumnWidth(min: minimumSidebarWidth, ideal: 320, max: 420)
                 .overlay(alignment: .trailing) {
                     if !usesExpandedPhoneLayout {
                         Rectangle()
@@ -98,8 +111,8 @@ struct MainTabView: View {
                        let footer = footers[selectedNoteId] { footer }
                     else { cornerCaptureFooter }
                 }
-                .frame(width: windowBounds.isEmpty ? nil : windowBounds.width)
-                .offset(x: windowBounds.isEmpty ? 0 : windowBounds.midX - windowContentBounds.midX)
+                .frame(width: footerBounds.isEmpty ? nil : footerBounds.width)
+                .offset(x: footerBounds.isEmpty ? 0 : footerBounds.midX - windowContentBounds.midX)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { duoFooterHeight = $0 }
                 .ignoresSafeArea(.container, edges: .bottom)
             }

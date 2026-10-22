@@ -139,56 +139,52 @@ struct AddTagSheetView: View {
     }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                TextField("Enter tag name", text: $newTagText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isTextFieldFocused)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                    .tint(Color.themePrimaryAccent)
-                    .submitLabel(.done).onSubmit(addTag)
-                    .onChange(of: newTagText) { _, newValue in
-                        let formatted = getFormattedTag(newValue)
-                        if newTagText != formatted {
-                            newTagText = formatted
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    TextField("Enter tag name", text: $newTagText)
+                        .font(.body).foregroundStyle(Color.themeTextPrimary)
+                        .textFieldStyle(.plain)
+                        .focused($isTextFieldFocused)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .tint(Color.themePrimaryAccent)
+                        .padding(.horizontal, 16).frame(minHeight: 56)
+                        .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14).strokeBorder(
+                                isTextFieldFocused ? Color.themePrimaryAccent : Color.themeTextSecondary.opacity(0.25), lineWidth: 1.5)
                         }
+                        .submitLabel(.done).onSubmit(addTag)
+                        .accessibilityIdentifier("addTagTextField")
+                    Button(action: addTag) {
+                        MobileActionLabel("Add Tag", systemImage: "plus")
+                            .font(.headline).frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal)
-
-                Button {
-                    addTag()
-                } label: {
-                    Text("Add Tag")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(newTagText.isEmpty ? Color.gray : Color.themePrimaryAccent)
-                        )
+                    .buttonStyle(JotleyGlassButtonStyle())
+                    .disabled(getCanonicalTag(newTagText).isEmpty)
+                    .accessibilityIdentifier("addTagSaveButton")
                 }
-                .disabled(newTagText.isEmpty)
-                .padding(.horizontal)
-
-                Spacer()
+                .padding(16)
             }
-            .padding(.top, 20)
+            .scrollBounceBehavior(.basedOnSize)
+            .background(Color.themeBackground)
             .navigationTitle("Add Tag")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isPresented = false
-                    }
+                    Button("Cancel") { newTagText = ""; isPresented = false }
+                        .accessibilityIdentifier("addTagCancelButton")
                 }
             }
             .tint(Color.themeActionText)
-            .onAppear {
-                isTextFieldFocused = true
-            }
+            .onAppear { isTextFieldFocused = true }
         }
+        .presentationDetents([.height(220)])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(24)
+        .presentationBackground(Color.themeBackground)
+        .observeThemeChanges()
     }
 
     private func addTag() {
@@ -196,6 +192,7 @@ struct AddTagSheetView: View {
 
         let formattedTag = getFormattedTag(newTagText)
         let canonicalNewTag = getCanonicalTag(formattedTag)
+        guard !canonicalNewTag.isEmpty else { return }
 
         // Check if a similar tag already exists (case-insensitive)
         let tagExists = currentTags.contains { existingTag in

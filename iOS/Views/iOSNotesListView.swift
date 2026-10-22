@@ -123,9 +123,11 @@ struct NotesListView: View {
                 // Align the custom header with the unfolded iPhone's status row.
                 // Settings stays 44 points; the whole header moves together.
                 .padding(.top, !showsNewTranscriptionButton && !usesIPadLayout ? 26 : 8)
-                .padding(.leading, !showsNewTranscriptionButton && !usesIPadLayout ? 8 : 0)
                 .padding(.bottom, 12)
-                .padding(.horizontal, 16)
+                // The glyph has ten points inside its 44-point touch target.
+                // A smaller phone inset aligns it with the notes below.
+                .padding(.leading, usesIPadLayout ? 16 : 8)
+                .padding(.trailing, 16)
                 .background(Color.themeBackground)
                 // Keep the iPhone gear shadow above the list's opaque scroll surface.
                 .zIndex(usesIPadLayout ? 0 : 1)

@@ -90,6 +90,9 @@ final class Jotley_iOSUITests: XCTestCase {
             let gear = app.buttons["notesListSettingsButton"]
             let folders = app.buttons["notesListFolderDrawerButton"]
             XCTAssertEqual(gear.frame.size, folders.frame.size)
+            if orientation == .portrait {
+                XCTAssertEqual(gear.frame.minX - app.frame.minX, 8, accuracy: 1)
+            }
             gear.tap()
             XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
             app.buttons["settingsDoneButton"].tap()
@@ -100,7 +103,6 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(plus.frame.width, 44)
             XCTAssertEqual(plus.frame.width, 44, accuracy: 1)
             XCTAssertGreaterThanOrEqual(app.frame.maxX - plus.frame.maxX, 0)
-            XCTAssertLessThanOrEqual(app.frame.maxX - plus.frame.maxX, 24)
             for tab in ["noteDetailSummaryTab", "noteDetailTranscriptTab"] {
                 app.buttons[tab].tap()
                 let quickAction = app.buttons[tab == "noteDetailSummaryTab" ? "noteDetailSummaryAskAIButton" : "noteDetailContinueTranscriptionButton"]
@@ -109,7 +111,11 @@ final class Jotley_iOSUITests: XCTestCase {
                 XCTAssertFalse(plus.frame.intersects(quickAction.frame))
                 XCTAssertEqual(quickAction.frame.height, 44, accuracy: 1)
                 XCTAssertEqual(plus.frame.midY, quickAction.frame.midY, accuracy: 1)
-                XCTAssertEqual(quickAction.frame.midX, app.frame.midX, accuracy: 1)
+                let title = app.staticTexts["noteDetailTitle"]
+                let sidebarIsBesideNote = row.isHittable && row.frame.maxX <= title.frame.minX
+                let detailLeading = sidebarIsBesideNote ? title.frame.minX - 16 : app.frame.minX
+                XCTAssertEqual(app.frame.maxX - plus.frame.maxX, 24, accuracy: 1)
+                XCTAssertEqual(quickAction.frame.midX, (detailLeading + app.frame.maxX) / 2, accuracy: 1)
                 XCTAssertTrue(app.buttons["noteDetailShareButton"].isHittable)
                 XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].isHittable)
             }
@@ -118,18 +124,129 @@ final class Jotley_iOSUITests: XCTestCase {
             attachment.lifetime = .keepAlways; add(attachment)
             plus.tap()
             let pause = app.buttons["transcriptionPauseButton"]
-            XCTAssertTrue(pause.waitForExistence(timeout: 10)); XCTAssertEqual(pause.frame.height, 44, accuracy: 1); pause.tap()
+            XCTAssertTrue(pause.waitForExistence(timeout: 10)); XCTAssertEqual(pause.frame.height, 84, accuracy: 1); pause.tap()
             XCTAssertEqual(pause.label, "Resume transcription"); pause.tap()
             XCTAssertEqual(pause.label, "Pause transcription")
-            app.buttons["transcriptionStopButton"].tap()
+            let stop = app.buttons["transcriptionStopButton"]
+            XCTAssertEqual(stop.frame.height, 60, accuracy: 1)
+            let recording = XCTAttachment(screenshot: app.screenshot())
+            recording.name = "Large themed Pause and larger glass Stop"; recording.lifetime = .keepAlways; add(recording)
+            stop.tap()
             XCTAssertTrue(app.staticTexts["Completed transcript."].waitForExistence(timeout: 10))
-            XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].isHittable)
+            let settled = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: app.buttons["noteDetailMoreActionsButton"])
+            wait(for: [settled], timeout: 5)
             app.buttons["noteDetailContinueTranscriptionButton"].tap()
             XCTAssertTrue(pause.waitForExistence(timeout: 10))
             app.buttons["transcriptionCloseButton"].tap()
             XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
             app.terminate()
         }
+    }
+
+    @MainActor func testCompactAddTagSheetSavesAndCancels() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Tag design check","folder":"Work","tags":[],"transcript":"Review Friday’s plan.","summary":""}]"###
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let row = app.buttons.containing(.staticText, identifier: "Tag design check").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let addButton = app.buttons["noteDetailAddTagButton"]
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5)); addButton.tap()
+        let field = app.textFields["addTagTextField"]
+        let save = app.buttons["addTagSaveButton"]
+        let cancel = app.buttons["addTagCancelButton"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(field.frame.height, 52)
+        XCTAssertTrue(save.isHittable && cancel.isHittable)
+        XCTAssertFalse(save.isEnabled)
+        XCTAssertGreaterThan(cancel.frame.minY, app.frame.height * 0.15, "The tag sheet must leave the note visible above it, even with the keyboard")
+        field.tap(); field.typeText("Launch review")
+        XCTAssertTrue(save.isEnabled)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Compact Add Tag with styled input and glass action"; shot.lifetime = .keepAlways; add(shot)
+        // Return also submits the compact form when a hardware keyboard is
+        // connected to a foldable simulator with a separate keyboard surface.
+        field.typeText("\n")
+        let tag = app.descendants(matching: .any)["noteDetailTag-Launch-review"].firstMatch
+        XCTAssertTrue(tag.waitForExistence(timeout: 5))
+        addButton.tap(); XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap(); field.typeText("Draft")
+        cancel.tap()
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["noteDetailTag-Draft"].firstMatch.exists)
+    }
+
+    @MainActor func testFirstSummaryFooterClearsLastTranscriptLine() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        let text = (1...20).map { "Paragraph \($0): Review the next steps and keep a clear record of the conversation." }.joined(separator: "\n\n") + "\n\nFinal line above summary controls."
+        let fixture: [[String: Any]] = [["title": "First summary footer", "folder": "Work", "tags": [], "transcript": text, "summary": ""]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let row = app.buttons.containing(.staticText, identifier: "First summary footer").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let primary = app.buttons["noteDetailGenerateSummaryButton"]
+        XCTAssertTrue(primary.waitForExistence(timeout: 5)); XCTAssertTrue(primary.isHittable)
+        let last = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Final line above summary controls.'")).firstMatch
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<14 {
+            if last.exists && last.isHittable && last.frame.maxY < primary.frame.minY - 8 { break }
+            scroll.swipeUp()
+        }
+        XCTAssertTrue(last.exists && last.isHittable)
+        XCTAssertLessThan(last.frame.maxY, primary.frame.minY - 8)
+        XCTAssertTrue(primary.isHittable)
+        XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].isHittable)
+        XCTAssertLessThan(primary.frame.maxY, app.buttons["noteDetailContinueTranscriptionButton"].frame.minY)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "First-time summary controls above Continue and Plus"; shot.lifetime = .keepAlways; add(shot)
+    }
+
+    @MainActor func testSummaryFooterStaysInDetailColumnWithSidebar() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Column alignment check","folder":"Work","tags":[],"transcript":"Keep the controls with this note, without covering the notes list.","summary":""}]"###
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        let row = app.buttons.containing(.staticText, identifier: "Column alignment check").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        var verifiedSideBySideLayout = false
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            let primary = app.buttons["noteDetailGenerateSummaryButton"]
+            XCTAssertTrue(primary.waitForExistence(timeout: 5))
+            let title = app.staticTexts["noteDetailTitle"]
+            let template = app.buttons["noteDetailTemplatesButton"]
+            let quick = app.buttons["noteDetailContinueTranscriptionButton"]
+            XCTAssertTrue(primary.isHittable && template.isHittable && quick.isHittable)
+            if row.isHittable && row.frame.maxX <= title.frame.minX {
+                verifiedSideBySideLayout = true
+                XCTAssertGreaterThanOrEqual(template.frame.minX, title.frame.minX - 1)
+                XCTAssertGreaterThanOrEqual(primary.frame.minX, title.frame.minX - 1)
+                XCTAssertGreaterThan(quick.frame.minX, row.frame.maxX)
+                XCTAssertEqual(quick.frame.midX, (template.frame.minX + primary.frame.maxX) / 2, accuracy: 1)
+                let plus = app.buttons["notesListNewNoteButton"]
+                if (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone") {
+                    // Foldable app.frame can describe the inactive outer
+                    // display. Both controls must share the active column edge.
+                    XCTAssertEqual(primary.frame.maxX, plus.frame.maxX, accuracy: 1)
+                }
+            }
+            XCTAssertLessThan(primary.frame.maxY, quick.frame.minY)
+            for (index, screen) in XCUIScreen.screens.enumerated() {
+                let capture = XCTAttachment(screenshot: screen.screenshot())
+                capture.name = "Detail-column footer - \(orientation.rawValue) - screen \(index)"
+                capture.lifetime = .keepAlways; add(capture)
+            }
+        }
+        XCTAssertTrue(verifiedSideBySideLayout, "Run this check on an unfolded Duo or iPad with an adjacent sidebar")
     }
 
     @MainActor func testSummaryActionsKeepPaddingAcrossWindowChanges() throws {
@@ -169,8 +286,11 @@ final class Jotley_iOSUITests: XCTestCase {
                     let textWidth = ("Generate Summary" as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)]).width
                     XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 31)
                     XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].isHittable)
+                    if orientation == .portrait {
+                        XCTAssertGreaterThan(primary.frame.minY, app.frame.midY, "First-time generation stays at the bottom")
+                    }
                     XCTAssertLessThan(primary.frame.maxY, app.buttons["noteDetailContinueTranscriptionButton"].frame.minY,
-                                      "First-time generation belongs in the scrolling content above the floating action")
+                                      "First-time generation belongs above the bottom quick actions")
                 }
                 if orientation == .portrait {
                     let isPhone = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone")

@@ -161,11 +161,14 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var circular = false
+    var diameter: CGFloat? = nil
+    var prominent = false
     private var controlHeight: CGFloat {
+        if let diameter { return diameter }
         #if os(macOS)
-        36
+        return 36
         #else
-        44
+        return 44
         #endif
     }
     func makeBody(configuration: Configuration) -> some View {
@@ -178,7 +181,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                     .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
-        .foregroundStyle(configuration.role == .destructive ? Color.red : Color.themeTextPrimary)
+        .foregroundStyle(configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themeTextPrimary)
         .opacity(isEnabled ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -186,10 +189,10 @@ struct JotleyGlassButtonStyle: ButtonStyle {
 
     @ViewBuilder private func background<S: Shape>(in shape: S) -> some View {
         if reduceTransparency {
-            shape.fill(Color.themeBackground)
+            shape.fill(prominent ? Color.themePrimaryAccent : Color.themeBackground)
                 .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
         } else {
-            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: shape)
+            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(prominent ? 1 : 0.12)).interactive(), in: shape)
         }
     }
 }

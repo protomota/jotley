@@ -7,13 +7,6 @@ extension NoteDetailView {
             VStack(spacing: 0) {
                 noteHeaderSection
                 if hasTranscript || hasSummary { noteTabPickerSection }
-                if hasTranscript && !hasSummary {
-                    NoteSummaryActionsLayout(spacing: 8) {
-                        summaryTemplateButton
-                        primarySummaryButton
-                    }
-                    .padding(.horizontal, 16).padding(.bottom, 16)
-                }
                 if selectedTab == "Summary", hasSummary {
                     if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
                         Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written. You can leave this note or lock your phone; the summary keeps going and is saved when it finishes.")
@@ -168,7 +161,10 @@ extension NoteDetailView {
                         iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
                             .accessibilityIdentifier("noteDetailTag-\(tag)")
                     }
-                    Button("Add Tag", systemImage: "plus.circle.fill") { showingAddTag = true }.font(.caption)
+                    Button("Add Tag", systemImage: "plus") { showingAddTag = true }
+                        .font(.caption.weight(.medium))
+                        .buttonStyle(JotleyGlassButtonStyle())
+                        .accessibilityIdentifier("noteDetailAddTagButton")
                 }.padding(.horizontal)
             }.padding(.top,8)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top,8).padding(.bottom,16)
@@ -239,6 +235,21 @@ extension NoteDetailView {
     }
 
     private var transcriptionAndSummaryFooter: some View {
+        VStack(spacing: 12) {
+            if hasTranscript && !hasSummary {
+                NoteSummaryActionsLayout(spacing: 8) {
+                    summaryTemplateButton
+                    primarySummaryButton
+                }
+            }
+            contextualActionsRow
+        }
+        .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
+        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var contextualActionsRow: some View {
         HStack {
             Spacer(minLength: 0)
             contextualNoteAction
@@ -253,9 +264,6 @@ extension NoteDetailView {
                 NotesNewTranscriptionButton(action: newTranscriptionAction)
             }
         }
-        .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder private var contextualNoteAction: some View {
@@ -311,7 +319,7 @@ extension NoteDetailView {
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(JotleyGlassButtonStyle())
+        .buttonStyle(JotleyGlassButtonStyle(prominent: true))
         .modifier(FloatingNoteControlShadow())
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
