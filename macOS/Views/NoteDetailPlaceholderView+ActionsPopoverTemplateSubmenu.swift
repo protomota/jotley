@@ -104,13 +104,7 @@ extension NoteDetailPlaceholderView {
                 .padding(.vertical, 8)
             }
             .frame(width: 260)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-            )
-            .compositingGroup() // Ensures the view renders as a single unit
+            .modifier(MacNoteMenuSurface())
         }
     }
 }

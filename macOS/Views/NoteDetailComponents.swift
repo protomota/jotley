@@ -35,7 +35,7 @@ struct LocalMacAskNoteView: View {
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
     private var canSend: Bool {
-        generation == nil && unavailable == nil && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !showingClear && generation == nil && unavailable == nil && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     var body: some View {
         VStack(spacing: 0) {
@@ -115,22 +115,15 @@ struct LocalMacAskNoteView: View {
                         }
                         .accessibilityIdentifier("askAIQuestionField")
                     Button(action: send) {
-                        Image(systemName: "arrow.up.circle.fill").font(.system(size: 32))
+                        Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
-                    }.buttonStyle(.plain).keyboardShortcut(.return, modifiers: .command)
+                    }.buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 44)).keyboardShortcut(.return, modifiers: .command)
                         .disabled(!canSend)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
-            .alert("Clear Chat History?", isPresented: $showingClear) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear", role: .destructive) {
-                    guard let id = note.id else { return }
-                    do { try store.clearChat(noteID: id); messages = []; error = nil }
-                    catch { self.error = error.localizedDescription }
-                }
-            } message: { Text("Clear the conversation for this note? Its transcript and summary stay saved.") }
+
             .task {
                 guard let id = note.id else { error = "This note is unavailable."; return }
                 do { messages = try store.chatMessages(noteID: id) }
@@ -146,6 +139,21 @@ struct LocalMacAskNoteView: View {
             .modifier(JotleyGlassPanel())
             .presentationBackground(.clear)
             .preferredColorScheme(themeManager.effectiveColorScheme)
+            .allowsHitTesting(!showingClear)
+            .accessibilityHidden(showingClear)
+            .overlay { clearConfirmation }
+            .onChange(of: showingClear) { _, showing in if showing { inputFocused = false } }
+    }
+    @ViewBuilder private var clearConfirmation: some View {
+        if showingClear {
+            JotleyClearChatConfirmation(onCancel: { showingClear = false }, onClear: clearConversation)
+        }
+    }
+    private func clearConversation() {
+        showingClear = false
+        guard let id = note.id else { return }
+        do { try store.clearChat(noteID: id); messages = []; error = nil }
+        catch { self.error = error.localizedDescription }
     }
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -217,15 +225,8 @@ struct LocalMacAskNoteView: View {
 
 private struct MacChatAnswerText: View {
     let content: String
-    private var rendered: AttributedString {
-        let plain = LocalSummary.markdownForDisplay(content)
-            .replacingOccurrences(of: #"(?m)^#{1,6}\h+"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: #"(?m)^[-*]\h+"#, with: "• ", options: .regularExpression)
-        return (try? AttributedString(markdown: plain, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(plain)
-    }
     var body: some View {
-        Text(rendered).font(.system(size: 15)).foregroundStyle(Color.themeTextPrimary)
-            .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+        JotleyChatAnswerText(content: content, font: .system(size: 15))
     }
 }
 

@@ -337,7 +337,7 @@ struct LocalAskNoteView: View {
                             if generation != nil {
                                 VStack(alignment: .leading, spacing: 8) {
                                     if preview.isEmpty { ProgressView("Thinking on this device…") }
-                                    else { MarkdownContentView(content: preview) }
+                                    else { JotleyChatAnswerText(content: preview) }
                                     Button("Stop Answer") { cancel() }
                                         .accessibilityIdentifier("askAIStopButton")
                                 }.id("answer").padding().modifier(JotleyTranscriptCard(neutral: true))
@@ -372,21 +372,14 @@ struct LocalAskNoteView: View {
                     .contentShape(RoundedRectangle(cornerRadius: 20))
                     .onTapGesture { if generation == nil { inputFocused = true } }
                     Button(action: send) {
-                        Image(systemName: "arrow.up.circle.fill").font(.system(size: 32))
+                        Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
                             .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
-                    }.buttonStyle(.plain).disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
+                    }.buttonStyle(JotleyGlassButtonStyle(circular: true)).disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
-            .alert("Clear Chat History?", isPresented: $showingClear) {
-                Button("Cancel", role: .cancel) { }
-                Button("Clear", role: .destructive) {
-                    guard let id = note.id else { return }
-                    do { try store.clearChat(noteID: id); messages = []; error = nil }
-                    catch { self.error = error.localizedDescription }
-                }
-            } message: { Text("Clear the conversation for this note? Its transcript and summary stay saved.") }
+
             .sheet(item: $share) { ShareSheet(activityItems: $0.items) }
             .task {
                 guard let id = note.id else { error = "This note is unavailable."; return }
@@ -400,6 +393,21 @@ struct LocalAskNoteView: View {
             .modifier(JotleyGlassPanel())
             .presentationBackground(.clear)
         }
+        .allowsHitTesting(!showingClear)
+        .accessibilityHidden(showingClear)
+        .overlay { clearConfirmation }
+        .onChange(of: showingClear) { _, showing in if showing { inputFocused = false } }
+    }
+    @ViewBuilder private var clearConfirmation: some View {
+        if showingClear {
+            JotleyClearChatConfirmation(onCancel: { showingClear = false }, onClear: clearConversation)
+        }
+    }
+    private func clearConversation() {
+        showingClear = false
+        guard let id = note.id else { return }
+        do { try store.clearChat(noteID: id); messages = []; error = nil }
+        catch { self.error = error.localizedDescription }
     }
     private var header: some View {
         HStack(spacing: 12) {
@@ -435,7 +443,7 @@ struct LocalAskNoteView: View {
                 Button { input = suggestion; inputFocused = true } label: {
                     Text(suggestion).foregroundStyle(Color.themeActionText)
                 }
-                    .frame(minHeight: 44).buttonStyle(.bordered).tint(.themePrimaryAccent)
+                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle())
             }
         }.padding(.vertical, 16)
     }
@@ -449,14 +457,14 @@ struct LocalAskNoteView: View {
                     Text(message.timestamp, format: .dateTime.hour().minute())
                         .font(.caption2.monospacedDigit())
                 }.foregroundStyle(Color.themeTextSecondary)
-                if message.role == "assistant" { MarkdownContentView(content: message.content) }
+                if message.role == "assistant" { JotleyChatAnswerText(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
             }.padding().modifier(JotleyTranscriptCard(emphasized: message.role == "user", neutral: message.role == "assistant"))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
     }
     private func send() {
-        guard generation == nil, unavailable == nil,
+        guard !showingClear, generation == nil, unavailable == nil,
               !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               let id = note.id, !note.isDeleted else { return }
         let question = input.trimmingCharacters(in: .whitespacesAndNewlines)

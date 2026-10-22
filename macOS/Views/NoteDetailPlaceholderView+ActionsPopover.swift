@@ -235,18 +235,17 @@ extension NoteDetailPlaceholderView {
                     // Delete
                     MenuItemView(
                         icon: "trash",
-                        title: "Delete"
+                        title: "Delete",
+                        isDestructive: true
                     ) {
                         isPresented = false
                         viewModel.performContextualDelete(for: note)
                     }
                 }
             }
-            .padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
-            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+            .padding(6)
             .frame(width: mainMenuWidth)
+            .modifier(MacNoteMenuSurface())
             .overlay(alignment: .topLeading) {
                 if showTemplateSubmenu && hasSummary && !isRecordingThisNote {
                     TemplateSubmenu(
@@ -263,7 +262,6 @@ extension NoteDetailPlaceholderView {
                 }
             }
             .zIndex(1)
-            .compositingGroup()
             .onDisappear {
                 showTemplateSubmenu = false
                 showExportSubmenu = false

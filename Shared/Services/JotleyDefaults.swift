@@ -167,15 +167,23 @@ struct JotleyTranscriptCard: ViewModifier {
     func body(content: Content) -> some View {
         content.background {
             let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            let bubbleColor = neutral ? Color.gray : theme.currentThemeColor.color
             if reduceTransparency {
                 shape.fill(Color.themeContentBackground)
-                    .overlay { shape.fill((neutral ? Color.gray : theme.currentThemeColor.color).opacity(emphasized ? 0.16 : 0.08)) }
+                    .overlay { shape.fill(bubbleColor.opacity(neutral ? 0.08 : (emphasized ? 0.20 : 0.14))) }
             } else {
-                Color.clear.glassEffect(.regular, in: shape)
+                Color.clear.glassEffect(.clear, in: shape)
                     .overlay {
-                        shape.fill((neutral ? Color.gray : theme.currentThemeColor.color)
-                            .opacity(emphasized ? 0.16 : neutral ? 0.04 : 0.08))
+                        shape.fill(LinearGradient(
+                            colors: [bubbleColor.opacity(neutral ? 0.06 : (emphasized ? 0.20 : 0.12)),
+                                     bubbleColor.opacity(neutral ? 0.02 : (emphasized ? 0.12 : 0.08))],
+                            startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
+                    .overlay {
+                        shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.60), .white.opacity(0.08), .white.opacity(0.32)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
             }
         }
     }
@@ -188,10 +196,42 @@ struct JotleyGlassPanel: ViewModifier {
         content.background {
             let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
             if reduceTransparency { shape.fill(Color.themeBackground) }
-            else { Color.clear.glassEffect(.regular, in: shape) }
+            else {
+                Color.clear.glassEffect(.clear, in: shape)
+                    .overlay {
+                        shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.70), .white.opacity(0.08), .white.opacity(0.35)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+            }
         }
+        #if os(macOS)
+        .background(JotleyTransparentSheetWindow(isTransparent: !reduceTransparency))
+        #endif
     }
 }
+
+#if os(macOS)
+/// A SwiftUI sheet has its own AppKit window; its opaque backing must not
+/// cover the native glass sampler or the parent note behind the sheet.
+private struct JotleyTransparentSheetWindow: NSViewRepresentable {
+    var isTransparent: Bool
+    final class View: NSView {
+        var isTransparent = true
+        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); updateWindow() }
+        func updateWindow() {
+            guard let window else { return }
+            window.isOpaque = !isTransparent
+            window.backgroundColor = isTransparent ? .clear : .windowBackgroundColor
+        }
+    }
+    func makeNSView(context: Context) -> View { View() }
+    func updateNSView(_ view: View, context: Context) {
+        view.isTransparent = isTransparent
+        view.updateWindow()
+    }
+}
+#endif
 
 /// Keep glass controls consistent across the Mac and mobile custom headers.
 struct JotleyGlassButtonStyle: ButtonStyle {
@@ -229,8 +269,61 @@ struct JotleyGlassButtonStyle: ButtonStyle {
             shape.fill(prominent ? Color.themePrimaryAccent : Color.themeBackground)
                 .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
         } else {
-            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(prominent ? 1 : 0.12)).interactive(), in: shape)
-                .overlay { if !prominent { shape.fill(Color.themePrimaryAccent.opacity(0.08)) } }
+            Color.clear.glassEffect((prominent ? Glass.regular : Glass.clear)
+                .tint(Color.themePrimaryAccent.opacity(prominent ? 1 : 0.06)).interactive(), in: shape)
+                .overlay {
+                    if !prominent {
+                        shape.fill(LinearGradient(colors: [Color.themePrimaryAccent.opacity(0.06), Color.themePrimaryAccent.opacity(0.02)],
+                            startPoint: .top, endPoint: .bottom))
+                        shape.stroke(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.12), .white.opacity(0.38)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    }
+                }
+                .shadow(color: .black.opacity(0.10), radius: 5, y: 3)
+        }
+    }
+}
+
+/// In-app confirmation keeps chat controls consistent without changing what
+/// clearing removes. Escape preserves the conversation.
+struct JotleyClearChatConfirmation: View {
+    let onCancel: () -> Void
+    let onClear: () -> Void
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.12).contentShape(Rectangle()).onTapGesture(perform: onCancel)
+            VStack(alignment: .leading, spacing: 16) {
+                Image(systemName: "trash")
+                    .font(.system(size: 22, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
+                    .frame(width: 44, height: 44).glassEffect(.clear, in: Circle())
+                    .accessibilityHidden(true)
+                Text("Clear chat history?")
+                    .font(.system(size: 21, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
+                Text("This clears only this conversation. Your note, transcript and summary stay saved.")
+                    .font(.system(size: 14)).foregroundStyle(Color.themeTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true).lineSpacing(3)
+                HStack(spacing: 12) {
+                    Button(action: onCancel) { Text("Cancel").frame(maxWidth: .infinity) }
+                        .keyboardShortcut(.cancelAction)
+                        .accessibilityIdentifier("askAIClearCancelButton")
+                    Button(role: .destructive, action: onClear) { Text("Clear Chat").frame(maxWidth: .infinity) }
+                        .accessibilityIdentifier("askAIClearConfirmButton")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .buttonStyle(JotleyGlassButtonStyle())
+                .padding(.top, 4)
+            }
+            .padding(24).frame(maxWidth: 350)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.regularMaterial)
+                    .glassEffect(.clear, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
+            .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+            .padding(24)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
+            .accessibilityIdentifier("askAIClearConfirmation")
         }
     }
 }
@@ -921,6 +1014,7 @@ struct JotleyOnboardingView: View {
     private var isSupportStep: Bool { step == supportStep }
     private var accent: Color { theme.currentThemeColor.color }
     private var ink: Color { Color(red: 0.14, green: 0.11, blue: 0.19) }
+    private var actionInk: Color { accent.mix(with: .black, by: 0.42) }
     private var muted: Color { ink.opacity(0.68) }
     private var title: String {
         if isSupportStep { return "Free software.\nSupported by people." }
@@ -946,22 +1040,17 @@ struct JotleyOnboardingView: View {
         GeometryReader { geometry in
             let wide = geometry.size.width >= 620
             let artWidth = min(300, geometry.size.width * 0.3)
+            let compact = !dynamicTypeSize.isAccessibilitySize && (geometry.size.height < 800 || (!wide && geometry.size.width < 390))
             VStack(spacing: 16) {
                 header
                 #if os(macOS)
-                pageLayout(wide: wide, dense: false, artWidth: artWidth)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                pageLayout(wide: wide, dense: compact, artWidth: artWidth)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.vertical, 12)
                 #else
                 ViewThatFits(in: .vertical) {
-                    pageLayout(wide: wide, dense: false, artWidth: artWidth)
+                    pageLayout(wide: wide, dense: compact, artWidth: artWidth)
                         .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
-                    if !dynamicTypeSize.isAccessibilitySize {
-                        pageLayout(wide: wide, dense: false, artWidth: artWidth, smallArtwork: true)
-                            .fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
-                        pageLayout(wide: wide, dense: true, artWidth: artWidth)
-                            .fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
-                    }
                     ScrollView {
                         pageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth)
                             .padding(.vertical, 8)
@@ -969,7 +1058,7 @@ struct JotleyOnboardingView: View {
                     .scrollIndicators(.never).scrollBounceBehavior(.basedOnSize)
                     .accessibilityIdentifier("onboardingFallbackScroll")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .id(step)
                 #endif
                 if wide {
@@ -1030,7 +1119,7 @@ struct JotleyOnboardingView: View {
     }
     @ViewBuilder private func pageLayout(wide: Bool, dense: Bool, artWidth: CGFloat, smallArtwork: Bool = false) -> some View {
         if wide {
-            HStack(alignment: .center, spacing: 24) {
+            HStack(alignment: .top, spacing: 24) {
                 largeIllustration(height: smallArtwork ? 240 : nil).frame(width: artWidth)
                 pageContent(dense: dense).frame(maxWidth: 380, alignment: .leading)
             }
@@ -1045,7 +1134,7 @@ struct JotleyOnboardingView: View {
                 .accessibilityHidden(true)
             Text("Jotley").font(.system(size: 23, weight: .semibold, design: .rounded))
             Spacer()
-            Button { finish() } label: { Text("Skip setup") }
+            Button { finish() } label: { Text("Skip setup").foregroundStyle(actionInk) }
                 .font(.subheadline.weight(.medium)).buttonStyle(.glass).buttonBorderShape(.capsule)
                 .controlSize(.small).frame(minHeight: 36)
                 .disabled(settingUpSpeech || requestingMicrophone)
@@ -1056,17 +1145,21 @@ struct JotleyOnboardingView: View {
     private func pageContent(dense: Bool, inlineArtwork: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: dense ? 10 : 22) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     if inlineArtwork {
                         Image(illustrationAsset).resizable().interpolation(.high).antialiased(true).scaledToFit()
-                            .frame(width: dense ? denseIconSize : regularIconSize, height: dense ? denseIconSize : regularIconSize).accessibilityHidden(true)
+                            .frame(width: 68, height: 68).accessibilityHidden(true)
                     }
-                    Text(title).font(.system(dense ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                    Text(title).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("onboardingTitle")
                 }
+                .frame(height: inlineArtwork ? 68 : 88, alignment: .topLeading)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("onboardingHeading")
                 Text(dense && step == 2 ? "Choose your Apple Intelligence language." : subtitle).font(dense ? .callout : .body).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: dense ? 48 : 64, alignment: .topLeading)
             }
             switch step {
             case let value where value == supportStep:
@@ -1081,7 +1174,7 @@ struct JotleyOnboardingView: View {
                             openURL(JotleyEngagement.tipURL)
                         } label: {
                             Label("Buy Me a Coffee", systemImage: "cup.and.saucer")
-                                .font(.body.weight(.semibold)).foregroundStyle(Color.black).frame(maxWidth: .infinity)
+                                .font(.body.weight(.semibold)).foregroundStyle(actionInk).frame(maxWidth: .infinity)
                         }
                         .accessibilityIdentifier("onboardingTipJotley")
                         .accessibilityHint("Opens Buy Me a Coffee in your browser")
@@ -1091,7 +1184,7 @@ struct JotleyOnboardingView: View {
                         openURL(JotleyEngagement.reviewURL)
                     } label: {
                         Label("Rate & Review Jotley", systemImage: "star")
-                            .font(.body.weight(.semibold)).foregroundStyle(Color.black).frame(maxWidth: .infinity)
+                            .font(.body.weight(.semibold)).foregroundStyle(actionInk).frame(maxWidth: .infinity)
                     }
                     .accessibilityIdentifier("onboardingReviewJotley")
                 }
@@ -1129,7 +1222,7 @@ struct JotleyOnboardingView: View {
                         .accessibilityIdentifier("onboardingCancelSpeechSetup")
                 } else if speechCanSetUp && !speechReady {
                     Button("Set Up On-Device Speech") { setUpSpeech() }
-                        .buttonStyle(.glass).tint(accent)
+                        .buttonStyle(.glass).tint(accent).foregroundStyle(actionInk)
                         .accessibilityIdentifier("onboardingSpeechSetup")
                 }
                 Text(dense ? "Change your language or finish setup later in Settings." : "You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
@@ -1255,7 +1348,7 @@ struct JotleyOnboardingView: View {
     }
     private var onboardingBackButton: some View {
         Button { changeStep(step - 1) } label: {
-            Image(systemName: "chevron.left").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.black)
+            Image(systemName: "chevron.left").font(.system(size: 14, weight: .medium)).foregroundStyle(actionInk)
         }
         .buttonStyle(JotleyGlassButtonStyle(circular: true)).frame(width: 54)
         .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
@@ -1295,7 +1388,7 @@ struct JotleyOnboardingView: View {
                         if requestingMicrophone { ProgressView().controlSize(.small).tint(accent) }
                         Text(primaryTitle)
                             .font(.body.weight(.semibold))
-                    }.frame(maxWidth: .infinity).foregroundStyle(ink)
+                    }.frame(maxWidth: .infinity).foregroundStyle(actionInk)
                 }
                 .buttonStyle(JotleyGlassButtonStyle()).tint(accent)
                 .disabled(settingUpSpeech || requestingMicrophone)
@@ -1327,7 +1420,7 @@ struct JotleyOnboardingView: View {
             }
         }
         .buttonStyle(.glass).buttonBorderShape(.capsule)
-        .font(.subheadline.weight(.medium)).controlSize(.small).foregroundStyle(Color.black)
+        .font(.subheadline.weight(.medium)).controlSize(.small).foregroundStyle(actionInk)
     }
     private var primaryTitle: String {
         if isSupportStep { return "Open Jotley" }
@@ -1441,7 +1534,12 @@ struct JotleyOnboardingView: View {
             } catch is CancellationError {
                 setupError = "Setup paused. You can finish it later in Settings."
             } catch {
+                LocalSpeech.recordFailure(error, locale: Locale(identifier: language), details: "Onboarding speech setup")
+                #if targetEnvironment(simulator)
+                setupError = "Speech setup couldn’t finish in this simulator. Try on a supported iPhone or iPad, or continue setup for now."
+                #else
                 setupError = "Speech setup couldn’t finish. Check your connection and try again, or continue and set it up later in Settings."
+                #endif
             }
             await Task { @MainActor in await refreshModels() }.value
         }

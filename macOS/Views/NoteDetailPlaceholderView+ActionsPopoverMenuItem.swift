@@ -13,6 +13,7 @@ extension NoteDetailPlaceholderView {
         var shortcut: String? = nil
         var badge: String? = nil
         var disabled: Bool = false
+        var isDestructive: Bool = false
         var onHover: ((Bool) -> Void)? = nil
         let action: () -> Void
 
@@ -35,23 +36,23 @@ extension NoteDetailPlaceholderView {
                     } else {
                         Image(systemName: icon)
                             .font(.system(size: 16))
-                            .foregroundColor(iconColor ?? Color.primary.opacity(0.7))
+                            .foregroundStyle(iconColor ?? (isDestructive ? Color.red : Color.themePrimaryAccent))
                             .frame(width: 20)
                     }
 
                     Text(title)
                         .font(.system(size: 13))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(isDestructive ? Color.red : Color.themeTextPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
 
                     if let badge = badge {
                         Text(badge)
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.blue)
+                            .foregroundStyle(Color.themePrimaryAccent)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue.opacity(0.1))
+                            .background(Color.themePrimaryAccent.opacity(0.1))
                             .cornerRadius(4)
                     }
 
@@ -76,9 +77,9 @@ extension NoteDetailPlaceholderView {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.vertical, 8)
                 .background(isHovered ? Color.themePrimaryAccent.opacity(0.15) : Color.clear)
-                .cornerRadius(4)
+                .cornerRadius(8)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
@@ -95,5 +96,26 @@ extension NoteDetailPlaceholderView {
                 }
             }
         }
+    }
+}
+
+/// Shared material for the main More menu and its template submenu.
+struct MacNoteMenuSurface: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        content.background {
+            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+            if reduceTransparency {
+                shape.fill(Color(NSColor.controlBackgroundColor))
+            } else {
+                Color.clear.glassEffect(.regular, in: shape)
+                    .overlay {
+                        shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.6), .white.opacity(0.08), .white.opacity(0.3)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    }
+            }
+        }
+        .shadow(color: .black.opacity(0.14), radius: 12, y: 5)
     }
 }

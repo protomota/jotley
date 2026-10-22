@@ -34,6 +34,7 @@ struct CustomMoreMenuOverlay<Content: View>: View {
                 .padding(.trailing, 16)  // Align with right edge
         }
         .zIndex(1000)
+        .onExitCommand { dismiss() }
         .onAppear {
             withAnimation(.easeOut(duration: 0.14)) {
                 opacity = 1

@@ -11,7 +11,7 @@ task_profile_file="$HOME/Library/Containers/com.protomota.jotley.mac-routing-tes
 trap 'rm -rf "$task_harness_root"; rm -f "$task_profile_file"' EXIT
 task_harness_app="$task_harness_root/JotleyRoutingTests.app"
 mkdir -p "$task_harness_app/Contents/MacOS" "$task_harness_app/Contents/Resources" "$task_harness_app/Contents/Frameworks"
-cp -R "$task_app_source/Resources/JotleyNotes.momd" "$task_harness_app/Contents/Resources/"
+cp -R "$task_app_source/Resources/." "$task_harness_app/Contents/Resources/"
 cp "$task_app_source/MacOS/Jotley.debug.dylib" "$task_harness_app/Contents/MacOS/"
 cp -R "$task_app_source/Frameworks/Sparkle.framework" "$task_harness_app/Contents/Frameworks/"
 python3 - "$task_harness_app/Contents/Info.plist" "$task_harness_root/entitlements.plist" <<'PY'

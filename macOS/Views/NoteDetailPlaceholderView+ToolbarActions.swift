@@ -5,7 +5,7 @@ extension NoteDetailPlaceholderView {
     // More menu button
     var moreMenuButton: some View {
         Button {
-            showActionsPopover = true
+            showActionsPopover.toggle()
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 18, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)

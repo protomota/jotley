@@ -268,6 +268,7 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 15))
         let initialAction = app.buttons["onboardingContinue"].frame
+        let initialTitleTop = app.staticTexts["onboardingTitle"].frame.minY
         let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Free software.\nSupported by people."]
         for index in 0..<5 {
             let titleMatches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", titles[index]), object: app.staticTexts["onboardingTitle"])
@@ -301,6 +302,7 @@ final class Jotley_iOSUITests: XCTestCase {
                 XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].isHittable)
             }
             XCTAssertEqual(app.buttons["onboardingContinue"].frame.minY, initialAction.minY, accuracy: 1)
+            XCTAssertEqual(app.staticTexts["onboardingTitle"].frame.minY, initialTitleTop, accuracy: 1, "Onboarding headings must stay at the same height on every page")
             if index < 4 {
                 if index == 3 && app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
                 else { app.buttons["onboardingContinue"].tap() }
@@ -599,6 +601,34 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
     }
 
+    @MainActor func testOnboardingSpeechSetupStartsOrReportsItsResult() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-transcriptionLanguage", "en-US"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+        app.launch()
+        XCTAssertTrue(app.buttons["onboardingContinue"].waitForExistence(timeout: 15))
+        app.buttons["onboardingContinue"].tap()
+        app.buttons["onboardingContinue"].tap()
+        let setup = app.buttons["onboardingSpeechSetup"]
+        guard setup.waitForExistence(timeout: 10) else { throw XCTSkip("This runtime does not need speech setup") }
+        setup.tap()
+        let activeOrFinished = NSPredicate { _, _ in
+            app.buttons["onboardingCancelSpeechSetup"].exists ||
+            app.descendants(matching: .any)["onboardingSpeechError"].firstMatch.exists ||
+            app.staticTexts["Ready to transcribe offline"].exists
+        }
+        let changed = expectation(for: activeOrFinished, evaluatedWith: app)
+        wait(for: [changed], timeout: 15)
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "Real Apple speech setup action"; capture.lifetime = .keepAlways; add(capture)
+        if app.buttons["onboardingCancelSpeechSetup"].exists {
+            app.buttons["onboardingCancelSpeechSetup"].tap()
+            XCTAssertTrue(setup.waitForExistence(timeout: 15), "Cancellation must leave setup available to retry")
+        }
+    }
+
     @MainActor func testWelcomeSetupPersistsAndCanBeReopenedWithoutLosingNotes() throws {
         let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
         XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
@@ -661,7 +691,16 @@ final class Jotley_iOSUITests: XCTestCase {
             app.terminate()
             app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
             app.launch()
-            XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 10))
+            let settings = app.buttons["notesListSettingsButton"]
+            if !settings.exists {
+                let back = app.buttons["BackButton"]
+                if back.waitForExistence(timeout: 5) { back.tap() }
+                else {
+                    let sidebar = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+                    XCTAssertTrue(sidebar.waitForExistence(timeout: 5)); sidebar.tap()
+                }
+            }
+            XCTAssertTrue(settings.waitForExistence(timeout: 10))
             XCTAssertFalse(title.exists, "Completed setup must not appear again on launch")
             app.buttons["notesListSettingsButton"].tap()
             XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 8))
@@ -684,10 +723,17 @@ final class Jotley_iOSUITests: XCTestCase {
             replay.tap()
             XCTAssertTrue(title.waitForExistence(timeout: 5))
             XCTAssertEqual(title.label, "Stay in the conversation.")
-            app.buttons["onboardingSkip"].tap()
-            XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
-            app.buttons["settingsDoneButton"].tap()
+            XCTAssertFalse(app.buttons["settingsDoneButton"].exists, "Replaying welcome must dismiss Settings first")
+            if mode == "Dark" {
+                app.buttons["onboardingSkip"].tap()
+            } else {
+                for _ in 0..<5 {
+                    if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
+                    else { app.buttons["onboardingContinue"].tap() }
+                }
+            }
             XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["settingsDoneButton"].exists, "Finishing or skipping welcome must return to notes")
             app.terminate()
         }
     }
@@ -2067,7 +2113,12 @@ final class Jotley_iOSUITests: XCTestCase {
         }
         app.buttons["askAICopyConversationButton"].tap()
         app.buttons["askAIClearButton"].tap()
-        app.alerts["Clear Chat History?"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["askAIClearCancelButton"].waitForExistence(timeout: 5))
+        for (index, screen) in XCUIScreen.screens.enumerated() {
+            let shot = XCTAttachment(screenshot: screen.screenshot())
+            shot.name = "Local-clear-confirmation-screen-\(index)"; shot.lifetime = .keepAlways; add(shot)
+        }
+        app.buttons["askAIClearCancelButton"].tap()
         XCTAssertTrue(app.buttons["askAICopyConversationButton"].isEnabled)
         done.tap(); XCTAssertTrue(ask.waitForExistence(timeout: 5))
         ask.tap(); XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()

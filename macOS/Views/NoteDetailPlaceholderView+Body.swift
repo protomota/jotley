@@ -75,7 +75,9 @@ extension NoteDetailPlaceholderView {
                                 .padding(.horizontal, 16)
 
                             contentArea
-                                .frame(maxWidth: .infinity, minHeight: max(400, geometry.size.height - 150))
+                                // Follow the actual speech, not a viewport-sized
+                                // empty area that pushes new notes off the top.
+                                .frame(maxWidth: .infinity, minHeight: isRecordingThisNote ? 0 : max(400, geometry.size.height - 150))
                                 .padding(.top, 8)
                         }
                         .padding(.bottom, detailBottomPadding)

@@ -277,8 +277,9 @@ struct SummaryDisplayStylePicker: View {
 
 /// Readable Markdown with neutral text, headings and bullets, without cards.
 /// This changes presentation only; editing, AI and exports keep the same source.
-private struct StandardSummaryTextView: View {
+struct StandardSummaryTextView: View {
     let markdown: ParsedNoteMarkdown
+    var bodyFont: Font = .body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -289,12 +290,12 @@ private struct StandardSummaryTextView: View {
                             Text(marker).accessibilityHidden(true)
                         }
                         Text(line.text)
-                            .font(line.heading ? .title3.weight(.semibold) : .body)
+                            .font(line.heading ? .title3.weight(.semibold) : bodyFont)
                             .accessibilityAddTraits(line.heading ? .isHeader : [])
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .font(.body)
+                    .font(bodyFont)
                     .foregroundStyle(Color.themeTextPrimary)
                     .lineSpacing(4)
                     .padding(.leading, CGFloat(line.indentation) * 8)
@@ -309,6 +310,17 @@ private struct StandardSummaryTextView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("standardSummaryText")
+    }
+}
+
+/// Keep the marker outside the text column so wrapped chat answers hang
+/// beneath the first word, including answers containing literal bullet glyphs.
+struct JotleyChatAnswerText: View {
+    let content: String
+    var font: Font = .body
+    var body: some View {
+        let markdown = content.replacingOccurrences(of: #"(?m)^(\h*)•\h+"#, with: "$1- ", options: .regularExpression)
+        StandardSummaryTextView(markdown: ParsedNoteMarkdown.rendering(markdown), bodyFont: font)
     }
 }
 
@@ -431,7 +443,7 @@ struct StructuredSummaryBlockView: View {
         let groups = StructuredSummaryView.groups(section.items)
         switch section.style {
         case .numbered:
-            VStack(spacing: 10) {
+            VStack(spacing: numberedRowSpacing) {
                 ForEach(Array(groups.enumerated()), id: \.element.first?.id) { index, group in
                     numberedCard(index: index, group: group)
                 }
@@ -448,6 +460,22 @@ struct StructuredSummaryBlockView: View {
         }
     }
 
+    private var numberedRowSpacing: CGFloat {
+        #if os(macOS)
+        return 6
+        #else
+        return 10
+        #endif
+    }
+
+    private var numberedRowVerticalPadding: CGFloat {
+        #if os(macOS)
+        return 8
+        #else
+        return 14
+        #endif
+    }
+
     func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("\(index + 1)")
@@ -457,7 +485,8 @@ struct StructuredSummaryBlockView: View {
                 .accessibilityHidden(true)
             groupText(group, emphasizeLabel: true)
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14).padding(.vertical, numberedRowVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 

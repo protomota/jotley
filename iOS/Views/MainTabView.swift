@@ -16,7 +16,6 @@ struct MainTabView: View {
     @State private var showingSettings = false
     @State private var showingWelcome = false
     @State private var replayAfterSettings = false
-    @State private var returnToSettingsAfterWelcome = false
     private var onboardingInProgress: Bool {
         showingWelcome || replayAfterSettings || (!onboardingCompleted && !JotleyOnboarding.bypassForFixture)
     }
@@ -136,10 +135,6 @@ struct MainTabView: View {
         .preferredColorScheme(onboardingInProgress ? .light : themeManager.effectiveColorScheme)
         .observeThemeChanges()
         .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
-            if returnToSettingsAfterWelcome {
-                returnToSettingsAfterWelcome = false
-                if pendingWidgetAction == nil && summaryNotifications.noteToOpen == nil { showingSettings = true }
-            }
             if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }
             openNotifiedSummary()
         }))
@@ -168,7 +163,6 @@ struct MainTabView: View {
         }) {
             NavigationStack {
                 SettingsView(onShowWelcome: {
-                    returnToSettingsAfterWelcome = true
                     replayAfterSettings = true
                     showingSettings = false
                 })

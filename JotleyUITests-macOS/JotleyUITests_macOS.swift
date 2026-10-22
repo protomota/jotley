@@ -157,6 +157,9 @@ private struct MacSupportPreviewRoot: View {
             if CommandLine.arguments.contains("--compact-only") {
                 guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
                 try await verifyCompactTranscription(store: store)
+            } else if CommandLine.arguments.contains("--transcript-scroll-only") {
+                guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
+                try await verifyNewTranscriptScroll(store: store)
             } else if CommandLine.arguments.contains("--summary-scroll-only") {
                 guard let store = LocalAppModel.shared.store,
                       let note = try store.create(title: "Summary scroll fixture", text: "Maya reviews Friday.") as? Note else { throw LocalError.message("Summary scroll store unavailable") }
@@ -331,6 +334,7 @@ private struct MacSupportPreviewRoot: View {
         try await verifyPlusStartsCaptureImmediately(store: store)
         try await verifyRecordingControlLayout()
         try await verifyCompactTranscription(store: store)
+        try await verifyNewTranscriptScroll(store: store)
         if ProcessInfo.processInfo.environment["JOTLEY_RUN_TITLE_TESTS"] == "1" {
             try await verifyOnDeviceTitle(note: created, viewModel: viewModel)
         }
@@ -529,17 +533,21 @@ private struct MacSupportPreviewRoot: View {
             guard host.fittingSize.width >= 580, host.fittingSize.height >= 650 else {
                 throw LocalError.message("Mac Ask AI did not mount at its intended readable size.")
             }
-            // Glass has transparent rounded corners; composite against the window’s appearance for this offscreen snapshot.
+            // Offscreen snapshots composite transparent glass against the window
+            // appearance. Its reflective rim stays bright even in Dark Mode.
             let renderer = ImageRenderer(content: content.frame(width: 580, height: 650).background(Color.themeBackground))
             renderer.proposedSize = ProposedViewSize(width: 580, height: 650)
             guard let rendered = renderer.cgImage else { throw LocalError.message("Mac Ask AI snapshot failed.") }
             let bitmap = NSBitmapImageRep(cgImage: rendered)
-            guard let background = bitmap.colorAt(x: 5, y: 5)?.usingColorSpace(.deviceRGB) else {
-                throw LocalError.message("Mac Ask AI header was not rendered opaquely.")
+            // Native glass is composited by WindowServer and has no reliable
+            // offscreen backdrop pixel. Check the resolved label contrast here;
+            // verify the actual material in the live Light/Dark sheet captures.
+            guard let foreground = NSColor(Color.themeTextPrimary).usingColorSpace(.deviceRGB) else {
+                throw LocalError.message("Mac Ask AI text color did not resolve.")
             }
-            let brightness = (background.redComponent + background.greenComponent + background.blueComponent) / 3
-            guard mode == .light ? brightness > 0.8 : brightness < 0.3 else {
-                throw LocalError.message("Mac Ask AI header does not follow its light/dark appearance.")
+            let brightness = (foreground.redComponent + foreground.greenComponent + foreground.blueComponent) / 3
+            guard mode == .dark ? brightness > 0.8 : brightness < 0.3 else {
+                throw LocalError.message("Mac Ask AI text does not follow its light/dark appearance.")
             }
             guard let png = bitmap.representation(using: .png, properties: [:]), !png.isEmpty else {
                 throw LocalError.message("Mac Ask AI screen did not render.")
@@ -642,6 +650,61 @@ private struct MacSupportPreviewRoot: View {
         }
         print("PASS: installed Apple model generated summary/title and regenerated a long transcript in \(Date().timeIntervalSince(began)) seconds with \(snapshots.count) live snapshots; preparation progress was reported and the title was preserved.")
     }
+    @MainActor private static func verifyNewTranscriptScroll(store baseStore: SharedPersistenceController) async throws {
+        let store = try SharedPersistenceController(inMemory: true, model: baseStore.container.managedObjectModel)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let recorder = ProcessTapRecorder()
+        recorder.simulatedStart = { _, _, _ in recorder.beginSimulatedLiveTranscription(LocalTranscript()) }
+        let model = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
+        await model.startNewNote()
+        guard let note = model.newNoteBeingRecorded else { throw LocalError.message("New transcript fixture did not start.") }
+        defer { recorder.simulatedStart = nil; try? store.deleteNoteAndAudio(note) }
+        let host = NSHostingView(rootView: MacTranscriptionPreviewRoot(model: model))
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 1000, height: 760), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
+        defer { window.close() }
+        func scrollViews(_ view: NSView) -> [NSScrollView] {
+            (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap(scrollViews)
+        }
+        func transcriptScroll() throws -> NSScrollView {
+            host.layoutSubtreeIfNeeded()
+            guard let scroll = scrollViews(host).first(where: { $0.bounds.height > 300 }) else {
+                throw LocalError.message("New transcript scroll view unavailable.")
+            }
+            return scroll
+        }
+        for text in ["", "The first words should stay beside the note header."] {
+            if !text.isEmpty {
+                var speech = LocalTranscript()
+                speech.accept(text: text, start: 0, end: 8, final: true)
+                recorder.publishSimulatedLiveTranscript(speech)
+            }
+            try await Task.sleep(for: .milliseconds(500))
+            let scroll = try transcriptScroll()
+            guard let document = scroll.documentView else { throw LocalError.message("Missing transcript document.") }
+            let visible = scroll.documentVisibleRect
+            let fromTop = document.isFlipped ? visible.minY - document.bounds.minY : document.bounds.maxY - visible.maxY
+            guard abs(fromTop) < 2 else {
+                throw LocalError.message("A new or short transcript must stay at the top; shifted \(fromTop) points for '\(text)'.")
+            }
+        }
+        var longSpeech = LocalTranscript()
+        for index in 1...40 {
+            longSpeech.accept(text: "Segment \(index). A longer transcript should keep following incoming speech after it fills the available space, with enough clearance for the recording controls.", start: Double(index * 15), end: Double(index * 15 + 8), final: true)
+        }
+        recorder.publishSimulatedLiveTranscript(longSpeech)
+        try await Task.sleep(for: .milliseconds(700))
+        let scroll = try transcriptScroll()
+        guard let document = scroll.documentView, document.bounds.height > scroll.bounds.height + 100 else {
+            throw LocalError.message("Long transcript fixture did not overflow.")
+        }
+        let visible = scroll.documentVisibleRect
+        let fromBottom = document.isFlipped ? document.bounds.maxY - visible.maxY : visible.minY - document.bounds.minY
+        guard abs(fromBottom) < 30 else { throw LocalError.message("Long live transcript stopped following: \(fromBottom) points from bottom.") }
+        await model.stopRecording()
+        print("PASS: new and short Mac transcriptions stay at the top; a long transcript follows incoming speech once it fills the view.")
+    }
+
     @MainActor private static func verifyCompactTranscription(store: SharedPersistenceController) async throws {
         let recorder = ProcessTapRecorder()
         var speech = LocalTranscript()
