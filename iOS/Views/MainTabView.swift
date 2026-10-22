@@ -206,7 +206,7 @@ struct MainTabView: View {
             Spacer()
             NotesNewTranscriptionButton(diameter: 58) { handleWidgetAction(.start) }
         }
-        .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 26)
+        .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 24)
     }
 
     private var notesList: some View {

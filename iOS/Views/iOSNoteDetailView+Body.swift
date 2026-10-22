@@ -38,7 +38,9 @@ extension NoteDetailView {
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .bottom) {
-            if newTranscriptionAction == nil { noteActionsFooter }
+            if newTranscriptionAction == nil {
+                noteActionsFooter.ignoresSafeArea(.container, edges: .bottom)
+            }
         }
         .preference(key: NoteFooterContentKey.self,
                     value: newTranscriptionAction != nil ? note.id.map { [$0: AnyView(noteActionsFooter)] } ?? [:] : [:])
@@ -180,8 +182,8 @@ extension NoteDetailView {
             if summaryIsRunning { summaryProgressFooter }
             else { transcriptionAndSummaryFooter }
         }
-        // Extend only the glass beneath the home indicator; keep the controls
-        // inside their existing safe-area padding.
+        // The footer host reaches the bottom edge, so its bottom inset matches
+        // its horizontal inset instead of adding the home-indicator safe area.
         .background { FloatingNoteGlassBackground().ignoresSafeArea(.container, edges: .bottom) }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
@@ -217,7 +219,7 @@ extension NoteDetailView {
                     }
                 }
                     .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-                    .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
+                    .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
                     .frame(maxWidth: .infinity)
     }
 
@@ -255,7 +257,7 @@ extension NoteDetailView {
             }
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 8 : 26)
+        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
         .frame(maxWidth: .infinity)
     }
 

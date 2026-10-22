@@ -89,6 +89,15 @@ final class Jotley_iOSUITests: XCTestCase {
                         XCTAssertLessThanOrEqual(button.frame.maxX, app.frame.maxX)
                     }
                 }
+                if orientation == .portrait {
+                    let plus = app.buttons["notesListNewNoteButton"]
+                    let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
+                    let cornerButton = isDuo ? plus : primary
+                    let expectedInset: CGFloat = isDuo ? 24 : 16
+                    XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, expectedInset, accuracy: 2,
+                                   "Bottom controls must use the same edge padding as their sides")
+                    XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, expectedInset, accuracy: 2)
+                }
                 for (index, screen) in XCUIScreen.screens.enumerated() {
                     let capture = XCTAttachment(screenshot: screen.screenshot())
                     capture.name = "\(hasSummary ? "Regenerate" : "Generate") Summary - \(orientation.rawValue) - screen \(index)"
@@ -168,7 +177,13 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(last.exists && last.isHittable)
             XCTAssertLessThan(last.frame.maxY, continueButton.frame.minY - 8, "The last line must scroll fully clear of the floating controls")
             XCTAssertTrue(continueButton.isHittable)
-            XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].isHittable)
+            let primary = app.buttons["noteDetailGenerateSummaryButton"]
+            XCTAssertTrue(primary.isHittable)
+            let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
+            let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : primary
+            let expectedInset: CGFloat = isDuo ? 24 : 16
+            XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, expectedInset, accuracy: 2)
+            XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, expectedInset, accuracy: 2)
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Floating controls with complete transcript - \(appearance)"
             screenshot.lifetime = .keepAlways; add(screenshot)
