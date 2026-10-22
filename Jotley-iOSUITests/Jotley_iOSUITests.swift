@@ -2048,6 +2048,7 @@ final class Jotley_iOSUITests: XCTestCase {
 
     @MainActor func testMarketingChatCaptureAndControls() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_CHAT_READY"] = "1"
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Friday Launch Plan","folder":"Work","tags":["Design","Planning","Product"],"transcript":"Alex will finish accessibility checks Thursday. Sam will share the launch checklist. Maya leads the review Friday at 10:00.","summary":"The team agreed on a focused Friday launch.","messages":[{"role":"user","content":"Who is doing what before Friday?"},{"role":"assistant","content":"- **Alex:** finish the accessibility checks by Thursday.\n- **Sam:** share the launch checklist and gather feedback.\n- **Maya:** lead the final review on Friday at 10:00."}]}]"#
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
@@ -2075,6 +2076,7 @@ final class Jotley_iOSUITests: XCTestCase {
     // BEGIN LOCAL MARKETING CAPTURE
     @MainActor func testMarketingLayoutCaptures() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_CHAT_READY"] = "1"
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"""
 [
   {

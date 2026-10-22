@@ -315,7 +315,11 @@ struct LocalAskNoteView: View {
     }
     private var locale: Locale { Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US") }
     private var unavailable: String? {
-        LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
+        #if DEBUG && targetEnvironment(simulator)
+        // Marketing fixtures show an already prepared local-model state.
+        if ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_CHAT_READY"] == "1" { return nil }
+        #endif
+        return LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
     var body: some View {
