@@ -557,3 +557,14 @@ Compact inline artwork increases from 56 to 112 points, reduced stacked artwork 
 The simulator test build passes (`/tmp/jotley-mobile-icons-final-build.log`) and the shared Mac target compiles (`/tmp/jotley-onboarding-art-size-mac-build.log`). All five onboarding steps pass the no-scroll, fixed-action-position, language setup/hint visibility and support-action checks on iPhone Pro Max, folded Duo, unfolded Duo landscape and iPad portrait: `/tmp/jotley-mobile-icons-final-{iphone,duo-closed,duo-open,ipad}.xcresult`. Native captures confirm the larger simple icons, the globe's final bubble placement, the lower footer and an unobstructed Not now action on folded Duo. The gallery includes all 20 final native captures. The four previews remain on Welcome with the existing eight-note in-memory fixture.
 
 All five selected PNGs have a real alpha channel; the final globe is 1254×1254 RGBA with transparent and opaque pixels. No stored notes were replaced, and no TestFlight upload, App Store submission, website deployment or marketing-screenshot generation was performed.
+
+
+### Compact heading icons and original wide artwork — October 22, 2026
+
+Compact phone/folded Duo setup now places the simplified icon beside each heading, sized to approximately two lines: 88 points with the regular title and 68 points with the denser title. Both sizes scale with Dynamic Type. The large stacked phone artwork was removed. Unfolded Duo and standard iPad portrait/landscape layouts select the original detailed illustrations through separate `onboarding-*-large` image sets. The five wide images are exact copies of the existing Mac artwork; the approved simplified globe remains the compact Language icon.
+
+Geometry selects the artwork and layout while the parent onboarding state stays in place. The lower footer and reserved Not now row are unchanged. Both app targets compile (`/tmp/jotley-responsive-art-build.log`, `/tmp/jotley-responsive-art-mac-build.log`).
+
+All five pages pass the no-scroll, fixed-footer, language setup/hint visibility and optional-support controls checks on iPhone Pro Max, folded Duo, unfolded Duo landscape and iPad portrait: `/tmp/jotley-responsive-art-{iphone,duo-closed,duo-open,ipad}.xcresult`. The gallery contains all 20 final native captures. Live Device Hub verification preserved the Language step while folding Duo switched to the simplified icon and unfolding restored the detailed globe. iPad was visually checked in portrait and landscape with the original detailed artwork.
+
+No stored notes were replaced. No TestFlight upload, App Store submission, website release or marketing-asset generation was performed.

@@ -859,6 +859,8 @@ struct JotleyOnboardingView: View {
     @AppStorage(JotleyOnboarding.completedKey) private var completed = false
     @AppStorage("transcriptionLanguage") private var language = "en-US"
     @ObservedObject private var theme = ThemeManager.shared
+    @ScaledMetric(relativeTo: .largeTitle) private var regularIconSize: CGFloat = 88
+    @ScaledMetric(relativeTo: .title2) private var denseIconSize: CGFloat = 68
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
@@ -998,13 +1000,11 @@ struct JotleyOnboardingView: View {
     @ViewBuilder private func pageLayout(wide: Bool, dense: Bool, artWidth: CGFloat, smallArtwork: Bool = false) -> some View {
         if wide {
             HStack(alignment: .center, spacing: 24) {
-                illustration(compact: false, height: smallArtwork ? 240 : nil).frame(width: artWidth)
+                largeIllustration(height: smallArtwork ? 240 : nil).frame(width: artWidth)
                 pageContent(dense: dense).frame(maxWidth: 380, alignment: .leading)
             }
-        } else if dense {
-            pageContent(dense: true, inlineArtwork: true).frame(maxWidth: 480)
         } else {
-            VStack(spacing: smallArtwork ? 12 : 25) { illustration(compact: true, height: smallArtwork ? 144 : nil); pageContent(dense: false) }.frame(maxWidth: 480)
+            pageContent(dense: dense, inlineArtwork: true).frame(maxWidth: 480)
         }
     }
     private var header: some View {
@@ -1028,7 +1028,7 @@ struct JotleyOnboardingView: View {
                 HStack(spacing: 12) {
                     if inlineArtwork {
                         Image(illustrationAsset).resizable().interpolation(.high).antialiased(true).scaledToFit()
-                            .frame(width: 112, height: 112).accessibilityHidden(true)
+                            .frame(width: dense ? denseIconSize : regularIconSize, height: dense ? denseIconSize : regularIconSize).accessibilityHidden(true)
                     }
                     Text(title).font(.system(dense ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
@@ -1208,11 +1208,18 @@ struct JotleyOnboardingView: View {
         default: "onboarding-system-audio"
         }
     }
-    private func illustration(compact: Bool, height: CGFloat? = nil) -> some View {
-        Image(illustrationAsset)
+    private var largeIllustrationAsset: String {
+        #if os(iOS)
+        illustrationAsset + "-large"
+        #else
+        illustrationAsset
+        #endif
+    }
+    private func largeIllustration(height: CGFloat? = nil) -> some View {
+        Image(largeIllustrationAsset)
             .resizable().interpolation(.high).antialiased(true).scaledToFit()
-            .frame(maxWidth: compact ? 270 : 300)
-            .frame(height: height ?? (compact ? 180 : 300))
+            .frame(maxWidth: 300)
+            .frame(height: height ?? 300)
             .accessibilityHidden(true)
     }
     private var wideFooterWidth: CGFloat {

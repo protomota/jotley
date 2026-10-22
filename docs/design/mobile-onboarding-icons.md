@@ -1,10 +1,10 @@
 # Mobile onboarding icons — October 22, 2026
 
-Generated with the built-in image generation tool, with transparent backgrounds. Five simplified objects replace the detailed iOS illustrations; macOS retains its original artwork. The selected language icon has continent silhouettes and an upper-right light-purple speech bubble with two dark-purple lines. The original globe and intermediate mint/peach variants are not included in the app.
+Generated with the built-in image generation tool, with transparent backgrounds. Five simplified objects serve compact iOS layouts; unfolded Duo and other wide layouts use the original detailed illustrations, copied from the macOS catalog into separate `onboarding-*-large` image sets. macOS retains its original artwork. The selected language icon has continent silhouettes and an upper-right light-purple speech bubble with two dark-purple lines. The abandoned simplified globe and intermediate mint/peach variants are not included in the app.
 
 Saved assets: `iOS/Assets.xcassets/onboarding-{welcome,intelligence,language,microphone,support}.imageset/illustration.png`. The originals remain in Codex generated_images. No raster post-processing was used; generated alpha is preserved.
 
-Compact mobile artwork uses 112-point inline icons or 144-point stacked icons, with a larger 180-point treatment when space permits. The mobile footer extends into the bottom safe area with 12 points of outer padding and reserves a consistent secondary row for Not now.
+Compact mobile artwork sits beside the heading and approximates two lines of its text: 88 points with the regular large title or 68 points in the denser title treatment, scaling with Dynamic Type. Wide layouts select the original 240–300-point illustrations. Folding changes the artwork through the same responsive layout without resetting setup state. The mobile footer extends into the bottom safe area with 12 points of outer padding and reserves a consistent secondary row for Not now.
 
 ## Final prompts
 
