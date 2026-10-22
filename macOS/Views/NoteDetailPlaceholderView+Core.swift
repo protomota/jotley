@@ -7,46 +7,102 @@ extension NoteDetailPlaceholderView {
     }
 }
 
+/// Edits in the note's scroll view, using a separate draft so a concurrent
+/// transcript update can never be overwritten by an older editor buffer.
 struct LocalMacTranscriptEditor: View {
     @ObservedObject var note: Note
     @ObservedObject var viewModel: NotesListViewModel
     @EnvironmentObject var store: SharedPersistenceController
-    @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    @State private var lastSaved: String
     @State private var error: String?
-    private let original: String
-    init(note: Note, viewModel: NotesListViewModel) {
-        self.note = note; self.viewModel = viewModel
-        original = note.transcription ?? ""
-        _text = State(initialValue: original)
+    @State private var editorHeight: CGFloat = ContentLayoutConstants.standardMinHeight
+    @FocusState private var isFocused: Bool
+    var onFinish: () -> Void
+
+    init(note: Note, viewModel: NotesListViewModel, onFinish: @escaping () -> Void = {}) {
+        self.note = note; self.viewModel = viewModel; self.onFinish = onFinish
+        _text = State(initialValue: note.transcription ?? "")
+        _lastSaved = State(initialValue: note.transcription ?? "")
     }
     private var canSave: Bool {
-        !note.isDeleted && !viewModel.recorder.isRecording && !viewModel.isTranscriptionPaused && !viewModel.recorder.isBusy &&
-            !viewModel.operationInProgress && !viewModel.isGeneratingSummary && !LocalAppModel.shared.busy
+        let recordingThisNote = viewModel.newNoteBeingRecorded?.objectID == note.objectID &&
+            (viewModel.recorder.isRecording || viewModel.isTranscriptionPaused || viewModel.recorder.isBusy || viewModel.operationInProgress)
+        let generatingThisNote = viewModel.isGeneratingSummary && viewModel.generatingSummaryNoteID == note.objectID
+        return !note.isDeleted && !recordingThisNote && !generatingThisNote && !LocalAppModel.shared.busy
+    }
+    @discardableResult private func save() -> Bool {
+        guard text != lastSaved else { return true }
+        do {
+            guard canSave else { throw LocalError.message("Finish transcription or processing before saving edits.") }
+            try note.saveEditedTranscript(text, original: lastSaved, in: store)
+            lastSaved = text
+            error = nil
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+    private func finish() {
+        guard save() else { return }
+        isFocused = false
+        onFinish()
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Edit Transcript").font(.title2.bold()).foregroundStyle(Color.themeTextPrimary)
-            TextEditor(text: $text)
-                .font(.body).foregroundStyle(Color.themeTextPrimary)
-                .scrollContentBackground(.hidden)
-                .padding(12).background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 12))
-                .accessibilityIdentifier("transcriptEditorText")
-            if let error { Text(error).font(.callout).foregroundStyle(.red).accessibilityIdentifier("transcriptEditorError") }
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("transcriptEditorCancelButton")
-                Button("Save") {
-                    do {
-                        guard canSave else { throw LocalError.message("Finish transcription or processing before saving edits.") }
-                        try note.saveEditedTranscript(text, original: original, in: store)
-                        dismiss()
-                    } catch { self.error = error.localizedDescription }
-                }.buttonStyle(JotleyGlassButtonStyle()).keyboardShortcut(.defaultAction).disabled(!canSave)
-                    .accessibilityIdentifier("transcriptEditorSaveButton")
+                Button(action: finish) {
+                    Label("Done", systemImage: "checkmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.themePrimaryAccent)
+                }
+                .buttonStyle(JotleyGlassButtonStyle())
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(!canSave)
+                .accessibilityIdentifier("transcriptEditorSaveButton")
             }
-        }.buttonStyle(JotleyGlassButtonStyle()).padding(24).frame(width: 600, height: 440).background(Color.themeBackground)
-            .tint(.themePrimaryAccent).observeThemeChanges()
+            InlineEditableSummaryTextView(text: $text, isFocused: $isFocused,
+                accentColor: NSColor(Color.themePrimaryAccent), textColor: NSColor(Color.themeTextPrimary),
+                measuredHeight: $editorHeight)
+                .padding(12)
+                .frame(maxWidth: .infinity, minHeight: max(editorHeight, ContentLayoutConstants.standardMinHeight), alignment: .topLeading)
+                .accessibilityIdentifier("transcriptEditorText")
+            if let error {
+                HStack(alignment: .top) {
+                    Text(error).font(.callout).foregroundStyle(.red).accessibilityIdentifier("transcriptEditorError")
+                    Spacer()
+                    Button("Discard Changes") {
+                        text = note.transcription ?? ""
+                        lastSaved = text
+                        self.error = nil
+                        isFocused = false
+                        onFinish()
+                    }.buttonStyle(JotleyGlassButtonStyle())
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 12))
+        .tint(.themePrimaryAccent).observeThemeChanges()
+        .onAppear { isFocused = true }
+        .onExitCommand(perform: finish)
+        .onChange(of: isFocused) { oldValue, newValue in
+            if oldValue && !newValue { save() }
+        }
+        .task(id: text) {
+            guard text != lastSaved else { return }
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            guard !Task.isCancelled else { return }
+            save()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("JotleyForceAllEditorsSave"))) { _ in
+            if !save(), let error { viewModel.report(LocalError.message(error)) }
+        }
+        .onDisappear {
+            if !save(), let error { viewModel.report(LocalError.message(error)) }
+        }
     }
 }

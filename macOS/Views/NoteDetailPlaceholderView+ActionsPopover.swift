@@ -36,6 +36,14 @@ extension NoteDetailPlaceholderView {
             return trimmedSummary != "Transcription in progress..." && trimmedSummary != "Generating summary..."
         }
 
+        private var showsSummaryActions: Bool {
+            parent.selectedTab == DetailTab.summary.rawValue && hasSummary && !isRecordingThisNote
+        }
+
+        private var isTranscriptTab: Bool {
+            parent.selectedTab == DetailTab.transcript.rawValue
+        }
+
         private var isRecordingThisNote: Bool {
             viewModel.recorder.isRecording &&
             viewModel.recorder.isRecordingNewNote &&
@@ -80,9 +88,11 @@ extension NoteDetailPlaceholderView {
 
         var body: some View {
             VStack(spacing: 0) {
-                SummaryDisplayStylePicker()
-                    .pickerStyle(.menu)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
+                if showsSummaryActions {
+                    SummaryDisplayStylePicker()
+                        .pickerStyle(.menu)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                }
                 if isRecordingThisNote {
                     MenuItemView(
                         icon: "doc.on.doc",
@@ -96,7 +106,7 @@ extension NoteDetailPlaceholderView {
                         isPresented = false
                     }
                 } else {
-                    if hasSummary {
+                    if showsSummaryActions {
                         // Click to open/close template submenu.
                         MenuItemView(
                             icon: "sparkles",
@@ -124,7 +134,7 @@ extension NoteDetailPlaceholderView {
                         )
                     }
 
-                    if hasSummary {
+                    if showsSummaryActions {
                         Divider()
                             .padding(.vertical, 4)
                     }
@@ -158,7 +168,7 @@ extension NoteDetailPlaceholderView {
                     }
 
                     if showExportSubmenu {
-                        if hasSummary {
+                        if showsSummaryActions {
                             MenuItemView(
                                 icon: "doc.richtext",
                                 title: "Summary as PDF"
@@ -178,7 +188,7 @@ extension NoteDetailPlaceholderView {
                             .accessibilityIdentifier("exportSummaryButton")
                         }
 
-                        if let transcription = note.transcription,
+                        if isTranscriptTab, let transcription = note.transcription,
                            !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             MenuItemView(
                                 icon: "text.badge.checkmark",
@@ -210,17 +220,17 @@ extension NoteDetailPlaceholderView {
                     Divider()
                         .padding(.vertical, 4)
 
-                    if parent.hasContentToSummarize {
+                    if isTranscriptTab && parent.hasContentToSummarize {
                         MenuItemView(icon: "pencil", title: "Edit Transcript",
                             disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
                                 viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy) {
                             parent.selectedTab = DetailTab.transcript.rawValue
-                            parent.showingTranscriptEditor = true
+                            parent.isEditingTranscript = true
                             isPresented = false
                         }.accessibilityIdentifier("noteDetailEditTranscriptMenuItem")
                     }
 
-                    if hasSummary {
+                    if showsSummaryActions {
                         MenuItemView(
                             icon: "pencil",
                             title: "Edit Summary",
@@ -247,7 +257,7 @@ extension NoteDetailPlaceholderView {
             .frame(width: mainMenuWidth)
             .modifier(MacNoteMenuSurface())
             .overlay(alignment: .topLeading) {
-                if showTemplateSubmenu && hasSummary && !isRecordingThisNote {
+                if showTemplateSubmenu && showsSummaryActions {
                     TemplateSubmenu(
                         note: note,
                         availableTemplates: parent.availableTemplates,
@@ -262,6 +272,10 @@ extension NoteDetailPlaceholderView {
                 }
             }
             .zIndex(1)
+            .onChange(of: parent.selectedTab) { _, _ in
+                showTemplateSubmenu = false
+                showExportSubmenu = false
+            }
             .onDisappear {
                 showTemplateSubmenu = false
                 showExportSubmenu = false

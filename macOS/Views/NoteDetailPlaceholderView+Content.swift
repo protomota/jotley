@@ -4,10 +4,6 @@ import AppKit
 extension NoteDetailPlaceholderView {
     var contentWithAlerts: some View {
         contentWithAlertsBase
-        .sheet(isPresented: $showingTranscriptEditor) {
-            LocalMacTranscriptEditor(note: note, viewModel: viewModel)
-                .environmentObject(persistenceController)
-        }
         .sheet(isPresented: $showingAskAI) {
             LocalMacAskNoteView(note: note).environmentObject(persistenceController)
         }

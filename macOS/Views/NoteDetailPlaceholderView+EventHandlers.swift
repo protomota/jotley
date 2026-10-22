@@ -195,6 +195,7 @@ extension NoteDetailPlaceholderView {
     }
 
     func handleTabChanged(_ oldValue: Int, _ newTabRawValue: Int) {
+        if newTabRawValue != DetailTab.transcript.rawValue { isEditingTranscript = false }
 
         // Cancel any pending save timers for the old tab
         if oldValue == DetailTab.summary.rawValue {

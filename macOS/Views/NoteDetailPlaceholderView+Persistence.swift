@@ -3,6 +3,8 @@ import SwiftUI
 extension NoteDetailPlaceholderView {
     // MARK: Save Transcript Function
     func saveTranscriptChanges() {
+        // The inline editor owns its draft and checks for concurrent changes.
+        guard !isEditingTranscript else { return }
         guard note.managedObjectContext != nil, !note.isDeleted else {
 
             return

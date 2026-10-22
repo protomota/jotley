@@ -119,7 +119,9 @@ extension NoteDetailPlaceholderView {
             } // End of VStack
         } // End of GeometryReader
         .overlay( alignment: .top) { detailOverlay1 }
-        .overlay( alignment: .bottom) { detailOverlay5 }
+        .overlay(alignment: .bottom) {
+            detailOverlay5.animation(.smooth(duration: 0.25), value: viewModel.recorder.isRecording)
+        }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isRecordingThisNote)
         .onAppear {
             showActionsPopover = false
@@ -130,6 +132,7 @@ extension NoteDetailPlaceholderView {
         }
         .onChange(of: note.objectID) { _, _ in
             transcriptFollow = MacTranscriptFollowState()
+            isEditingTranscript = false
             showActionsPopover = false
         }
         .onChange(of: viewModel.recorder.isRecording) { _, isRecordingNow in
@@ -188,6 +191,12 @@ extension NoteDetailPlaceholderView {
     }
 
     @ViewBuilder var detailOverlay5: some View {
+            if viewModel.recorder.isRecording {
+                MacCompactTranscriptionBar(viewModel: viewModel)
+                    .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
+                    .modifier(MacNoteFooterPlacement())
+                    .transition(.opacity)
+            }
 
             if selectedTab == DetailTab.summary.rawValue && note.hasMeaningfulSummaryText &&
                 !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
@@ -196,12 +205,12 @@ extension NoteDetailPlaceholderView {
                         !viewModel.isGeneratingSummary && !LocalAppModel.shared.busy,
                     onAsk: { showingAskAI = true }
                 )
-                .padding(.horizontal, 14).padding(.vertical, 14).padding(.trailing, 16)
+                .modifier(MacNoteFooterPlacement())
 
             }
 
             // Transcript actions remain on the Transcript tab.
-            if selectedTab == DetailTab.transcript.rawValue && !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
+            if selectedTab == DetailTab.transcript.rawValue && !isEditingTranscript && !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
                 let transcript = editableTranscript
                 // Per-note saved-audio loading flag (not a persisted placeholder) so the
                 // action footer stays hidden while saved audio is being transcribed.
@@ -223,6 +232,7 @@ extension NoteDetailPlaceholderView {
                                     .foregroundStyle(Color.themePrimaryAccent)
                             }
                             .buttonStyle(JotleyGlassButtonStyle())
+                            .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
                             .accessibilityIdentifier("noteDetailTranscriptResumeButton")
                         }
 
@@ -256,10 +266,7 @@ extension NoteDetailPlaceholderView {
                             if isGenerating { Button("Cancel") { viewModel.cancelInference() }.buttonStyle(.plain) }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 14)
-                    .padding(.trailing, 16) // Leave space for scrollbar
+                    .modifier(MacNoteFooterPlacement())
 
                 }
             }

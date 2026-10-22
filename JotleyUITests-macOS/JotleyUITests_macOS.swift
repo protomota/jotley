@@ -85,9 +85,6 @@ private struct MacTranscriptionPreviewRoot: View {
                     .id(note.objectID)
                     .environmentObject(model.persistenceController)
                     .environment(\.managedObjectContext, model.viewContext)
-                    .overlay(alignment: .bottom) {
-                        if model.recorder.isRecording { MacCompactTranscriptionBar(viewModel: model).padding(12) }
-                    }
             }
         }.frame(width: 1000, height: 760)
             .foregroundStyle(Color.themeTextPrimary).background(Color.themeBackground)
@@ -160,6 +157,12 @@ private struct MacSupportPreviewRoot: View {
             } else if CommandLine.arguments.contains("--transcript-scroll-only") {
                 guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
                 try await verifyNewTranscriptScroll(store: store)
+            } else if CommandLine.arguments.contains("--transcript-editor-only") {
+                guard let base = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
+                let store = try SharedPersistenceController(inMemory: true, model: base.container.managedObjectModel)
+                let note = try store.create(title: "Inline edit fixture", text: "Original Mac words.") as! Note
+                let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
+                try await verifyTranscriptEditing(note: note, store: store, viewModel: model)
             } else if CommandLine.arguments.contains("--summary-scroll-only") {
                 guard let store = LocalAppModel.shared.store,
                       let note = try store.create(title: "Summary scroll fixture", text: "Maya reviews Friday.") as? Note else { throw LocalError.message("Summary scroll store unavailable") }
@@ -478,7 +481,9 @@ private struct MacSupportPreviewRoot: View {
         note.sourceURL = "local://preserved-recording"
         note.setTranscriptUtterances([TranscriptUtterance(text: "Original Mac words.", start: 1, end: 3)])
         try store.context.save()
-        let host = NSHostingView(rootView: LocalMacTranscriptEditor(note: note, viewModel: viewModel).environmentObject(store))
+        let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note,
+            selectedTab: .constant(DetailTab.transcript.rawValue), viewModel: viewModel, isEditingTranscript: true)
+            .environment(\.managedObjectContext, store.context).environmentObject(store))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 440), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
         defer { window.close() }
@@ -490,16 +495,25 @@ private struct MacSupportPreviewRoot: View {
             throw LocalError.message("Mac transcript editor did not open with editable saved words.")
         }
         editor.selectAll(nil); editor.insertText("Corrected Mac words.\n\nAnother paragraph.", replacementRange: editor.selectedRange())
+        try await Task.sleep(for: .milliseconds(2300))
+        guard window.attachedSheet == nil, note.transcription == "Corrected Mac words.\n\nAnother paragraph." else {
+            throw LocalError.message("Transcript edits must autosave inline without opening a sheet.")
+        }
+        let addition = " Saved before closing the app."
+        editor.insertText(addition, replacementRange: NSRange(location: (editor.string as NSString).length, length: 0))
+        NotificationCenter.default.post(name: Notification.Name("JotleyForceAllEditorsSave"), object: nil)
         try await Task.sleep(for: .milliseconds(150))
+        guard note.transcription?.hasSuffix(addition) == true else { throw LocalError.message("Inline transcript did not flush its latest draft before quitting.") }
         window.makeKeyAndOrderFront(nil)
-        guard let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+        guard let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: ProcessInfo.processInfo.systemUptime,
             windowNumber: window.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36),
               window.performKeyEquivalent(with: key) else {
-            throw LocalError.message("Mac transcript Save keyboard action was inaccessible.")
+            throw LocalError.message("Mac inline transcript Done keyboard action was inaccessible.")
         }
         try await Task.sleep(for: .milliseconds(150))
-        guard note.transcription == "Corrected Mac words.\n\nAnother paragraph.",
-              note.transcriptUtterances.map(\.text) == ["Corrected Mac words.", "Another paragraph."],
+        guard !textViews(host).contains(where: { $0.isEditable }),
+              note.transcription == "Corrected Mac words.\n\nAnother paragraph." + addition,
+              note.transcriptUtterances.map(\.text) == ["Corrected Mac words.", "Another paragraph." + addition],
               note.summary == "Preserved summary.", note.sourceURL == "local://preserved-recording" else {
             throw LocalError.message("Mac editor failed to persist corrected words or preserve existing content.")
         }
@@ -509,7 +523,7 @@ private struct MacSupportPreviewRoot: View {
         } catch let error as LocalError {
             guard error.localizedDescription.contains("changed while") else { throw error }
         }
-        print("PASS: actual Mac transcript TextEditor and Save persist edited paragraphs, preserve summary/audio metadata and reject stale drafts.")
+        print("PASS: the real Mac note edits its transcript inline, autosaves paragraphs, exits with Command-Return, preserves summary/audio metadata and rejects stale drafts.")
     }
     @MainActor private static func verifyMacAskPresentation(note: Note, store: SharedPersistenceController) async throws {
         let original = ThemeManager.shared.currentAppearanceMode

@@ -18,9 +18,11 @@ extension NotesListView {
         } detail: {
             detailContent
                 .overlay(alignment: .bottom) {
-                    if viewModel.recorder.isRecording {
+                    // A selected note owns the shared idle/live footer. Keep
+                    // recording controls available if filters hide every note.
+                    if viewModel.recorder.isRecording && !notes.contains(where: { viewModel.selectedNoteIDs.contains($0.objectID) }) {
                         MacCompactTranscriptionBar(viewModel: viewModel)
-                            .padding(.horizontal, 12).padding(.vertical, 12)
+                            .modifier(MacNoteFooterPlacement())
                     }
                 }
                 .background(Color.themeContentBackground.ignoresSafeArea())

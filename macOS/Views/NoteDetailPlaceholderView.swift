@@ -20,10 +20,11 @@ struct NoteDetailPlaceholderView: View {
     @AppStorage("showTags") var showTags: Bool = false
 
     // Original properties to maintain app functionality
+    @Namespace var transcriptionFooterNamespace
     @State var transcriptFollow = MacTranscriptFollowState()
     @State var showActionsPopover: Bool = false
     @State var showingAskAI = false
-    @State var showingTranscriptEditor = false
+    @State var isEditingTranscript = false
     @State var showObsidianSaveAlert = false
     @State var obsidianAlertTitle = ""
     @State var obsidianAlertMessage = ""

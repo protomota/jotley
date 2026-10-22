@@ -49,9 +49,7 @@ struct MacTranscriptionControls: View {
                 .accessibilityIdentifier("macLiveTranscriptionStopButton")
         }.disabled(isBusy).fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Color.themeContentBackground.opacity(0.94), in: Capsule())
-            .overlay(Capsule().stroke(Color.themeAccent.opacity(0.3), lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+            .modifier(JotleyTranscriptCard(cornerRadius: 100))
     }
 }
 
@@ -87,5 +85,14 @@ private struct MacCompactTranscriptionIndicator: View {
         RecordingIndicator(appIcon: recorder.icon, isRecording: true,
                            audioLevel: isPaused ? 0 : level, size: 22, isPaused: isPaused)
             .onReceive(meter) { _ in level = recorder.currentAudioLevel }
+    }
+}
+
+/// Idle actions and live capture use the same center and bottom inset.
+struct MacNoteFooterPlacement: ViewModifier {
+    func body(content: Content) -> some View {
+        content.frame(height: 52, alignment: .center)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(12)
     }
 }

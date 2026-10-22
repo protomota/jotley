@@ -233,28 +233,37 @@ extension NoteDetailPlaceholderView {
             }
         )
 
-        return DetailTabPanel(
-            note: note,
-            selectedTab: $selectedTab,
-            isGeneratingSummary: isGeneratingSummaryBinding,
-            summaryGenerationError: $summaryGenerationError,
-            editableSummary: $editableSummary,
-            isSummaryEditorFocused: $isSummaryEditorFocused,
-            summaryInlineEditRequestCounter: $summaryInlineEditRequestCounter,
-            editableTranscript: $editableTranscript,
-            isTranscriptEditorFocused: $isTranscriptEditorFocused,
-            showRawMarkdown: bindingForCurrentTabShowRawMarkdown,
-            viewModel: viewModel,
-            // Note-scoped saved-audio loading flag — drives the transcript spinner without
-            // a persisted placeholder. Read here (where the VM is observed) so the
-            // value flips trigger a re-render down through DetailTabPanel.
-            isTranscriptLoading: viewModel.isTranscriptLoading(for: note),
-            summaryLoadingStartedAt: viewModel.summaryLoadingStartedAt(for: note.objectID),
-            streamingSummaryViewModel: viewModel.streamingSummaryViewModel
-        )
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        return Group {
+            if isEditingTranscript && selectedTab == DetailTab.transcript.rawValue {
+                LocalMacTranscriptEditor(note: note, viewModel: viewModel) {
+                    isEditingTranscript = false
+                }
+                .environmentObject(persistenceController)
+            } else {
+                DetailTabPanel(
+                    note: note,
+                    selectedTab: $selectedTab,
+                    isGeneratingSummary: isGeneratingSummaryBinding,
+                    summaryGenerationError: $summaryGenerationError,
+                    editableSummary: $editableSummary,
+                    isSummaryEditorFocused: $isSummaryEditorFocused,
+                    summaryInlineEditRequestCounter: $summaryInlineEditRequestCounter,
+                    editableTranscript: $editableTranscript,
+                    isTranscriptEditorFocused: $isTranscriptEditorFocused,
+                    showRawMarkdown: bindingForCurrentTabShowRawMarkdown,
+                    viewModel: viewModel,
+                    // Note-scoped saved-audio loading flag — drives the transcript spinner without
+                    // a persisted placeholder. Read here (where the VM is observed) so the
+                    // value flips trigger a re-render down through DetailTabPanel.
+                    isTranscriptLoading: viewModel.isTranscriptLoading(for: note),
+                    summaryLoadingStartedAt: viewModel.summaryLoadingStartedAt(for: note.objectID),
+                    streamingSummaryViewModel: viewModel.streamingSummaryViewModel
+                )
+                .padding(.horizontal, 4)
+                .padding(.top, 4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
     }
 
     // Computed property to select the correct binding for the current tab
