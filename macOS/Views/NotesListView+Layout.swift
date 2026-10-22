@@ -2,8 +2,13 @@ import SwiftUI
 
 extension NotesListView {
     var navigationView: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             mainContent
+                .noteContentSwipes(enabled: !showingSettingsSheet && !showingTagFilter && !showingFolderManagement) { direction in
+                    if direction == .right, !viewModel.selectedNoteIDs.isEmpty {
+                        withAnimation { columnVisibility = .detailOnly }
+                    }
+                }
                 .frame(minWidth: 280)
                 .background(Color.themeContentBackground.ignoresSafeArea())
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
@@ -458,7 +463,8 @@ extension NotesListView {
     private var detailContent: some View {
         if let selectedID = viewModel.selectedNoteIDs.first,
            let selectedNote = notes.first(where: { $0.objectID == selectedID }) {
-            NoteDetailPlaceholderView(note: selectedNote, selectedTab: $viewModel.selectedDetailTab, viewModel: viewModel)
+            NoteDetailPlaceholderView(note: selectedNote, selectedTab: $viewModel.selectedDetailTab, viewModel: viewModel,
+                showNotesAction: { withAnimation { columnVisibility = .all } })
                 .id(selectedNote.objectID)
                 .onAppear {
                 }

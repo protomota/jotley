@@ -1867,6 +1867,73 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3), "The sixth saved action must not trigger a custom review prompt")
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
     }
+    @MainActor func testNoteSwipesFollowTranscriptSummaryNotesOrder() throws {
+        let isIPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
+        XCUIDevice.shared.orientation = isIPad ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        let summary = "## Summary\nThe team has a clear plan for Friday.\n\n## Key Points\n" + (1...24).map { "- Check milestone \($0) before launch." }.joined(separator: "\n")
+        let notes: [[String: Any]] = [["title": "Swipe navigation", "folder": "Work", "tags": [], "transcript": "These are the original spoken words.", "summary": summary],
+            ["title": "No summary yet", "folder": "Work", "tags": [], "transcript": "Only spoken words.", "summary": ""]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: notes), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let transcript = app.buttons["noteDetailTranscriptTab"], summaryTab = app.buttons["noteDetailSummaryTab"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 15))
+        transcript.tap()
+        let words = app.descendants(matching: .any)["noteDetailTranscriptContent"].firstMatch
+        XCTAssertTrue(words.waitForExistence(timeout: 5))
+        words.swipeLeft()
+        XCTAssertTrue(summaryTab.isSelected, "Left from Transcript should open Summary")
+        let content = app.descendants(matching: .any)["noteDetailSummaryContent"].firstMatch
+        content.swipeUp()
+        XCTAssertTrue(summaryTab.isSelected, "Vertical scrolling must not switch tabs")
+        content.swipeDown()
+        content.swipeRight()
+        XCTAssertTrue(transcript.isSelected, "Right from Summary should open Transcript")
+        words.swipeRight()
+        XCTAssertTrue(transcript.isSelected, "Right from Transcript must not wrap")
+        words.swipeLeft()
+        content.swipeLeft()
+        let row = app.buttons.containing(.staticText, identifier: "Swipe navigation").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertTrue(row.isHittable, "Left from Summary should reveal notes")
+        row.swipeRight()
+        XCTAssertTrue(summaryTab.waitForExistence(timeout: 5)); XCTAssertTrue(summaryTab.isSelected)
+        let proof = XCTAttachment(screenshot: app.screenshot())
+        proof.name = "Swipe returns to the same summary"; proof.lifetime = .keepAlways; add(proof)
+        content.swipeLeft()
+        let noSummary = app.buttons.containing(.staticText, identifier: "No summary yet").firstMatch
+        XCTAssertTrue(noSummary.waitForExistence(timeout: 5)); noSummary.tap()
+        XCTAssertTrue(words.waitForExistence(timeout: 5))
+        words.swipeLeft()
+        XCTAssertTrue(noSummary.waitForExistence(timeout: 5)); XCTAssertTrue(noSummary.isHittable)
+    }
+
+    @MainActor func testMoreMenuKeepsBothEditorsOnEitherTab() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"""
+        [{"title":"Consistent note menu","folder":"Work","tags":[],"transcript":"Original spoken words.","summary":"## Summary\nA short overview.\n\n## Key Points\n- Keep both editors available."}]
+        """#
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launch()
+        XCTAssertTrue(app.buttons["noteDetailSummaryTab"].waitForExistence(timeout: 15))
+        for tab in ["Summary", "Transcript"] {
+            let tabButton = app.buttons["noteDetail\(tab)Tab"]
+            XCTAssertTrue(tabButton.waitForExistence(timeout: 5)); tabButton.tap()
+            app.buttons["noteDetailMoreActionsButton"].tap()
+            for identifier in ["noteDetailSummaryStyleMenu", "noteDetailSummaryTemplateMenu", "noteDetailEditTranscriptButton", "noteDetailEditSummaryButton"] {
+                XCTAssertTrue(app.buttons[identifier].waitForExistence(timeout: 3), "\(identifier) is missing on \(tab)")
+            }
+            // Exercise the editor belonging to the other tab, not just its label.
+            let other = tab == "Summary" ? "Transcript" : "Summary"
+            app.buttons["noteDetailEdit\(other)Button"].tap()
+            XCTAssertTrue(app.textViews["\(other.lowercased())EditorText"].waitForExistence(timeout: 5))
+            app.buttons["\(other.lowercased())EditorCancelButton"].tap()
+        }
+    }
+
     @MainActor func testTranscriptEditingAndSummaryMenuAvailability() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Transcript editing verification","folder":"Work","tags":[],"transcript":"Original words.","summary":""}] "#

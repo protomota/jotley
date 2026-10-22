@@ -7,6 +7,7 @@ extension NoteDetailView {
             VStack(spacing: 0) {
                 noteHeaderSection
                 if hasTranscript || hasSummary { noteTabPickerSection }
+                Group {
                 if selectedTab == "Summary", hasSummary {
                     if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
                         Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written. You can leave this note or lock your phone; the summary keeps going and is saved when it finishes.")
@@ -21,6 +22,9 @@ extension NoteDetailView {
                 } else {
                     ContentUnavailableView("No Words Yet", systemImage: "text.bubble", description: Text("Tap Continue Transcription to add spoken words to this note."))
                 }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .noteContentSwipes(enabled: noteSwipesEnabled, onSwipe: navigateNoteSwipe)
             }
             .padding(.bottom, actionsFooterHeight + 16)
             Color.clear.frame(height: 1).id("summaryBottom")

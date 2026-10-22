@@ -79,6 +79,7 @@ extension NoteDetailPlaceholderView {
                                 // empty area that pushes new notes off the top.
                                 .frame(maxWidth: .infinity, minHeight: isRecordingThisNote ? 0 : max(400, geometry.size.height - 150))
                                 .padding(.top, 8)
+                                .noteContentSwipes(enabled: noteSwipesEnabled, onSwipe: navigateNoteSwipe)
                         }
                         .padding(.bottom, detailBottomPadding)
                         .id(detailScrollTopAnchorID)

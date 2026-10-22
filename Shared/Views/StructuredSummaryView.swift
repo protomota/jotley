@@ -7,6 +7,126 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
+
+/// Physical swipe direction, independent of the reading or scroll direction.
+enum NoteContentSwipeDirection {
+    case left, right
+
+    static func resolve(horizontal: CGFloat, vertical: CGFloat) -> Self? {
+        guard abs(horizontal) >= 54, abs(horizontal) > abs(vertical) * 1.5 else { return nil }
+        return horizontal < 0 ? .left : .right
+    }
+}
+
+extension View {
+    func noteContentSwipes(enabled: Bool, onSwipe: @escaping (NoteContentSwipeDirection) -> Void) -> some View {
+        modifier(NoteContentSwipeModifier(enabled: enabled, onSwipe: onSwipe))
+    }
+}
+
+private struct NoteContentSwipeModifier: ViewModifier {
+    let enabled: Bool
+    let onSwipe: (NoteContentSwipeDirection) -> Void
+
+    func body(content: Content) -> some View {
+#if os(macOS)
+        content.background(MacNoteContentSwipeReader(enabled: enabled, onSwipe: onSwipe))
+#else
+        content.contentShape(Rectangle()).simultaneousGesture(
+            DragGesture(minimumDistance: 20).onEnded { value in
+                // Leave the system's leading-edge Back gesture alone.
+                guard enabled, value.startLocation.x > 28,
+                      let direction = NoteContentSwipeDirection.resolve(
+                        horizontal: value.translation.width, vertical: value.translation.height) else { return }
+                onSwipe(direction)
+            }
+        )
+#endif
+    }
+}
+
+#if os(macOS)
+/// Accumulate one physical trackpad gesture, never its momentum or a mouse wheel.
+struct MacNoteContentSwipeTracker {
+    private var horizontal: CGFloat = 0
+    private var vertical: CGFloat = 0
+    private var active = false
+    private var verticalScroll = false
+
+    mutating func begin() {
+        horizontal = 0; vertical = 0; active = true; verticalScroll = false
+    }
+    mutating func update(horizontal x: CGFloat, vertical y: CGFloat) {
+        guard active else { return }
+        horizontal += x; vertical += y
+        if abs(vertical) >= 12, abs(vertical) > abs(horizontal) { verticalScroll = true }
+    }
+    mutating func finish() -> NoteContentSwipeDirection? {
+        defer { cancel() }
+        guard active, !verticalScroll else { return nil }
+        return NoteContentSwipeDirection.resolve(horizontal: horizontal, vertical: vertical)
+    }
+    mutating func cancel() { active = false }
+}
+
+private struct MacNoteContentSwipeReader: NSViewRepresentable {
+    let enabled: Bool
+    let onSwipe: (NoteContentSwipeDirection) -> Void
+
+    func makeNSView(context: Context) -> SwipeView { SwipeView() }
+    func updateNSView(_ view: SwipeView, context: Context) {
+        view.enabled = enabled
+        view.onSwipe = onSwipe
+        if !enabled { view.tracker.cancel() }
+    }
+    static func dismantleNSView(_ view: SwipeView, coordinator: ()) { view.stopMonitoring() }
+
+    final class SwipeView: NSView {
+        var enabled = false
+        var onSwipe: ((NoteContentSwipeDirection) -> Void)?
+        var tracker = MacNoteContentSwipeTracker()
+        private var monitor: Any?
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            stopMonitoring()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                self?.receive(event)
+                return event
+            }
+        }
+        func stopMonitoring() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+            tracker.cancel()
+        }
+        private func receive(_ event: NSEvent) {
+            guard enabled, let window, event.window === window, window.isKeyWindow,
+                  !isHiddenOrHasHiddenAncestor, event.hasPreciseScrollingDeltas,
+                  event.momentumPhase.isEmpty, !event.phase.isEmpty,
+                  event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty,
+                  !((window.firstResponder as? NSTextView)?.isEditable ?? false) else {
+                tracker.cancel(); return
+            }
+            if event.phase.contains(.mayBegin) || event.phase.contains(.cancelled) { tracker.cancel(); return }
+            if event.phase.contains(.began) {
+                guard visibleRect.contains(convert(event.locationInWindow, from: nil)) else { tracker.cancel(); return }
+                tracker.begin()
+            }
+            // AppKit reverses these deltas with the Natural Scrolling preference.
+            // Normalize them so a physical left swipe always means left.
+            let sign: CGFloat = event.isDirectionInvertedFromDevice ? 1 : -1
+            tracker.update(horizontal: event.scrollingDeltaX * sign, vertical: event.scrollingDeltaY * sign)
+            if event.phase.contains(.ended), let direction = tracker.finish() { onSwipe?(direction) }
+        }
+    }
+}
+#endif
 
 /// Cache syntax only: appearance and fonts stay reactive in the SwiftUI view.
 /// Template changes must not parse the whole unchanged summary on the main thread.

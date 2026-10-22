@@ -15,6 +15,7 @@ struct NoteDetailPlaceholderView: View {
     @AppStorage("preferCleanedTranscript") var preferCleanedTranscript: Bool = false // Make transcript view preference persistent
     @Binding var selectedTab: Int // Raw value of DetailTab
     @ObservedObject var viewModel: NotesListViewModel
+    var showNotesAction: (() -> Void)? = nil
     @EnvironmentObject var persistenceController: SharedPersistenceController
 
     @AppStorage("showTags") var showTags: Bool = false
@@ -78,5 +79,23 @@ struct NoteDetailPlaceholderView: View {
     @State var transcriptSaveTimer: Timer?
     var body: some View {
         contentWithAlerts
+    }
+
+    var noteSwipesEnabled: Bool {
+        !isEditingTranscript && !isTranscriptEditorFocused && !isSummaryEditorFocused &&
+        !showRawMarkdownSummary && !showActionsPopover && !showingAskAI && !isEditingTags && !showAddTagPopover
+    }
+    func navigateNoteSwipe(_ direction: NoteContentSwipeDirection) {
+        switch direction {
+        case .left:
+            if selectedTab == DetailTab.transcript.rawValue,
+               note.hasMeaningfulSummaryText || isGeneratingThisSummary {
+                selectedTab = DetailTab.summary.rawValue
+            } else { showNotesAction?() }
+        case .right:
+            if selectedTab == DetailTab.summary.rawValue, hasContentToSummarize || isRecordingThisNote {
+                selectedTab = DetailTab.transcript.rawValue
+            }
+        }
     }
 }

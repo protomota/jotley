@@ -352,8 +352,8 @@ public enum LocalSummary {
         return lines.joined(separator: "\n")
     }
 
-    static let overviewWordLimit = 240
-    static let overviewCharacterLimit = 1800
+    static let overviewWordLimit = 180
+    static let overviewCharacterLimit = 1350
     static let finalResponseTokenLimit = 1024
 
     /// Keep generated overviews readable in every template, including partial
@@ -492,7 +492,7 @@ public enum LocalSummary {
     static let extractionPrompt = "Extract the key facts, decisions and action items from this source in compact notes. Preserve names, dates, numbers, decisions and unresolved questions across the entire source. Do not repeat facts or add a preamble."
     /// Jotley renders the opening overview as a card and each later heading as a
     /// visual section, so every template shares this Markdown shape.
-    static let structurePrompt = "Format: start with \"## Summary\" and exactly one coherent overview paragraph. Write a developed paragraph, usually three to five sentences, rather than a single-sentence teaser. Longer, information-rich transcripts should receive a fuller paragraph of about five to eight sentences, up to \(overviewWordLimit) words (\(overviewCharacterLimit) characters in languages without spaces). Scale the length to the source's substance; do not pad a very short source or repeat facts to reach a target. Explain the central topic, main outcome and essential context in connected prose. Never put bullets, examples, subtopics or a detailed recap inside Summary; put those only under the later section headings. Then use \"## \" headings with \"- \" list items, and give each heading its own section. Start an item with a short bold label and a colon when it helps scanning. In Action Items, the bold label is the name of the person the source says is responsible, followed by the task; leave the label out when nobody is named. Use only headings the source supports and skip the rest. Never write an empty section or item, a placeholder such as none or not discussed, or an estimate, owner, date or number the source does not state. State each fact once; do not repeat it under another heading."
+    static let structurePrompt = "Format: start with \"## Summary\" and exactly one coherent overview paragraph. Write a developed paragraph, usually three to four sentences, rather than a single-sentence teaser. Longer, information-rich transcripts should receive a fuller paragraph of about four to six sentences, up to \(overviewWordLimit) words (\(overviewCharacterLimit) characters in languages without spaces). Scale the length to the source's substance; do not pad a very short source or repeat facts to reach a target. Explain the central topic, main outcome and essential context in connected prose. Never put bullets, examples, subtopics or a detailed recap inside Summary; put those only under the later section headings. Then use \"## \" headings with \"- \" list items, and give each heading its own section. Start an item with a short bold label and a colon when it helps scanning. In Action Items, the bold label is the name of the person the source says is responsible, followed by the task; leave the label out when nobody is named. Use only headings the source supports and skip the rest. Never write an empty section or item, a placeholder such as none or not discussed, or an estimate, owner, date or number the source does not state. State each fact once; do not repeat it under another heading."
     static func finalPrompt(_ template: LocalSummaryTemplate) -> String {
         template.prompt + "\n" + structurePrompt + "\nCreate one summary. Combine overlapping facts; do not repeat sections. End after the summary."
     }
