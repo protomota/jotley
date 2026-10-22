@@ -188,15 +188,9 @@ extension NoteDetailPlaceholderView {
             if selectedTab == DetailTab.summary.rawValue && note.hasMeaningfulSummaryText &&
                 !viewModel.recorder.isRecording && !isGeneratingThisSummary && !viewModel.operationInProgress {
                 MacSummaryActionsFooter(
-                    template: LocalSummaryTemplate.resolve(note.summaryType),
-                    hasTranscript: hasContentToSummarize,
                     isEnabled: !hasActiveRecordingSession && !viewModel.recorder.isBusy &&
                         !viewModel.isGeneratingSummary && !LocalAppModel.shared.busy,
-                    onAsk: { showingAskAI = true },
-                    onTemplate: { template in
-                        guard LocalSummaryTemplate.resolve(note.summaryType) != template else { return }
-                        Task { @MainActor in await handleSummarizeAction(templateKey: template.key) }
-                    }
+                    onAsk: { showingAskAI = true }
                 )
                 .padding(.horizontal, 14).padding(.vertical, 14).padding(.trailing, 16)
 
@@ -271,49 +265,19 @@ extension NoteDetailPlaceholderView {
 
 
 struct MacSummaryActionsFooter: View {
-    let template: LocalSummaryTemplate
-    let hasTranscript: Bool
     let isEnabled: Bool
     let onAsk: () -> Void
-    let onTemplate: (LocalSummaryTemplate) -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
-            Button(action: onAsk) {
-                Label {
-                    Text("Ask AI").foregroundStyle(Color.themeTextPrimary)
-                } icon: {
-                    Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
-                }
-                    .font(.system(size: 13, weight: .medium))
-
+        Button(action: onAsk) {
+            Label {
+                Text("Ask AI").foregroundStyle(Color.themeTextPrimary)
+            } icon: {
+                Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
             }
-            .accessibilityIdentifier("noteDetailSummaryAskAIButton")
-
-            if hasTranscript {
-                HStack(spacing: 8) {
-                    Menu {
-                        ForEach(LocalSummaryTemplate.allCases) { item in
-                            Button { onTemplate(item) } label: {
-                                if item == template { Label(item.title, systemImage: "checkmark") }
-                                else { Text(item.title) }
-                            }.accessibilityIdentifier("noteTemplate-\(item.key)")
-                        }
-                    } label: {
-                        Label(template.title, systemImage: "sparkles")
-                            .font(.system(size: 13, weight: .medium))
-                            .lineLimit(1).truncationMode(.tail)
-                            .foregroundStyle(Color.themeTextPrimary)
-                    }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden)
-                    .frame(width: 136, height: 36)
-                    .glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: Capsule())
-                    .accessibilityLabel("Templates: \(template.title)")
-                    .accessibilityIdentifier("noteDetailTemplatesButton")
-
-
-                }
-            }
-        }.buttonStyle(JotleyGlassButtonStyle()).disabled(!isEnabled)
+            .font(.system(size: 13, weight: .medium))
+        }
+        .accessibilityIdentifier("noteDetailSummaryAskAIButton")
+        .buttonStyle(JotleyGlassButtonStyle()).disabled(!isEnabled)
     }
 }
