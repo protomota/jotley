@@ -1,0 +1,44 @@
+# Mobile onboarding icons — October 22, 2026
+
+Generated with the built-in image generation tool, with transparent backgrounds. Five simplified objects replace the detailed iOS illustrations; macOS retains its original artwork. The selected language icon has continent silhouettes and an upper-right light-purple speech bubble with two dark-purple lines. The original globe and intermediate mint/peach variants are not included in the app.
+
+Saved assets: `iOS/Assets.xcassets/onboarding-{welcome,intelligence,language,microphone,support}.imageset/illustration.png`. The originals remain in Codex generated_images. No raster post-processing was used; generated alpha is preserved.
+
+Compact mobile artwork uses 112-point inline icons or 144-point stacked icons, with a larger 180-point treatment when space permits. The mobile footer extends into the bottom safe area with 12 points of outer padding and reserves a consistent secondary row for Not now.
+
+## Final prompts
+
+### welcome
+
+Use case: stylized-concept. Asset type: small native mobile onboarding icon for Jotley. Create a NEW transparent PNG icon, not a screen mockup. A very simple bold sculptural 3D icon that remains immediately recognizable at 72 to 112 points. Soft satin ceramic forms, rounded edges, restrained depth, clean rich violet #9734E8 and medium lavender #B887ED, small ivory highlights, optional one mint #BDE9DA accent. Strong silhouette and solid readable color, not pale transparent objects. Front three-quarter view, simple broad surfaces, soft studio lighting. One main object, at most one simple secondary element. Center tightly and fill about 82 percent of the square canvas, with a small even safety margin. Genuinely transparent alpha background; no colored square, circle medallion, backdrop, cast floor shadow, border, text, lettering, logos or watermark. No tiny decorative details, no orbiting rings, no floating paper confetti, no flowers, no fine textures. Square 1024x1024. Subject: one violet closed pocket notebook with a single thick ivory waveform symbol embossed on its cover. No pen, extra pages or flying paper. Simple unmistakable notebook silhouette.
+
+### intelligence
+
+Use case: stylized-concept. Asset type: small native mobile onboarding icon for Jotley. Create a NEW transparent PNG icon, not a screen mockup. A very simple bold sculptural 3D icon that remains immediately recognizable at 72 to 112 points. Soft satin ceramic forms, rounded edges, restrained depth, clean rich violet #9734E8 and medium lavender #B887ED, small ivory highlights, optional one mint #BDE9DA accent. Strong silhouette and solid readable color, not pale transparent objects. Front three-quarter view, simple broad surfaces, soft studio lighting. One main object, at most one simple secondary element. Center tightly and fill about 82 percent of the square canvas, with a small even safety margin. Genuinely transparent alpha background; no colored square, circle medallion, backdrop, cast floor shadow, border, text, lettering, logos or watermark. No tiny decorative details, no orbiting rings, no floating paper confetti, no flowers, no fine textures. Square 1024x1024. Subject: one lavender note sheet with two large ivory checkmarks and a single bold violet four-point sparkle at its upper-right edge. No magnifying glass, extra sheets or text lines. Keep the simple sheet silhouette dominant.
+
+### language
+
+Use case: stylized-concept. Asset type: production transparent mobile onboarding language icon for Jotley. Create a NEW simple elegant 3D globe icon readable at 80-112 points. One round lavender-violet Earth with two broad, clean ivory continent silhouettes, recognizable as a real globe: simplified Africa and Europe facing forward, a little edge of South America, minimal geography, no fine borders. A single small mint speech bubble with no dots sits beside the lower-right of the globe, covering less than one fifth of its diameter. The globe dominates. Rounded satin ceramic, restrained dimensional shading, broad calm matte surfaces, soft highlights, polished tasteful native app illustration. Palette violet #9734E8, lavender #B887ED, ivory #FFF9EF, mint #BDE9DA. Centered square composition occupying about 80 percent of canvas, no clipping. Genuinely transparent alpha background, no backdrop, floor shadow, card or medallion. No raised bands, no longitude/latitude straps, no orbit rings, no extraneous objects, no text or logos, no sparkles, no huge shiny highlights, no fine detail. Square 1024x1024.
+
+### microphone
+
+Use case: stylized-concept. Asset type: small native mobile onboarding icon for Jotley. Create a NEW transparent PNG icon, not a screen mockup. A very simple bold sculptural 3D icon that remains immediately recognizable at 72 to 112 points. Soft satin ceramic forms, rounded edges, restrained depth, clean rich violet #9734E8 and medium lavender #B887ED, small ivory highlights, optional one mint #BDE9DA accent. Strong silhouette and solid readable color, not pale transparent objects. Front three-quarter view, simple broad surfaces, soft studio lighting. One main object, at most one simple secondary element. Center tightly and fill about 82 percent of the square canvas, with a small even safety margin. Genuinely transparent alpha background; no colored square, circle medallion, backdrop, cast floor shadow, border, text, lettering, logos or watermark. No tiny decorative details, no orbiting rings, no floating paper confetti, no flowers, no fine textures. Square 1024x1024. Subject: one rounded violet microphone on a short simple stand, with a broad ivory capsule center and two thick violet grille bands. No mesh texture, cable, paper, wave particles or secondary objects. Clear microphone silhouette.
+
+### support
+
+Use case: stylized-concept. Asset type: small native mobile onboarding icon for Jotley. Create a NEW transparent PNG icon, not a screen mockup. A very simple bold sculptural 3D icon that remains immediately recognizable at 72 to 112 points. Soft satin ceramic forms, rounded edges, restrained depth, clean rich violet #9734E8 and medium lavender #B887ED, small ivory highlights, optional one mint #BDE9DA accent. Strong silhouette and solid readable color, not pale transparent objects. Front three-quarter view, simple broad surfaces, soft studio lighting. One main object, at most one simple secondary element. Center tightly and fill about 82 percent of the square canvas, with a small even safety margin. Genuinely transparent alpha background; no colored square, circle medallion, backdrop, cast floor shadow, border, text, lettering, logos or watermark. No tiny decorative details, no orbiting rings, no floating paper confetti, no flowers, no fine textures. Square 1024x1024. Subject: one lavender coffee cup with a violet handle and one simple ivory heart on its front. No saucer, coffee beans, flowers, cards, spoon, lettering or elaborate steam. A single friendly cup silhouette.
+
+
+## Final language edit
+
+Reference image: `exec-a4d05e76-b8cc-413c-b98d-422b57e6f770.png` in this task’s Codex generated_images folder; it already has the bubble moved to the upper-right. The final edit below replaces the intermediate peach color.
+
+Edit ONLY the speech bubble in this icon. Keep the globe, continents, location and size of the bubble at the TOP-RIGHT, lighting, materials and transparent alpha background exactly as they are. Change the peach speech bubble to LIGHT LAVENDER #DDD0F8. Put exactly TWO short bold DARK PURPLE #6E2DA8 rounded horizontal lines on the face of the bubble to suggest text: upper line slightly longer, lower line slightly shorter. Lines must be thick, evenly spaced, clean and legible at small icon size, no actual letters or words. Keep the small bubble tail pointing toward the globe. Preserve the purple globe and ivory continents unchanged. No extra bubbles, no other objects, no backdrop or floor shadow.
+
+## Final bubble placement
+
+Reference image: `exec-aec3bc26-f027-46d4-88db-7185b2883c49.png`. Selected output: `exec-2ab09a78-3105-4dd7-89bb-541954605d96.png`.
+
+Edit ONLY the POSITION of the existing light-lavender speech bubble in this Jotley language icon. Move the entire bubble a little UP and to the RIGHT, roughly 4 percent of the canvas width rightward and 3 percent upward, so more of it sits outside the globe's upper-right silhouette. Its pointed tail must land OVER THE IVORY/WHITE CONTINENT near northeastern Europe, not over the purple ocean. Make this white-continent contact point clearly visible. Keep the bubble's light-lavender color, exactly two dark-purple rounded text lines, size, shape, materials, and lighting unchanged. Keep the globe's position, size, purple color and ivory continent shapes exactly unchanged. Maintain a small clear safety margin around the whole icon: do not crop the bubble. Preserve the genuinely transparent alpha background. No added objects, lettering, backdrop or shadows.
+
+
