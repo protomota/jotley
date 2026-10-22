@@ -86,6 +86,9 @@ extension NoteDetailView {
                 }
                         .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                         .accessibilityIdentifier("noteDetailAskAIButton")
+                    Menu("Summary Style", systemImage: "text.alignleft") {
+                        SummaryDisplayStylePicker().pickerStyle(.inline)
+                    }.accessibilityIdentifier("noteDetailSummaryStyleMenu")
                     if hasTranscript {
                         Menu("Summary Template", systemImage: "sparkles") {
                             summaryTemplateChoices
@@ -200,7 +203,6 @@ extension NoteDetailView {
             if summaryIsRunning { summaryProgressFooter }
             else { transcriptionAndSummaryFooter }
         }
-        .background { FloatingNoteGlassBackground().ignoresSafeArea(.container, edges: .bottom) }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
 
@@ -227,7 +229,7 @@ extension NoteDetailView {
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
                         .frame(maxWidth: .infinity)
                     if let newTranscriptionAction {
-                        NotesNewTranscriptionButton(diameter: 58, action: newTranscriptionAction)
+                        NotesNewTranscriptionButton(action: newTranscriptionAction)
                     }
                     }
                 }
@@ -243,12 +245,12 @@ extension NoteDetailView {
             Spacer(minLength: 0)
         }
         // Reserve equal space on both sides so the quick action stays centered
-        // on Duo while the separate + remains tucked into its corner.
-        .padding(.horizontal, newTranscriptionAction == nil ? 0 : 70)
-        .frame(minHeight: newTranscriptionAction == nil ? 44 : 58)
+        // on iPhone while the separate + remains tucked into its corner.
+        .padding(.horizontal, newTranscriptionAction == nil ? 0 : 56)
+        .frame(minHeight: 44)
         .overlay(alignment: .bottomTrailing) {
             if let newTranscriptionAction {
-                NotesNewTranscriptionButton(diameter: 58, action: newTranscriptionAction)
+                NotesNewTranscriptionButton(action: newTranscriptionAction)
             }
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
@@ -307,13 +309,9 @@ extension NoteDetailView {
             Text(hasSummary ? "Regenerate Summary" : "Generate Summary")
                 .font(.system(size: 15, weight: .semibold))
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity, minHeight: 58)
-                .foregroundStyle(.white)
-                .background(Capsule().fill(Color.themePrimaryAccent))
-                .contentShape(Capsule())
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(JotleyGlassButtonStyle())
         .modifier(FloatingNoteControlShadow())
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")

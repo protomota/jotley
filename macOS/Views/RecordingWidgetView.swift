@@ -80,21 +80,13 @@ struct RecordingWidgetView: View {
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .frame(height: 32)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.themePrimaryAccent)
-                )
-                .shadow(color: Color.themePrimaryAccent.opacity(0.45), radius: 5, x: 0, y: 2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(JotleyGlassButtonStyle())
             .layoutPriority(1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .frame(width: 220, height: 48)
+        .frame(width: 220, height: 52)
         .background(
             Capsule(style: .continuous)
                 .fill(Color.themeContentBackground.opacity(0.92))

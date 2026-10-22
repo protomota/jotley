@@ -207,11 +207,7 @@ extension NoteDetailPlaceholderView {
                     }
                 )
                 .padding(.horizontal, 14).padding(.vertical, 14).padding(.trailing, 16)
-                .background(alignment: .bottom) {
-                    LinearGradient(colors: [.themeContentBackground.opacity(0), .themeContentBackground.opacity(0.85), .themeContentBackground],
-                                   startPoint: .top, endPoint: .bottom)
-                        .frame(height: detailFooterFadeHeight).padding(.trailing, 16).allowsHitTesting(false)
-                }
+
             }
 
             // Transcript actions remain on the Transcript tab.
@@ -234,16 +230,9 @@ extension NoteDetailPlaceholderView {
                             } label: {
                                 Label("Continue Transcription", systemImage: "mic.fill")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 9)
-                                    .frame(minWidth: 180)
-                                    .background(
-                                        Capsule(style: .continuous)
-                                            .fill(Color.themePrimaryAccent)
-                                    )
+                                    .foregroundStyle(Color.themeTextPrimary)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(JotleyGlassButtonStyle())
                             .accessibilityIdentifier("noteDetailTranscriptResumeButton")
                         }
 
@@ -260,7 +249,7 @@ extension NoteDetailPlaceholderView {
                                     if isGenerating {
                                         ProgressView()
                                             .controlSize(.small)
-                                            .tint(.white)
+                                            .tint(.themePrimaryAccent)
                                     } else {
                                         Image(systemName: "sparkles")
                                             .font(.system(size: 13, weight: .semibold))
@@ -269,16 +258,9 @@ extension NoteDetailPlaceholderView {
                                     Text(isGenerating ? "Generating..." : "Generate Summary")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 9)
-                                .frame(minWidth: 180)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color.themePrimaryAccent)
-                                )
+                                .foregroundStyle(Color.themeTextPrimary)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(JotleyGlassButtonStyle())
                             .disabled(isGenerating)
                             .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
                             if isGenerating { Button("Cancel") { viewModel.cancelInference() }.buttonStyle(.plain) }
@@ -288,21 +270,7 @@ extension NoteDetailPlaceholderView {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 14)
                     .padding(.trailing, 16) // Leave space for scrollbar
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color.themeContentBackground.opacity(0),
-                                Color.themeContentBackground.opacity(0.85),
-                                Color.themeContentBackground
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: detailFooterFadeHeight)
-                        .padding(.trailing, 16) // Leave space for scrollbar
-                        .allowsHitTesting(false),
-                        alignment: .bottom
-                    )
+
                 }
             }
 
@@ -327,8 +295,7 @@ struct MacSummaryActionsFooter: View {
                     Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
                 }
                     .font(.system(size: 13, weight: .medium))
-                    .padding(.horizontal, 14).frame(height: 36)
-                    .background(Color.themePrimaryAccent.opacity(0.18), in: Capsule())
+
             }
             .accessibilityIdentifier("noteDetailSummaryAskAIButton")
 
@@ -348,8 +315,8 @@ struct MacSummaryActionsFooter: View {
                             .foregroundStyle(Color.themeTextPrimary)
                     }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden)
-                    .frame(width: 136, height: 40)
-                    .background(Color.themePrimaryAccent.opacity(0.18), in: Capsule())
+                    .frame(width: 136, height: 36)
+                    .glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: Capsule())
                     .accessibilityLabel("Templates: \(template.title)")
                     .accessibilityIdentifier("noteDetailTemplatesButton")
 
@@ -357,13 +324,11 @@ struct MacSummaryActionsFooter: View {
                         Text("Regenerate Summary")
                             .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1).minimumScaleFactor(0.8)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, minHeight: 40)
-                            .background(Color.themePrimaryAccent, in: Capsule())
+                            .foregroundStyle(Color.themeTextPrimary)
                     }
                     .accessibilityIdentifier("noteDetailGenerateSummaryButton")
                 }
             }
-        }.buttonStyle(.plain).disabled(!isEnabled)
+        }.buttonStyle(JotleyGlassButtonStyle()).disabled(!isEnabled)
     }
 }

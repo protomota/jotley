@@ -125,7 +125,7 @@ struct FolderManagementSheet: View {
                 Label("Create Folder", systemImage: "folder.badge.plus")
                     .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent).tint(.themePrimaryAccent)
+            .buttonStyle(JotleyGlassButtonStyle()).tint(.themePrimaryAccent)
             .disabled(newFolderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("createFolderButton")
         }

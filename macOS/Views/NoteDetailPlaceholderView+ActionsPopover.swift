@@ -79,6 +79,9 @@ extension NoteDetailPlaceholderView {
 
         var body: some View {
             VStack(spacing: 0) {
+                SummaryDisplayStylePicker()
+                    .pickerStyle(.menu)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
                 if isRecordingThisNote {
                     MenuItemView(
                         icon: "doc.on.doc",

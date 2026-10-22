@@ -86,29 +86,8 @@ import SwiftUI
                                 Text(hasNotes ? "New Transcription" : "Start Your First Transcription")
                                     .font(.system(size: 15, weight: .semibold))
                             }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(
-                                Capsule()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.themePrimaryAccent,
-                                                Color.themePrimaryAccent.opacity(0.85)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                            )
-                            .overlay(
-                                Capsule()
-                                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-                            )
-                            .shadow(color: Color.themePrimaryAccent.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
-                        .buttonStyle(CreateNoteButtonStyle(isPrimary: true))
+                        .buttonStyle(JotleyGlassButtonStyle())
                         .disabled(!canCreateNewNote)
 
                         Spacer()

@@ -32,7 +32,7 @@ struct MainTabView: View {
     }
 
     private var usesCornerCaptureButton: Bool {
-        usesExpandedPhoneLayout || MobileDeviceEligibility.identifier == "iPhone19,4"
+        UIDevice.current.userInterfaceIdiom == .phone
     }
 
     private var usesSideBySideFooter: Bool {
@@ -204,7 +204,7 @@ struct MainTabView: View {
     private var cornerCaptureFooter: some View {
         HStack {
             Spacer()
-            NotesNewTranscriptionButton(diameter: 58) { handleWidgetAction(.start) }
+            NotesNewTranscriptionButton { handleWidgetAction(.start) }
         }
         .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 24)
     }

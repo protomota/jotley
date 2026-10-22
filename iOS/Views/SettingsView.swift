@@ -63,6 +63,14 @@ struct SettingsView: View {
             }
 
             Section {
+                SummaryDisplayStylePicker()
+            } header: {
+                Text("Summaries")
+            } footer: {
+                Text("Cards adds visual sections. Standard Text uses clean headings and bullets. Your choice applies to every note and can also be changed from a note’s More menu.")
+            }
+
+            Section {
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: "desktopcomputer")
                         .font(.system(size: 28))

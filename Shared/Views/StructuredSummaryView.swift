@@ -253,19 +253,87 @@ extension StructuredSummary {
     var blocks: [Block] { (overview.map { [.overview($0)] } ?? []) + sections.map { .section($0) } }
 }
 
+/// One device-wide preference shared by every note and the Settings screen.
+enum SummaryDisplayStyle: String, CaseIterable, Identifiable {
+    case cards, standard
+    static let preferenceKey = "jotley.summaryDisplayStyle"
+    var id: String { rawValue }
+    var title: String { self == .cards ? "Cards" : "Standard Text" }
+}
+
+struct SummaryDisplayStylePicker: View {
+    @AppStorage(SummaryDisplayStyle.preferenceKey) private var style: SummaryDisplayStyle = .cards
+
+    var body: some View {
+        Picker("Summary Style", selection: $style) {
+            ForEach(SummaryDisplayStyle.allCases) { style in
+                Text(style.title).tag(style)
+                    .accessibilityIdentifier("summaryDisplayStyle-\(style.rawValue)")
+            }
+        }
+        .accessibilityIdentifier("summaryDisplayStylePicker")
+    }
+}
+
+/// Readable Markdown with neutral text, headings and bullets, without cards.
+/// This changes presentation only; editing, AI and exports keep the same source.
+private struct StandardSummaryTextView: View {
+    let markdown: ParsedNoteMarkdown
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(markdown.lines) { line in
+                if !line.text.characters.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        if let marker = line.marker {
+                            Text(marker).accessibilityHidden(true)
+                        }
+                        Text(line.text)
+                            .font(line.heading ? .title3.weight(.semibold) : .body)
+                            .accessibilityAddTraits(line.heading ? .isHeader : [])
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .font(.body)
+                    .foregroundStyle(Color.themeTextPrimary)
+                    .lineSpacing(4)
+                    .padding(.leading, CGFloat(line.indentation) * 8)
+                    .padding(.top, line.heading && line.id > 0 ? 12 : 0)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier(line.marker == nil ? "summaryTextLine-\(line.id)" : "markdownListItem-\(line.id)")
+                } else {
+                    Color.clear.frame(height: 4).accessibilityHidden(true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("standardSummaryText")
+    }
+}
+
 struct StructuredSummaryView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    @AppStorage(SummaryDisplayStyle.preferenceKey) private var style: SummaryDisplayStyle = .cards
     let content: String
     var isStreaming = false
 
     var body: some View {
-        let summary = StructuredSummary(ParsedNoteMarkdown.rendering(content, isStreaming: isStreaming))
+        let markdown = ParsedNoteMarkdown.rendering(content, isStreaming: isStreaming)
+        let summary = StructuredSummary(markdown)
         let palette = SummaryPalette.current
         // scrollTo(bottom) needs actual heights while text grows. Lazy estimates
         // repeatedly materialize and discard cards near the viewport's edge.
-        return VStack(alignment: .leading, spacing: 22) {
-            ForEach(summary.blocks) { block in StructuredSummaryBlockView(block: block, palette: palette) }
+        return Group {
+            if style == .standard {
+                StandardSummaryTextView(markdown: markdown)
+            } else {
+                VStack(alignment: .leading, spacing: 22) {
+                    ForEach(summary.blocks) { block in StructuredSummaryBlockView(block: block, palette: palette) }
+                }
+            }
         }
+        .accessibilityElement(children: .contain)
         .transaction { if isStreaming { $0.animation = nil } }
     }
 

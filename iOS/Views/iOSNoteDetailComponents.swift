@@ -24,7 +24,7 @@ struct NoteSummaryActionsLayout: Layout {
         let primaryWidth = subviews[1].sizeThatFits(.unspecified).width
         let captureWidth = subviews.count > 2 ? subviews[2].sizeThatFits(.unspecified).width + spacing : 0
         let remaining = width - primaryWidth - captureWidth - spacing
-        return (remaining >= 164 ? 164 : 112, remaining < 112, 58)
+        return (remaining >= 164 ? 164 : 112, remaining < 112, 44)
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -50,47 +50,8 @@ struct NoteSummaryActionsLayout: Layout {
     }
 }
 
-/// Keep the tinted pill opaque while content scrolls underneath the controls.
-struct FloatingNoteSecondaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(isEnabled ? 1 : 0.5)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .frame(minHeight: 44)
-            .background {
-                Capsule()
-                    .fill(Color.themeBackground)
-                    .overlay {
-                        Capsule().fill(Color.themePrimaryAccent.opacity(configuration.isPressed ? 0.22 : 0.12))
-                    }
-            }
-            .contentShape(Capsule())
-    }
-}
-
-/// A shared glass shelf blurs scrolling content between the floating controls.
-struct FloatingNoteGlassBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    private let shape = UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24)
-
-    var body: some View {
-        Group {
-            if reduceTransparency {
-                shape.fill(Color.themeBackground)
-            } else {
-                Color.clear
-                    .glassEffect(.regular.tint(.white.opacity(colorScheme == .dark ? 0.06 : 0.18)), in: shape)
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
+/// Glass belongs to each pill, leaving the space around the controls clear.
+typealias FloatingNoteSecondaryButtonStyle = JotleyGlassButtonStyle
 
 struct FloatingNoteControlShadow: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
@@ -103,19 +64,15 @@ struct FloatingNoteControlShadow: ViewModifier {
 }
 
 struct NotesNewTranscriptionButton: View {
-    var diameter: CGFloat = 56
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
-                .font(.system(size: diameter / 2, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(width: diameter, height: diameter)
-                .background(Circle().fill(Color.themePrimaryAccent))
-                .contentShape(Circle())
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.themePrimaryAccent)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(JotleyGlassButtonStyle(circular: true))
         .modifier(FloatingNoteControlShadow())
         .accessibilityIdentifier("notesListNewNoteButton")
         .accessibilityLabel("New live transcription")

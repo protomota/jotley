@@ -169,15 +169,9 @@ extension NotesListView {
                     Button {
                         filterState.clearAll()
                     } label: {
-                        Text("Clear Filters")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(Color.themePrimaryAccent)
-                            .clipShape(Capsule())
+                        Text("Clear Filters").font(.system(size: 12, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(JotleyGlassButtonStyle())
                     .accessibilityIdentifier("notesListClearFiltersButton")
                     .padding(.top, 4)
                 }
@@ -195,13 +189,9 @@ extension NotesListView {
         .overlay(alignment: .bottom) {
             HStack(alignment: .center) {
                 Button { showingSettingsSheet = true } label: {
-                    ZStack {
-                        Circle().fill(Color.themePrimaryAccent).frame(width: 36, height: 36)
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
-                    }
-                    .frame(width: 36, height: 36)
-                    .contentShape(Circle())
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
+                        .frame(width: 36, height: 36).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Settings")
@@ -209,13 +199,10 @@ extension NotesListView {
                 .accessibilityIdentifier("notesListSettingsButton")
                 Spacer()
                 Button { Task { await viewModel.startNewNote() } } label: {
-                    ZStack {
-                        Circle().fill(Color.themePrimaryAccent).frame(width: 48, height: 48)
-                        Image(systemName: "plus")
-                            .font(.system(size: 25, weight: .semibold)).foregroundColor(.white)
-                    }
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.themePrimaryAccent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(JotleyGlassButtonStyle(circular: true))
                 .disabled(!canCreateNewNote)
                 .help("New Transcription")
                 .accessibilityLabel("New Transcription")

@@ -5,7 +5,7 @@ final class RecordingWidgetPanel: NSPanel, NSWindowDelegate {
     private static let positionXKey = "recordingWidgetPositionX"
     private static let positionYKey = "recordingWidgetPositionY"
 
-    private let windowSize = CGSize(width: 220, height: 48)
+    private let windowSize = CGSize(width: 220, height: 52)
 
     init(viewModel: RecordingWidgetViewModel, onWidgetTapped: (() -> Void)? = nil) {
 

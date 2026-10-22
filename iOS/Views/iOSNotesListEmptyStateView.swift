@@ -114,15 +114,9 @@ struct iOSFiltersHidingNotesView: View {
             Button {
                 filterState.clearAll()
             } label: {
-                Text("Clear Filters")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.themePrimaryAccent)
-                    .clipShape(Capsule())
+                Text("Clear Filters").font(.system(size: 15, weight: .semibold))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(JotleyGlassButtonStyle())
             .accessibilityIdentifier("notesListClearFiltersButton")
             .padding(.top, 4)
         }

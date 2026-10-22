@@ -19,9 +19,62 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
-    @MainActor func testDuoCornerCaptureStaysClearOfNoteActions() throws {
-        guard ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4" else {
-            throw XCTSkip("Requires iPhone Duo")
+    @MainActor func testSummaryStyleAppliesToEveryNoteAndPersistsInSettings() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"First summary","folder":"","tags":[],"transcript":"Maya reviews Friday.","summary":"## Summary\nA focused launch.\n\n## Next Steps\n- **Maya:** Review Friday."},{"title":"Second summary","folder":"","tags":[],"transcript":"Alex tests Monday.","summary":"## Summary\nA clear plan.\n\n## Next Steps\n- Test Monday."}]"###
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launch()
+        func showLibrary() {
+            let row = app.buttons.containing(.staticText, identifier: "Second summary").firstMatch
+            if row.exists && row.isHittable { return }
+            let back = app.buttons["BackButton"]
+            if back.exists && back.isHittable { back.tap() }
+            else {
+                let sidebar = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+                XCTAssertTrue(sidebar.waitForExistence(timeout: 5)); sidebar.tap()
+            }
+            XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertTrue(row.isHittable)
+        }
+        func openNote(_ title: String) {
+            let row = app.buttons.containing(.staticText, identifier: title).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].waitForExistence(timeout: 5))
+        }
+        func changeStyle(_ title: String) {
+            app.buttons["noteDetailMoreActionsButton"].tap()
+            app.buttons["noteDetailSummaryStyleMenu"].tap()
+            let option = app.buttons[title]
+            XCTAssertTrue(option.waitForExistence(timeout: 5)); option.tap()
+        }
+        openNote("First summary")
+        changeStyle("Standard Text")
+        XCTAssertTrue(app.staticTexts["summaryTextLine-0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["A focused launch."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Next Steps"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '**Maya**' OR label CONTAINS '## Next'")).firstMatch.exists)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Standard Text summary Dark with neutral headings and bullets"; shot.lifetime = .keepAlways; add(shot)
+        showLibrary(); openNote("Second summary")
+        XCTAssertTrue(app.staticTexts["summaryTextLine-0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["A clear plan."].waitForExistence(timeout: 5))
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 15))
+        app.buttons["notesListSettingsButton"].tap()
+        let picker = app.descendants(matching: .any)["summaryDisplayStylePicker"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue(picker.label.contains("Standard Text") || (picker.value as? String)?.contains("Standard Text") == true, picker.debugDescription)
+        picker.tap(); app.buttons["Cards"].tap()
+        app.buttons["settingsDoneButton"].tap()
+        openNote("Second summary")
+        XCTAssertTrue(app.descendants(matching: .any)["structuredSummaryOverview"].firstMatch.waitForExistence(timeout: 5))
+        showLibrary(); openNote("First summary")
+        XCTAssertTrue(app.descendants(matching: .any)["structuredSummaryOverview"].firstMatch.waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testPhoneCornerCaptureStaysClearOfNoteActions() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone") else {
+            throw XCTSkip("Requires iPhone")
         }
         defer { XCUIDevice.shared.orientation = .portrait }
         let app = XCUIApplication()
@@ -32,12 +85,20 @@ final class Jotley_iOSUITests: XCTestCase {
             XCUIDevice.shared.orientation = orientation
             app.launch()
             let row = app.buttons.containing(.staticText, identifier: "Duo interface checks").firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+            XCTAssertTrue(row.waitForExistence(timeout: 15))
+            XCTAssertTrue(app.buttons["notesListNewNoteButton"].isHittable)
+            let gear = app.buttons["notesListSettingsButton"]
+            let folders = app.buttons["notesListFolderDrawerButton"]
+            XCTAssertEqual(gear.frame.size, folders.frame.size)
+            gear.tap()
+            XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
+            app.buttons["settingsDoneButton"].tap()
+            row.tap()
             let plus = app.buttons["notesListNewNoteButton"]
             XCTAssertTrue(plus.waitForExistence(timeout: 5)); XCTAssertTrue(plus.isHittable)
             XCTAssertEqual(app.buttons.matching(identifier: "notesListNewNoteButton").count, 1)
             XCTAssertGreaterThanOrEqual(plus.frame.width, 44)
-            XCTAssertLessThanOrEqual(plus.frame.width, 64)
+            XCTAssertEqual(plus.frame.width, 44, accuracy: 1)
             XCTAssertGreaterThanOrEqual(app.frame.maxX - plus.frame.maxX, 0)
             XCTAssertLessThanOrEqual(app.frame.maxX - plus.frame.maxX, 24)
             for tab in ["noteDetailSummaryTab", "noteDetailTranscriptTab"] {
@@ -57,7 +118,7 @@ final class Jotley_iOSUITests: XCTestCase {
             attachment.lifetime = .keepAlways; add(attachment)
             plus.tap()
             let pause = app.buttons["transcriptionPauseButton"]
-            XCTAssertTrue(pause.waitForExistence(timeout: 10)); pause.tap()
+            XCTAssertTrue(pause.waitForExistence(timeout: 10)); XCTAssertEqual(pause.frame.height, 44, accuracy: 1); pause.tap()
             XCTAssertEqual(pause.label, "Resume transcription"); pause.tap()
             XCTAssertEqual(pause.label, "Pause transcription")
             app.buttons["transcriptionStopButton"].tap()
@@ -106,16 +167,16 @@ final class Jotley_iOSUITests: XCTestCase {
                     XCTAssertTrue(primary.waitForExistence(timeout: 5))
                     XCTAssertEqual(primary.label, "Generate Summary")
                     let textWidth = ("Generate Summary" as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)]).width
-                    XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 39)
+                    XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 31)
                     XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].isHittable)
                     XCTAssertLessThan(primary.frame.maxY, app.buttons["noteDetailContinueTranscriptionButton"].frame.minY,
                                       "First-time generation belongs in the scrolling content above the floating action")
                 }
                 if orientation == .portrait {
-                    let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
-                    let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : app.buttons[hasSummary ? "noteDetailSummaryAskAIButton" : "noteDetailContinueTranscriptionButton"]
-                    XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isDuo ? 24 : 16, accuracy: 2)
-                    if isDuo { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
+                    let isPhone = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone")
+                    let cornerButton = isPhone ? app.buttons["notesListNewNoteButton"] : app.buttons[hasSummary ? "noteDetailSummaryAskAIButton" : "noteDetailContinueTranscriptionButton"]
+                    XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isPhone ? 24 : 16, accuracy: 2)
+                    if isPhone { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
                 }
                 for (index, screen) in XCUIScreen.screens.enumerated() {
                     let capture = XCTAttachment(screenshot: screen.screenshot())
@@ -198,10 +259,10 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(continueButton.isHittable)
             XCTAssertEqual(continueButton.frame.height, 44, accuracy: 1)
             XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
-            let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
-            let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : continueButton
-            XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isDuo ? 24 : 16, accuracy: 2)
-            if isDuo { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
+            let isPhone = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone")
+            let cornerButton = isPhone ? app.buttons["notesListNewNoteButton"] : continueButton
+            XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isPhone ? 24 : 16, accuracy: 2)
+            if isPhone { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Floating controls with complete transcript - \(appearance)"
             screenshot.lifetime = .keepAlways; add(screenshot)
@@ -752,6 +813,7 @@ final class Jotley_iOSUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Summary scrolling","folder":"","tags":[],"transcript":"Maya reviews milestones Friday. Sam tests the next steps.","summary":"Existing summary remains after Cancel."}]"##
         app.launchEnvironment["JOTLEY_TEST_SUMMARY_SCROLL"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_SUMMARY_SCROLL_HOLD"] = "1"
         app.launch()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()

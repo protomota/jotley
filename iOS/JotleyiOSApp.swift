@@ -72,6 +72,10 @@ struct JotleyiOSApp: App {
                     try await Task.sleep(for: .milliseconds(200))
                     content += "## Summary update \(index)\n\nThe team agreed to keep voice notes and summaries on the device. Maya will review the milestones and Sam will check the next steps.\n\n"
                     await update(content)
+                    if index == 18, ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_SCROLL_HOLD"] == "1" {
+                        // Keep a known final item visible while XCTest measures its frame.
+                        try await Task.sleep(for: .seconds(60))
+                    }
                 }
                 return content
             }

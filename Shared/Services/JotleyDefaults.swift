@@ -159,6 +159,7 @@ enum JotleyAppleIntelligenceEligibility {
 /// Keep glass controls consistent across the Mac and mobile custom headers.
 struct JotleyGlassButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var circular = false
     private var controlHeight: CGFloat {
         #if os(macOS)
@@ -171,16 +172,25 @@ struct JotleyGlassButtonStyle: ButtonStyle {
         Group {
             if circular {
                 configuration.label.frame(width: controlHeight, height: controlHeight)
-                    .contentShape(Circle()).glassEffect(.regular.interactive(), in: Circle())
+                    .contentShape(Circle()).background { background(in: Circle()) }
             } else {
                 configuration.label.padding(.horizontal, 16).frame(minHeight: controlHeight)
-                    .contentShape(Capsule()).glassEffect(.regular.interactive(), in: Capsule())
+                    .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
         .foregroundStyle(configuration.role == .destructive ? Color.red : Color.themeTextPrimary)
         .opacity(isEnabled ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+
+    @ViewBuilder private func background<S: Shape>(in shape: S) -> some View {
+        if reduceTransparency {
+            shape.fill(Color.themeBackground)
+                .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
+        } else {
+            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: shape)
+        }
     }
 }
 
@@ -404,6 +414,7 @@ struct JotleySupportView: View {
     @ObservedObject private var theme = ThemeManager.shared
     @State private var allowsWebsiteTips = false
     @State private var contentHeight: CGFloat?
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     #if os(macOS)
     @Environment(\.openURL) private var openURL
     @State private var shareAnchor = NSView()
@@ -452,7 +463,7 @@ struct JotleySupportView: View {
                         .padding(.bottom, 6)
                     VStack(spacing: 12) {
                         Link(destination: JotleyEngagement.reviewURL) {
-                            actionLabel("Rate & Review Jotley", subtitle: "On the App Store", icon: "star", highlighted: true)
+                            actionLabel("Rate & Review Jotley", subtitle: "On the App Store", icon: "star")
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Rate and review Jotley on the App Store")
@@ -535,7 +546,7 @@ struct JotleySupportView: View {
                     VStack(spacing: 10) {
                         Button { visit(.review, url: JotleyEngagement.reviewURL) } label: {
                             macAction("Rate & Review Jotley", detail: "Leave a rating and share your experience",
-                                      icon: "star.bubble", kind: .review, primary: true)
+                                      icon: "star.bubble", kind: .review)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportReview")
                         if allowsWebsiteTips {
                             Button { visit(.tip, url: JotleyEngagement.tipURL) } label: {
@@ -592,25 +603,23 @@ struct JotleySupportView: View {
         if JotleyEngagement.dismissingActions.contains(action) { dismiss() }
     }
     private func macAction(_ title: String, detail: String, icon: String,
-                           kind: JotleyEngagement.Action, primary: Bool = false) -> some View {
-        let onAccent: Color = theme.currentThemeColor == .purple ? .white : Color(white: 0.08)
+                           kind: JotleyEngagement.Action) -> some View {
         return HStack(spacing: 14) {
             Image(systemName: icon).font(.system(size: 23))
-                .foregroundStyle(primary ? onAccent : Color.themePrimaryAccent).frame(width: 30)
+                .foregroundStyle(Color.themePrimaryAccent).frame(width: 30)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 16, weight: .semibold))
                 Text(detail).font(.system(size: 13))
-                    .foregroundStyle(primary ? onAccent.opacity(0.9) : Color.themeTextSecondary)
+                    .foregroundStyle(Color.themeTextSecondary)
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             Image(systemName: engagement.hasClicked(kind) ? "checkmark.circle.fill" : "arrow.up.right")
-                .font(.system(size: 15)).foregroundStyle(primary ? onAccent : Color.themePrimaryAccent)
+                .font(.system(size: 15)).foregroundStyle(Color.themePrimaryAccent)
                 .accessibilityLabel(engagement.hasClicked(kind) ? "Previously clicked" : "Open")
-        }.foregroundStyle(primary ? onAccent : Color.themeTextPrimary)
-            .padding(.horizontal, 16).padding(.vertical, 12)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading).contentShape(Rectangle())
-            .background(primary ? Color.themePrimaryAccent : Color.themeBackground, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.themeAccent.opacity(0.55), lineWidth: 1))
+        }.foregroundStyle(Color.themeTextPrimary)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading).contentShape(Rectangle())
+            .background { supportActionBackground }
             .accessibilityValue(engagement.hasClicked(kind) ? "Clicked" : "Not clicked")
     }
     #endif
@@ -637,28 +646,31 @@ struct JotleySupportView: View {
         .buttonStyle(.plain).keyboardShortcut(.cancelAction)
         .accessibilityIdentifier("jotleySupportDismiss")
     }
-    private func actionLabel(_ title: String, subtitle: String, icon: String, highlighted: Bool = false) -> some View {
+    private func actionLabel(_ title: String, subtitle: String, icon: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon).font(cardFont(.title3, macSize: 22))
-                .foregroundColor(highlighted ? .white : .themePrimaryAccent)
-                .frame(width: highlighted ? 40 : 32, height: highlighted ? 40 : 32)
-                .background(highlighted ? Color.white.opacity(0.16) : Color.themePrimaryAccent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                .foregroundStyle(Color.themePrimaryAccent).frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(cardFont(.body.weight(.semibold), macSize: 17, weight: .semibold)).foregroundColor(highlighted ? .white : .themeTextPrimary)
-                Text(subtitle).font(cardFont(.caption, macSize: 14)).foregroundColor(highlighted ? .white.opacity(0.9) : .themeTextSecondary)
-            }
-            .fixedSize(horizontal: false, vertical: true)
+                Text(title).font(cardFont(.body.weight(.semibold), macSize: 17, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
+                Text(subtitle).font(cardFont(.caption, macSize: 14)).foregroundStyle(Color.themeTextSecondary)
+            }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Image(systemName: "arrow.up.right").font(cardFont(.caption, macSize: 14))
-                .foregroundColor(highlighted ? .white.opacity(0.9) : .themeTextSecondary)
+            Image(systemName: "arrow.up.right").font(cardFont(.caption, macSize: 14)).foregroundStyle(Color.themeTextSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(highlighted ? 14 : 12)
-        .frame(minHeight: highlighted ? 74 : 58)
-        .background(highlighted ? Color.themePrimaryAccent : Color.themeBackground, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18)
-            .stroke(highlighted ? Color.themePrimaryAccent.opacity(0.35) : Color.themeAccent.opacity(0.55), lineWidth: 1))
+        .padding(12).frame(minHeight: 56)
+        .background { supportActionBackground }
     }
+    @ViewBuilder private var supportActionBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+        if reduceTransparency {
+            shape.fill(Color.themeBackground)
+                .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
+        } else {
+            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: shape)
+        }
+    }
+
 }
 
 #if os(macOS)
@@ -861,9 +873,6 @@ struct JotleyOnboardingView: View {
     private var accent: Color { theme.currentThemeColor.color }
     private var ink: Color { colorScheme == .dark ? .white : Color(red: 0.14, green: 0.11, blue: 0.19) }
     private var muted: Color { ink.opacity(colorScheme == .dark ? 0.7 : 0.68) }
-    private var primaryInk: Color {
-        [.purple, .magenta].contains(theme.currentThemeColor) ? .white : .black.opacity(0.88)
-    }
     private var title: String {
         switch step {
         case 0: "Stay in the conversation."
@@ -1155,9 +1164,9 @@ struct JotleyOnboardingView: View {
     }
     private var onboardingBackButton: some View {
         Button { changeStep(step - 1) } label: {
-            Image(systemName: "chevron.left").frame(width: 30, height: 40)
+            Image(systemName: "chevron.left").font(.system(size: 14, weight: .medium))
         }
-        .buttonStyle(.glass).buttonBorderShape(.capsule).frame(width: 54)
+        .buttonStyle(JotleyGlassButtonStyle(circular: true)).frame(width: 54)
         .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
         .disabled(settingUpSpeech || requestingMicrophone)
     }
@@ -1186,14 +1195,12 @@ struct JotleyOnboardingView: View {
                     } else { changeStep(step + 1) }
                 } label: {
                     HStack(spacing: 9) {
-                        if requestingMicrophone { ProgressView().controlSize(.small).tint(primaryInk) }
+                        if requestingMicrophone { ProgressView().controlSize(.small).tint(accent) }
                         Text(primaryTitle)
                             .font(.body.weight(.semibold))
-                    }.frame(maxWidth: .infinity, minHeight: 52).foregroundStyle(primaryInk)
-                        .background(accent, in: Capsule())
-                        .glassEffect(.regular.tint(accent).interactive(), in: Capsule())
+                    }.frame(maxWidth: .infinity).foregroundStyle(ink)
                 }
-                .buttonStyle(.plain).tint(accent)
+                .buttonStyle(JotleyGlassButtonStyle()).tint(accent)
                 .disabled(settingUpSpeech || requestingMicrophone)
                 .accessibilityIdentifier("onboardingContinue")
             }

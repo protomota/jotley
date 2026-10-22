@@ -42,85 +42,29 @@ extension LiveTranscriptionView {
     // MARK: - Transcription Controls
 
     var transcriptionControls: some View {
-        HStack(spacing: 40) {
-            // Left placeholder for symmetry (keeps the main control centered)
-            Color.clear
-                .frame(width: 50, height: 50)
-
-            // Pause/Resume button
+        HStack(spacing: 24) {
+            Color.clear.frame(width: 44, height: 44)
             Button(action: toggleTranscriptionPause) {
-                ZStack {
-                    Circle()
-                        .fill(buttonColor)
-                        .frame(width: 80, height: 80)
-                        .shadow(color: buttonColor.opacity(0.4), radius: 10, x: 0, y: 4)
-
-                    buttonIcon
-                }
+                Image(systemName: transcriptionManager.transcriptionState == .listening ? "pause.fill" : transcriptionManager.transcriptionState == .paused ? "play.fill" : "arrow.clockwise")
+                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themePrimaryAccent)
             }
-            // Only disable if permission was explicitly denied, not if undetermined
+            .buttonStyle(JotleyGlassButtonStyle(circular: true))
             .disabled(transcriptionManager.busy || isFinishing)
-            .scaleEffect(transcriptionManager.transcriptionState == .listening ? 1.05 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: transcriptionManager.transcriptionState)
             .accessibilityIdentifier("transcriptionPauseButton")
             .accessibilityLabel(transcriptionManager.transcriptionState == .listening ? "Pause transcription" : transcriptionManager.transcriptionState == .paused ? "Resume transcription" : "Try transcription again")
 
-            // End/Stop button (only show when listening or paused, otherwise placeholder)
             if transcriptionManager.transcriptionState != .idle {
-                Button(action: {
-                    finishAndClose()
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 50, height: 50)
-
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                    }
+                Button(action: finishAndClose) {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 18)).foregroundStyle(Color.themePrimaryAccent)
                 }
+                .buttonStyle(JotleyGlassButtonStyle(circular: true))
                 .disabled(transcriptionManager.busy || isFinishing)
+                .accessibilityLabel("Stop transcription")
                 .accessibilityIdentifier("transcriptionStopButton")
-                .transition(.scale.combined(with: .opacity))
             } else {
-                Color.clear
-                    .frame(width: 50, height: 50)
+                Color.clear.frame(width: 44, height: 44)
             }
-        }
-        .animation(.easeInOut(duration: 0.2), value: transcriptionManager.transcriptionState)
-    }
-
-    var buttonColor: Color {
-        switch transcriptionManager.transcriptionState {
-        case .idle:
-            return Color.themePrimaryAccent
-        case .listening:
-            return Color.themePrimaryAccent
-        case .paused:
-            return Color.themePrimaryAccent
-        }
-    }
-
-    @ViewBuilder
-    var buttonIcon: some View {
-        switch transcriptionManager.transcriptionState {
-        case .idle:
-            Image(systemName: "arrow.clockwise")
-                .font(.system(size: 28, weight: .semibold)).foregroundColor(.white)
-        case .listening:
-            // Pause icon
-            HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white)
-                    .frame(width: 8, height: 28)
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white)
-                    .frame(width: 8, height: 28)
-            }
-        case .paused:
-            Image(systemName: "play.fill")
-                .font(.system(size: 28, weight: .semibold)).foregroundColor(.white)
         }
     }
 }

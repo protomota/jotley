@@ -42,7 +42,8 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 | --- | --- |
 | **Make yourself at home** | Guided setup for private notes, Apple Intelligence, your transcription language and microphone access. Mac also offers separate system-audio setup. Replay it from Settings → Welcome to Jotley. |
 | **Live transcription** | Start with **+** on iPhone/iPad. Timestamped cards follow new words; the waveform shows microphone input. Mac supports microphone and system audio. |
-| **Summaries that finish** | Choose **Auto** or a template. Long notes become one consolidated summary. See preparation progress while sections are reviewed, then follow the summary as it is written. **Cancel Generation** stays visible; regeneration starts with one tap. |
+| **Summaries that finish** | Choose **Auto** or a template. Long notes become one consolidated summary. See preparation progress while sections are reviewed, then follow the summary as it is written. **Cancel Generation** stays visible; regenerate an existing summary from **More**. |
+| **Read your way** | Choose **Cards** or **Standard Text** in a note’s **More → Summary Style** menu or **Settings → Summaries**. Your saved choice applies to every note on that device. |
 | **Ask your notes** | On iPhone and iPad, tap **Ask AI** on the Summary tab; on Mac, use **More → Ask AI**. Find answers, pull out action items or clarify a detail using on-device Apple Intelligence. |
 | **Know when it’s ready** | Optional local notifications tell you when a completed summary is saved. Alerts work offline and keep note content off the Lock Screen. |
 | **Automatic topic tags** | Each completed summary replaces the note’s tags with one to five relevant topics, preferring existing library tags. Transcripts under ten words can remain untagged. |

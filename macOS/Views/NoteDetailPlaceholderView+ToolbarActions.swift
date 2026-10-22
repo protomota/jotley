@@ -7,20 +7,10 @@ extension NoteDetailPlaceholderView {
         Button {
             showActionsPopover = true
         } label: {
-            ZStack {
-                Circle()
-                    .fill(Color.themePrimaryAccent)
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "ellipsis")
-                    .rotationEffect(.degrees(90))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-            }
-            .frame(width: 36, height: 36)
-            .contentShape(Rectangle())
+            Image(systemName: "ellipsis")
+                .font(.system(size: 18, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(JotleyGlassButtonStyle(circular: true))
         .floatingTooltip("More Actions")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("More Actions")

@@ -44,6 +44,13 @@ extension SettingsView {
                         }
                     }
 
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Summaries").font(.headline)
+                        SummaryDisplayStylePicker().pickerStyle(.menu)
+                        Text("Cards adds visual sections. Standard Text uses clean headings and bullets. Your choice applies to every note and can also be changed from a note’s More menu.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Notifications").font(.headline)
                         JotleySummaryNotificationSettings()

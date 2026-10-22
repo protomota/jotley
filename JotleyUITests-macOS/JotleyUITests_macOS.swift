@@ -302,6 +302,7 @@ private struct MacSupportPreviewRoot: View {
         try await verifySummaryObserverLifetime(note: created)
         try verifyTranscriptRevisions(note: created)
         try await verifySummaryPresentation(note: created)
+        try verifySummaryStyleRendering()
         try await verifyMacAskPresentation(note: created, store: store)
         try verifySearchEditingAlignment()
         try verifyGeneratedTitlePersistence(note: created, store: store)
@@ -487,7 +488,8 @@ private struct MacSupportPreviewRoot: View {
         var images: [Data] = []
         for mode in [AppearanceMode.dark, .light] {
             ThemeManager.shared.setAppearanceMode(mode)
-            let host = NSHostingView(rootView: LocalMacAskNoteView(note: note).environmentObject(store))
+            let content = LocalMacAskNoteView(note: note).environmentObject(store)
+            let host = NSHostingView(rootView: content)
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 650),
                 styleMask: [.borderless], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
@@ -495,11 +497,13 @@ private struct MacSupportPreviewRoot: View {
             defer { window.close() }
             try await Task.sleep(for: .milliseconds(250))
             host.layoutSubtreeIfNeeded()
-            guard host.fittingSize.width >= 580, host.fittingSize.height >= 650,
-                  let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
+            guard host.fittingSize.width >= 580, host.fittingSize.height >= 650 else {
                 throw LocalError.message("Mac Ask AI did not mount at its intended readable size.")
             }
-            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let renderer = ImageRenderer(content: content.frame(width: 580, height: 650))
+            renderer.proposedSize = ProposedViewSize(width: 580, height: 650)
+            guard let rendered = renderer.cgImage else { throw LocalError.message("Mac Ask AI snapshot failed.") }
+            let bitmap = NSBitmapImageRep(cgImage: rendered)
             guard let background = bitmap.colorAt(x: 5, y: 5)?.usingColorSpace(.deviceRGB) else {
                 throw LocalError.message("Mac Ask AI header was not rendered opaquely.")
             }
@@ -518,6 +522,46 @@ private struct MacSupportPreviewRoot: View {
         guard images[0] != images[1] else { throw LocalError.message("Mac Ask AI did not update its appearance.") }
         print("PASS: actual Mac Ask AI screen mounts at 580×650 and renders distinct light/dark appearances.")
     }
+    @MainActor private static func verifySummaryStyleRendering() throws {
+        let suite = "JotleySummaryStyle-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        let theme = ThemeManager.shared
+        let previousMode = theme.currentAppearanceMode
+        let previousColor = theme.currentThemeColor
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            theme.setAppearanceMode(previousMode); theme.setThemeColor(previousColor)
+        }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("Jotley-Summary-Style-Proof")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let source = "## Summary\nA clear plan for Friday.\n\n## Next Steps\n- **Maya:** Review the launch."
+        theme.setThemeColor(.purple)
+        for mode in [AppearanceMode.light, .dark] {
+            theme.setAppearanceMode(mode)
+            for style in SummaryDisplayStyle.allCases {
+                defaults.set(style.rawValue, forKey: SummaryDisplayStyle.preferenceKey)
+                let content = StructuredSummaryView(content: source).defaultAppStorage(defaults)
+                    .frame(width: 520).padding(24).background(Color.themeBackground)
+                let renderer = ImageRenderer(content: content)
+                guard let image = renderer.cgImage else { throw LocalError.message("Summary style did not render.") }
+                let bitmap = NSBitmapImageRep(cgImage: image)
+                var accentPixels = 0
+                for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide {
+                    guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                    if pixel.redComponent > pixel.greenComponent + 0.08,
+                       pixel.blueComponent > pixel.greenComponent + 0.08 { accentPixels += 1 }
+                } }
+                guard style == .standard ? accentPixels == 0 : accentPixels > 100 else {
+                    throw LocalError.message("Summary appearance preference was not reflected in the rendered content: \(style.title), \(accentPixels).")
+                }
+                if let png = bitmap.representation(using: .png, properties: [:]) {
+                    try png.write(to: output.appendingPathComponent("Mac-\(style.rawValue)-\(mode.rawValue).png"))
+                }
+            }
+        }
+        print("PASS: actual shared Mac summaries honor the saved Cards/Standard Text preference in light and dark; Standard Text contains neutral text without colored cards.")
+    }
+
     @MainActor private static func verifyGeneratedTitlePersistence(note: Note, store: SharedPersistenceController) throws {
         for title in [nil, "", "Untitled", "Untitled Note"] as [String?] {
             note.title = title
@@ -759,17 +803,23 @@ private struct MacSupportPreviewRoot: View {
             ThemeManager.shared.setAppearanceMode(mode)
             for color in ThemeColor.allCases {
                 ThemeManager.shared.currentThemeColor = color
-                let host = NSHostingView(rootView: JotleySupportView(engagement: engagement, isAutomatic: true, dismiss: {}))
+                let content = JotleySupportView(engagement: engagement, isAutomatic: true, dismiss: {})
+                let host = NSHostingView(rootView: content)
                 let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 780),
                                       styleMask: [.borderless], backing: .buffered, defer: false)
                 window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
                 try await Task.sleep(for: .milliseconds(100))
                 host.layoutSubtreeIfNeeded()
-                guard host.frame.size == NSSize(width: 600, height: 780),
-                      let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
+                guard host.frame.size == NSSize(width: 600, height: 780) else {
                     throw LocalError.message("Support card failed to fit its sheet.")
                 }
-                host.cacheDisplay(in: host.bounds, to: bitmap)
+                // cacheDisplay cannot capture a native glass compositing layer.
+                // ImageRenderer checks SwiftUI content/background and text contrast;
+                // the WindowServer glass itself needs a live-window visual check.
+                let renderer = ImageRenderer(content: content.frame(width: 600, height: 780))
+                renderer.proposedSize = ProposedViewSize(width: 600, height: 780)
+                guard let rendered = renderer.cgImage else { throw LocalError.message("Support snapshot failed.") }
+                let bitmap = NSBitmapImageRep(cgImage: rendered)
                 guard let background = bitmap.colorAt(x: 5, y: 5)?.usingColorSpace(.deviceRGB),
                       background.alphaComponent > 0.9,
                       let png = bitmap.representation(using: .png, properties: [:]) else {
