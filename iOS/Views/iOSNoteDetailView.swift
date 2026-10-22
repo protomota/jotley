@@ -4,14 +4,12 @@ import CoreData
 struct NoteDetailByIdView: View {
     @FetchRequest private var notes: FetchedResults<Note>
     private let newTranscriptionAction: (() -> Void)?
-    private let showNotesAction: (() -> Void)?
-    init(noteId: UUID, newTranscriptionAction: (() -> Void)? = nil, showNotesAction: (() -> Void)? = nil) {
+    init(noteId: UUID, newTranscriptionAction: (() -> Void)? = nil) {
         self.newTranscriptionAction = newTranscriptionAction
-        self.showNotesAction = showNotesAction
         _notes = FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "id == %@", noteId as CVarArg))
     }
     var body: some View {
-        if let note = notes.first { NoteDetailView(note: note, newTranscriptionAction: newTranscriptionAction, showNotesAction: showNotesAction) }
+        if let note = notes.first { NoteDetailView(note: note, newTranscriptionAction: newTranscriptionAction) }
         else { ContentUnavailableView("Note Unavailable", systemImage: "note.text") }
     }
 }
@@ -20,7 +18,6 @@ struct NoteDetailView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var note: Note
     var newTranscriptionAction: (() -> Void)? = nil
-    var showNotesAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
@@ -60,21 +57,6 @@ struct NoteDetailView: View {
     var hasTranscript: Bool { !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var hasSummary: Bool { Note.isMeaningfulSummaryText(note.summary) || summaryIsRunning }
     var transcript: String { note.transcription ?? "" }
-
-    var noteSwipesEnabled: Bool {
-        !isEditingTitle && !showingTranscriptEditor && !showingSummaryEditor && !showingAskAI &&
-        !showingTranscription && !showingAddTag && !showingDelete && exportPayload == nil
-    }
-    func navigateNoteSwipe(_ direction: NoteContentSwipeDirection) {
-        switch direction {
-        case .right:
-            if selectedTab == "Transcript", hasSummary { selectedTab = "Summary" }
-            else if let showNotesAction { showNotesAction() }
-            else { dismiss() }
-        case .left:
-            if selectedTab == "Summary", hasTranscript || noteIsTranscribing { selectedTab = "Transcript" }
-        }
-    }
 
     func shareAsText() {
         exportPayload = LocalSharePayload(items: [LocalNoteExport.content(note: note, format: .plainText)])

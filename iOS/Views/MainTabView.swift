@@ -79,7 +79,7 @@ struct MainTabView: View {
         } detail: {
             Group {
                 if let selectedNoteId {
-                    NoteDetailByIdView(noteId: selectedNoteId, newTranscriptionAction: usesCornerCaptureButton ? { handleWidgetAction(.start) } : nil, showNotesAction: showNotes).id(selectedNoteId).id(summaryNavigationID)
+                    NoteDetailByIdView(noteId: selectedNoteId, newTranscriptionAction: usesCornerCaptureButton ? { handleWidgetAction(.start) } : nil).id(selectedNoteId).id(summaryNavigationID)
                 } else {
                     ContentUnavailableView("No Notes Yet", systemImage: "note.text", description: Text("Tap + to transcribe your first note."))
                 }
@@ -234,13 +234,6 @@ struct MainTabView: View {
         preferredCompactColumn = .detail
         if usesExpandedPhoneLayout && !usesSideBySideFooter {
             withAnimation { columnVisibility = .detailOnly }
-        }
-    }
-    private func showNotes() {
-        // Retain the selected note and its tab so the reverse swipe can reopen it.
-        withAnimation {
-            preferredCompactColumn = .sidebar
-            columnVisibility = .all
         }
     }
     private var cornerCaptureFooter: some View {

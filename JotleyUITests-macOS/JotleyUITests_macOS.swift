@@ -152,13 +152,13 @@ private struct MacSupportPreviewRoot: View {
         do {
             try await verifyLanguageChoices()
             if CommandLine.arguments.contains("--languages-only") { return }
-            if CommandLine.arguments.contains("--note-navigation-only") {
+            if CommandLine.arguments.contains("--note-menu-only") {
                 guard let base = LocalAppModel.shared.store else { throw LocalError.message("Navigation store unavailable") }
                 let store = try SharedPersistenceController(inMemory: true, model: base.container.managedObjectModel)
                 let note = try store.create(title: "Navigation fixture", text: "Keep both editors available.") as! Note
                 note.summary = "## Summary\nA short overview.\n\n## Key Points\n- Keep both editors available."
                 let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
-                try await verifyNoteNavigation(note: note, store: store, model: model)
+                try await verifyNoteMenus(note: note, store: store, model: model)
             } else if CommandLine.arguments.contains("--compact-only") {
                 guard let store = LocalAppModel.shared.store else { throw LocalError.message("Preview store unavailable") }
                 try await verifyCompactTranscription(store: store)
@@ -533,40 +533,7 @@ private struct MacSupportPreviewRoot: View {
         }
         print("PASS: the real Mac note edits its transcript inline, autosaves paragraphs, exits with Command-Return, preserves summary/audio metadata and rejects stale drafts.")
     }
-    @MainActor private static func verifyNoteNavigation(note: Note, store: SharedPersistenceController, model: NotesListViewModel) async throws {
-        var tracker = MacNoteContentSwipeTracker()
-        tracker.begin(); tracker.update(horizontal: -70, vertical: 2)
-        guard tracker.finish() == .left, tracker.finish() == nil else {
-            throw LocalError.message("A physical swipe must navigate only once.")
-        }
-        tracker.begin(); tracker.update(horizontal: 70, vertical: -3)
-        guard tracker.finish() == .right else { throw LocalError.message("Right swipe was lost.") }
-        tracker.begin(); tracker.update(horizontal: 2, vertical: 24); tracker.update(horizontal: -100, vertical: 0)
-        guard tracker.finish() == nil else { throw LocalError.message("Vertical scrolling switched tabs.") }
-        tracker.begin(); tracker.update(horizontal: -35, vertical: 0)
-        guard tracker.finish() == nil else { throw LocalError.message("A short scroll switched tabs.") }
-        tracker.begin(); tracker.update(horizontal: -80, vertical: 0); tracker.cancel()
-        guard tracker.finish() == nil else { throw LocalError.message("A cancelled gesture switched tabs.") }
-        print("PASS: horizontal gestures navigate once; vertical, short and cancelled gestures do not navigate.")
-
-        var selection = DetailTab.transcript.rawValue
-        var notesOpened = 0
-        let detail = NoteDetailPlaceholderView(note: note, selectedTab: Binding(get: { selection }, set: { selection = $0 }),
-            viewModel: model, showNotesAction: { notesOpened += 1 })
-        detail.navigateNoteSwipe(.right)
-        guard selection == DetailTab.summary.rawValue, notesOpened == 0 else { throw LocalError.message("Right from Transcript must open Summary first.") }
-        detail.navigateNoteSwipe(.right)
-        guard selection == DetailTab.summary.rawValue, notesOpened == 1 else { throw LocalError.message("Right from Summary must reveal the notes sidebar.") }
-        detail.navigateNoteSwipe(.left)
-        guard selection == DetailTab.transcript.rawValue else { throw LocalError.message("Left from Summary must open Transcript.") }
-        detail.navigateNoteSwipe(.left)
-        guard selection == DetailTab.transcript.rawValue, notesOpened == 1 else { throw LocalError.message("Left from Transcript must not wrap.") }
-        let savedSummary = note.summary; note.summary = nil
-        detail.navigateNoteSwipe(.right)
-        guard selection == DetailTab.transcript.rawValue, notesOpened == 2 else { throw LocalError.message("A missing Summary must be skipped.") }
-        note.summary = savedSummary
-        print("PASS: right navigates Transcript → Summary → notes; left reverses without wrapping; missing summaries are skipped.")
-
+    @MainActor private static func verifyNoteMenus(note: Note, store: SharedPersistenceController, model: NotesListViewModel) async throws {
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 400, height: 600),
             styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

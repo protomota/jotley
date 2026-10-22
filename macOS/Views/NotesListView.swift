@@ -18,7 +18,6 @@ struct NotesListView: View {
     @StateObject var viewModel: NotesListViewModel
     @State var showingFolderManagement = false
     @State var showingTagFilter = false
-    @State var columnVisibility: NavigationSplitViewVisibility = .all
     @StateObject var filterState = FilterAndSortState()
     @AppStorage("foldersExpanded") var foldersExpanded: Bool = false
     @AppStorage(RecordingWidgetController.widgetEnabledDefaultsKey) var showRecordingWidget: Bool = true
