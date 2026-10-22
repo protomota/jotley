@@ -4,6 +4,7 @@ import SwiftUI
 /// The caller owns a `FilterAndSortState` and provides the currently-known
 /// set of tag names plus a count lookup for display.
 struct FilterAndSortPopoverView: View {
+    @ObservedObject private var theme = ThemeManager.shared
     @ObservedObject var state: FilterAndSortState
     let allTags: [String]
     let tagCounts: [String: Int]
@@ -103,19 +104,44 @@ struct FilterAndSortPopoverView: View {
                 .foregroundColor(Color.themeTextSecondary)
                 .textCase(.uppercase)
 
-            Picker("Match", selection: $state.tagMatchMode) {
+            HStack(spacing: 0) {
                 ForEach(TagMatchMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
+                    Button { state.tagMatchMode = mode } label: {
+                        Text(mode.label)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(state.tagMatchMode == mode ? selectedMatchText : Color.themeTextPrimary)
+                            .frame(minWidth: 48)
+                            #if os(iOS)
+                            .frame(minHeight: 38)
+                            #else
+                            .padding(.vertical, 5)
+                            #endif
+                            .background {
+                                if state.tagMatchMode == mode {
+                                    Capsule().fill(Color.themePrimaryAccent)
+                                }
+                            }
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("filterTagMatch-\(mode.rawValue)")
+                    .accessibilityAddTraits(state.tagMatchMode == mode ? .isSelected : [])
                 }
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
+            .padding(3)
+            .background(Color.themePrimaryAccent.opacity(0.10), in: Capsule())
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Tag match")
 
             Text(state.tagMatchMode.helpText)
                 .font(.caption)
                 .foregroundColor(Color.themeTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var selectedMatchText: Color {
+        theme.currentThemeColor == .yellow || theme.currentThemeColor == .lightBlue ? .black : .white
     }
 
     private var tagSection: some View {

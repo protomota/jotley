@@ -401,15 +401,13 @@ private struct MacSupportPreviewRoot: View {
         print("PASS: Mac summaries replace tags and deliver local notifications only after saved results, including silent fallback tags and genuine summary failures.")
     }
     @MainActor private static func verifySummaryFollowAndCancel(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
-        note.summary = "Previously saved summary."
+        let previousSummary = (1...30).map { "## Saved section \($0)\nPreviously saved summary text that remains safe when generation is cancelled.\n" }.joined(separator: "\n")
+        note.summary = previousSummary
         try store.save()
         viewModel.simulatedSummaryGeneration = { _ in
             try await Task.sleep(for: .seconds(60))
             return "Cancelled test must never save"
         }
-        let generation = Task { await viewModel.generateSummary(note: note, templateKey: "Concise") }
-        await Task.yield()
-        defer { generation.cancel(); viewModel.simulatedSummaryGeneration = nil }
         let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note, selectedTab: .constant(DetailTab.summary.rawValue), viewModel: viewModel)
             .environment(\.managedObjectContext, store.context).environmentObject(store))
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 700, height: 500), styleMask: [.borderless], backing: .buffered, defer: false)
@@ -418,6 +416,16 @@ private struct MacSupportPreviewRoot: View {
         func scrollViews(_ view: NSView) -> [NSScrollView] {
             (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap(scrollViews)
         }
+        try await Task.sleep(for: .milliseconds(400))
+        host.layoutSubtreeIfNeeded()
+        guard let initialScroll = scrollViews(host).max(by: { ($0.documentView?.bounds.height ?? 0) < ($1.documentView?.bounds.height ?? 0) }),
+              let initialDocument = initialScroll.documentView else { throw LocalError.message("Saved summary scroll fixture unavailable.") }
+        let bottomY = initialDocument.isFlipped ? initialDocument.bounds.maxY - initialScroll.contentView.bounds.height : initialDocument.bounds.minY
+        initialScroll.contentView.scroll(to: NSPoint(x: 0, y: bottomY))
+        initialScroll.reflectScrolledClipView(initialScroll.contentView)
+        let generation = Task { await viewModel.generateSummary(note: note, templateKey: "Concise") }
+        await Task.yield()
+        defer { generation.cancel(); viewModel.simulatedSummaryGeneration = nil }
         for count in [12, 36] {
             viewModel.streamingSummaryViewModel.summary = (1...count).map {
                 "## Summary update \($0)\nMaya will review milestones Friday. Sam will test the next steps and share feedback with the team.\n"
@@ -428,8 +436,8 @@ private struct MacSupportPreviewRoot: View {
             guard let scroll = scrollViews(host).filter({ ($0.documentView?.bounds.height ?? 0) > $0.contentView.bounds.height + 100 }).max(by: { ($0.documentView?.bounds.height ?? 0) < ($1.documentView?.bounds.height ?? 0) }),
                   let document = scroll.documentView else { throw LocalError.message("Mac summary scroll fixture did not overflow.") }
             let visible = scroll.documentVisibleRect
-            let distance = document.isFlipped ? document.bounds.maxY - visible.maxY : visible.minY - document.bounds.minY
-            guard distance < 30 else { throw LocalError.message("Mac summary did not follow the bottom: \(distance) points away.") }
+            let distance = document.isFlipped ? visible.minY - document.bounds.minY : document.bounds.maxY - visible.maxY
+            guard distance < 30 else { throw LocalError.message("Mac summary must open and stay at the top while streaming: \(distance) points away.") }
             if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 try bitmap.representation(using: .png, properties: [:])?.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("jotley-summary-mac-preview.png"))
@@ -455,9 +463,9 @@ private struct MacSupportPreviewRoot: View {
             windowNumber: window.windowNumber, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53) else { throw LocalError.message("Cancel key event unavailable") }
         if !window.performKeyEquivalent(with: escape) { window.sendEvent(escape) }
         try await Task.sleep(for: .milliseconds(300))
-        guard !viewModel.isGeneratingSummary, note.summary == "Previously saved summary." else { throw LocalError.message("Pinned Cancel Generation did not cancel/preserve the saved summary.") }
+        guard !viewModel.isGeneratingSummary, note.summary == previousSummary else { throw LocalError.message("Pinned Cancel Generation did not cancel/preserve the saved summary.") }
         await generation.value
-        print("PASS: real Mac summary view follows growing content and keeps a visible Cancel Generation footer; Escape cancels the actual task and preserves saved content.")
+        print("PASS: real Mac summary generation returns a scrolled summary to the top, stays there while streaming and keeps a visible Cancel Generation footer; Escape cancels the actual task and preserves saved content.")
     }
 
     @MainActor private static func verifyTranscriptEditing(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {

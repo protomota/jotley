@@ -148,7 +148,6 @@ public struct TranscriptTabView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .clipped()
     }
 }
 
@@ -162,7 +161,7 @@ struct TranscriptParagraphsView: View {
     private let minimumDisplayTimestampStart: TimeInterval = 0.0
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 4) {
+        LazyVStack(alignment: .leading, spacing: 12) {
             let sourceUtterances = utterances.isEmpty
                 ? TranscriptUtterance.fallbackUtterances(from: transcript)
                 : TranscriptUtterance.deduplicated(utterances)
@@ -200,9 +199,9 @@ struct TranscriptParagraphsView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.top, 4)
+        // Leave room for the glass rim and shadow around the first and last cards.
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .clipped()
     }
 
     private func visibleTimestampedUtterances(from utterances: [TranscriptUtterance]) -> [(utterance: TranscriptUtterance, timestampLabel: String?)] {

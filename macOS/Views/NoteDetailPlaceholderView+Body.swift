@@ -34,6 +34,10 @@ extension NoteDetailPlaceholderView {
         return true
     }
 
+    var detailScrollTopAnchorID: String {
+        "note-detail-summary-top-anchor"
+    }
+
     var detailScrollBottomAnchorID: String {
         "note-detail-live-bottom-anchor"
     }
@@ -75,6 +79,7 @@ extension NoteDetailPlaceholderView {
                                 .padding(.top, 8)
                         }
                         .padding(.bottom, detailBottomPadding)
+                        .id(detailScrollTopAnchorID)
 
                         Color.clear
                             .frame(height: 1)
@@ -98,16 +103,13 @@ extension NoteDetailPlaceholderView {
                         scrollProxy.scrollTo(detailScrollBottomAnchorID, anchor: .bottom)
                     }
 
-                    .task(id: viewModel.streamingSummaryViewModel.summary) {
+                    // Reveal the beginning once when generation opens. Streaming
+                    // updates must not pull the reader down to the growing end.
+                    .task(id: [String(isGeneratingThisSummary), String(selectedTab), note.objectID.uriRepresentation().absoluteString]) {
                         guard isGeneratingThisSummary, selectedTab == DetailTab.summary.rawValue else { return }
                         await Task.yield()
                         guard !Task.isCancelled else { return }
-                        scrollProxy.scrollTo(detailScrollBottomAnchorID, anchor: .bottom)
-                    }
-                    .onChange(of: viewModel.isGeneratingSummary) { _, running in
-                        if running, isGeneratingThisSummary, selectedTab == DetailTab.summary.rawValue {
-                            scrollProxy.scrollTo(detailScrollBottomAnchorID, anchor: .bottom)
-                        }
+                        scrollProxy.scrollTo(detailScrollTopAnchorID, anchor: .top)
                     }
                 }
             .scrollIndicators(.visible) // Make scrollbars visible

@@ -449,7 +449,7 @@ struct StructuredSummaryBlockView: View {
     }
 
     func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("\(index + 1)")
                 .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.accent)
                 .frame(width: numberSize, height: numberSize)

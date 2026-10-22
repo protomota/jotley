@@ -44,7 +44,7 @@ struct MacTranscriptionControls: View {
                 .accessibilityIdentifier("macLiveTranscriptionPauseButton")
             Button(action: onStop) {
                 Label("Stop", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.themeTextPrimary)
+                    .foregroundStyle(Color.themePrimaryAccent)
             }.buttonStyle(JotleyGlassButtonStyle()).accessibilityLabel("Stop Transcription")
                 .accessibilityIdentifier("macLiveTranscriptionStopButton")
         }.disabled(isBusy).fixedSize(horizontal: true, vertical: false)

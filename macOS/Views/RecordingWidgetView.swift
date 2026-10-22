@@ -80,6 +80,7 @@ struct RecordingWidgetView: View {
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
+                .foregroundStyle(Color.themePrimaryAccent)
             }
             .buttonStyle(JotleyGlassButtonStyle())
             .layoutPriority(1)
