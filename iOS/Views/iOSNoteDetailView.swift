@@ -38,9 +38,14 @@ struct NoteDetailView: View {
     @State var showingAskAI = false
     var selectedTemplate: LocalSummaryTemplate { .resolve(note.summaryType) }
     func selectTemplate(_ template: LocalSummaryTemplate) {
-        guard selectedTemplate != template else { return }
-        note.summaryType = template.key
-        transcriptionManager.saveEdits()
+        guard selectedTemplate != template, transcriptionManager.canStart else { return }
+        if Note.isMeaningfulSummaryText(note.summary) && hasTranscript {
+            selectedTab = "Summary"
+            transcriptionManager.summarize(note, template: template)
+        } else {
+            note.summaryType = template.key
+            transcriptionManager.saveEdits()
+        }
     }
 
     func generateSummary() {

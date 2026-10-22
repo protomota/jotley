@@ -865,6 +865,7 @@ struct JotleyOnboardingView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @Environment(\.layoutDirection) private var layoutDirection
     @State private var allowsWebsiteTips = false
     @State private var showingLanguages = false
     @State private var step = 0
@@ -980,6 +981,14 @@ struct JotleyOnboardingView: View {
         #if os(iOS)
         .ignoresSafeArea(.container, edges: .bottom)
         #endif
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 36).onEnded { value in
+                guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                let forward = layoutDirection == .rightToLeft ? value.translation.width > 0 : value.translation.width < 0
+                swipePage(forward: forward)
+            }
+        )
         .foregroundStyle(ink)
         .preferredColorScheme(.light)
         .environment(\.colorScheme, .light)
@@ -1318,6 +1327,13 @@ struct JotleyOnboardingView: View {
         #else
         changeStep(supportStep)
         #endif
+    }
+    private func swipePage(forward: Bool) {
+        guard !settingUpSpeech, !requestingMicrophone, !showingLanguages else { return }
+        let next = step + (forward ? 1 : -1)
+        guard steps.indices.contains(next) else { return }
+        // Swiping only navigates. Permission requests and finishing setup stay explicit.
+        changeStep(next)
     }
     private func changeStep(_ next: Int) {
         #if os(macOS)

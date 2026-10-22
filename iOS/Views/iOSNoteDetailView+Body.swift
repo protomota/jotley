@@ -88,11 +88,11 @@ extension NoteDetailView {
                         }
                         .disabled(!transcriptionManager.canStart)
                         .accessibilityIdentifier("noteDetailSummaryTemplateMenu")
-                        Button(hasSummary ? "Regenerate Summary" : "Generate Summary", systemImage: "arrow.clockwise") {
-                            generateSummary()
+                        if !hasSummary {
+                            Button("Generate Summary", systemImage: "sparkles") { generateSummary() }
+                                .disabled(!transcriptionManager.canStart || !hasTranscript)
+                                .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
                         }
-                        .disabled(!transcriptionManager.canStart || !hasTranscript)
-                        .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
                         Divider()
                         Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
                             .disabled(!transcriptionManager.canStart)
@@ -308,7 +308,7 @@ extension NoteDetailView {
 
     private var primarySummaryButton: some View {
         Button { generateSummary() } label: {
-            Text(hasSummary ? "Regenerate Summary" : "Generate Summary")
+            Text("Generate Summary")
                 .font(.system(size: 15, weight: .semibold))
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: 44)

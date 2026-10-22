@@ -451,9 +451,9 @@ struct StructuredSummaryBlockView: View {
     func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(index + 1)")
-                .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.secondary)
+                .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.accent)
                 .frame(width: numberSize, height: numberSize)
-                .overlay(Circle().strokeBorder(palette.secondary.opacity(0.45), lineWidth: 1))
+                .overlay(Circle().strokeBorder(palette.accent.opacity(0.75), lineWidth: 1))
                 .accessibilityHidden(true)
             groupText(group, emphasizeLabel: true)
         }
@@ -464,7 +464,7 @@ struct StructuredSummaryBlockView: View {
     private func row(_ section: StructuredSummary.Section, group: [StructuredSummary.Item]) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: Self.rowImage(section.style))
-                .font(.title3).foregroundStyle(section.style == .risks ? Color.orange : palette.accent)
+                .font(.title3).foregroundStyle(palette.accent)
                 .frame(width: 26).padding(.top, 1).accessibilityHidden(true)
             groupText(group, emphasizeLabel: false)
         }.padding(.vertical, 12)

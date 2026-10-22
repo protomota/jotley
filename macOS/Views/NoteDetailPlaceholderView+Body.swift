@@ -194,16 +194,8 @@ extension NoteDetailPlaceholderView {
                         !viewModel.isGeneratingSummary && !LocalAppModel.shared.busy,
                     onAsk: { showingAskAI = true },
                     onTemplate: { template in
-                        guard note.summaryType != template.key else { return }
-                        let previous = note.summaryType
-                        note.summaryType = template.key
-                        do { try persistenceController.save() }
-                        catch { note.summaryType = previous; viewModel.report(error) }
-                    },
-                    onRegenerate: {
-                        Task { @MainActor in
-                            await handleSummarizeAction(templateKey: LocalSummaryTemplate.resolve(note.summaryType).key)
-                        }
+                        guard LocalSummaryTemplate.resolve(note.summaryType) != template else { return }
+                        Task { @MainActor in await handleSummarizeAction(templateKey: template.key) }
                     }
                 )
                 .padding(.horizontal, 14).padding(.vertical, 14).padding(.trailing, 16)
@@ -284,7 +276,6 @@ struct MacSummaryActionsFooter: View {
     let isEnabled: Bool
     let onAsk: () -> Void
     let onTemplate: (LocalSummaryTemplate) -> Void
-    let onRegenerate: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
@@ -320,13 +311,7 @@ struct MacSummaryActionsFooter: View {
                     .accessibilityLabel("Templates: \(template.title)")
                     .accessibilityIdentifier("noteDetailTemplatesButton")
 
-                    Button(action: onRegenerate) {
-                        Text("Regenerate Summary")
-                            .font(.system(size: 13, weight: .semibold))
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                            .foregroundStyle(Color.themeTextPrimary)
-                    }
-                    .accessibilityIdentifier("noteDetailGenerateSummaryButton")
+
                 }
             }
         }.buttonStyle(JotleyGlassButtonStyle()).disabled(!isEnabled)

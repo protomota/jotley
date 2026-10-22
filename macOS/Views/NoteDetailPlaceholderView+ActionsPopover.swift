@@ -63,6 +63,7 @@ extension NoteDetailPlaceholderView {
 
         private func applyTemplateAndRegenerate(_ templateKey: String) {
             isPresented = false
+            guard LocalSummaryTemplate.resolve(note.summaryType).key != templateKey else { return }
             parent.selectedTemplateKeyForAction = templateKey
             parent.currentSelectedTemplate = parent.availableTemplates.first { $0.key == templateKey } ??
                 Template(

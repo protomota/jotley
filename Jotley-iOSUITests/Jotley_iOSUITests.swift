@@ -14,9 +14,31 @@ final class Jotley_iOSUITests: XCTestCase {
         if firstSummary.exists && firstSummary.isHittable { firstSummary.tap() }
         else {
             app.buttons["noteDetailMoreActionsButton"].tap()
-            let regenerate = app.buttons["noteDetailGenerateSummaryMenuButton"]
-            XCTAssertTrue(regenerate.waitForExistence(timeout: 5)); regenerate.tap()
+            let generate = app.buttons["noteDetailGenerateSummaryMenuButton"]
+            if generate.exists { generate.tap() }
+            else {
+                app.buttons["noteDetailSummaryTemplateMenu"].tap()
+                app.buttons["Lecture"].tap()
+            }
         }
+    }
+
+    @MainActor func testTemplateChangeRegeneratesExistingSummaryAutomatically() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Template update","folder":"","tags":[],"transcript":"Maya reviews milestones Friday. Sam tests the next steps.","summary":"Existing summary stays safe until its replacement finishes."}]"#
+        app.launchEnvironment["JOTLEY_TEST_SUMMARY_SCROLL"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].waitForExistence(timeout: 15))
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        XCTAssertFalse(app.buttons["noteDetailGenerateSummaryMenuButton"].exists)
+        app.buttons["noteDetailSummaryTemplateMenu"].tap()
+        app.buttons["Lecture"].tap()
+        let cancel = app.buttons["noteDetailCancelGenerationButton"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "Changing a template must start generation without another button")
+        cancel.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Existing summary stays safe")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
     }
 
     @MainActor func testAutomaticFirstNoteSelectionAndDeletion() throws {
@@ -207,6 +229,31 @@ final class Jotley_iOSUITests: XCTestCase {
         cancel.tap()
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))
         XCTAssertFalse(app.descendants(matching: .any)["noteDetailTag-Draft"].firstMatch.exists)
+    }
+
+    @MainActor func testOnboardingSwipeNavigation() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+        app.launch()
+        let title = app.staticTexts["onboardingTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        func expectTitle(_ text: String) {
+            let match = expectation(for: NSPredicate(format: "label == %@", text), evaluatedWith: title)
+            wait(for: [match], timeout: 5)
+        }
+        title.swipeRight(); expectTitle("Stay in the conversation.")
+        title.swipeLeft(); expectTitle("Find the useful parts.")
+        title.swipeRight(); expectTitle("Stay in the conversation.")
+        app.buttons["onboardingContinue"].tap(); expectTitle("Find the useful parts.")
+        title.swipeLeft(); expectTitle("Start with your language.")
+        title.swipeLeft(); expectTitle("Give your words a place.")
+        title.swipeLeft(); expectTitle("Free software.\nSupported by people.")
+        XCTAssertFalse(app.alerts.firstMatch.exists, "Swiping must not request microphone access")
+        title.swipeLeft(); expectTitle("Free software.\nSupported by people.")
+        XCTAssertTrue(app.buttons["onboardingContinue"].exists, "Swiping past the end must not finish setup")
+        app.buttons["onboardingBack"].tap(); expectTitle("Give your words a place.")
     }
 
     @MainActor func testOnboardingFitsWithoutScrolling() throws {
@@ -407,12 +454,13 @@ final class Jotley_iOSUITests: XCTestCase {
                     wait(for: [settled], timeout: 5)
                     XCTAssertEqual(quickAction.frame.height, 44, accuracy: 1)
                     app.buttons["noteDetailMoreActionsButton"].tap()
-                    XCTAssertTrue(app.buttons["noteDetailGenerateSummaryMenuButton"].waitForExistence(timeout: 5))
-                    XCTAssertEqual(app.buttons["noteDetailGenerateSummaryMenuButton"].label, "Regenerate Summary")
+                    XCTAssertFalse(app.buttons["noteDetailGenerateSummaryMenuButton"].exists)
                     app.buttons["noteDetailSummaryTemplateMenu"].tap()
                     let template = app.buttons["Personal Note"]
-                    XCTAssertTrue(template.waitForExistence(timeout: 5)); template.tap()
-                    XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].isHittable)
+                    XCTAssertTrue(template.waitForExistence(timeout: 5))
+                    // Opening the template menu must not start inference.
+                    app.tap()
+                    XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].exists)
                 } else {
                     XCTAssertTrue(primary.waitForExistence(timeout: 5))
                     XCTAssertEqual(primary.label, "Generate Summary")
@@ -1754,8 +1802,11 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
         let generate = app.buttons["noteDetailGenerateSummaryButton"]
         XCTAssertTrue(generate.isEnabled); generate.tap()
-        let finished = expectation(for: NSPredicate(format: "enabled == YES AND label == %@", "Regenerate Summary"), evaluatedWith: generate)
+        let cancel = app.buttons["noteDetailCancelGenerationButton"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10))
+        let finished = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cancel)
         wait(for: [finished], timeout: 60)
+        XCTAssertFalse(generate.exists)
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3), "The sixth saved action must not trigger a custom review prompt")
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
     }
@@ -1818,6 +1869,7 @@ final class Jotley_iOSUITests: XCTestCase {
             "transcript": "Recorded meeting words.", "summary": summary]]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_SUMMARY_SCROLL"] = "1"
         app.launch()
         let row = app.buttons.containing(.staticText, identifier: "Long template verification").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
@@ -1830,7 +1882,11 @@ final class Jotley_iOSUITests: XCTestCase {
             let choice = app.buttons[title]
             XCTAssertTrue(choice.waitForExistence(timeout: 5))
             let start = Date(); choice.tap()
-            XCTAssertTrue(quickAction.isHittable)
+            if key != "default-summary" {
+                let cancel = app.buttons["noteDetailCancelGenerationButton"]
+                XCTAssertTrue(cancel.waitForExistence(timeout: 5)); cancel.tap()
+            }
+            XCTAssertTrue(quickAction.waitForExistence(timeout: 5))
             let actual = quickAction.frame
             XCTAssertEqual(actual.width, quickActionFrame.width, accuracy: 0.5)
             XCTAssertEqual(actual.height, quickActionFrame.height, accuracy: 0.5)
@@ -2094,6 +2150,7 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 20))
         }
         func capture(_ name: String) {
+            Thread.sleep(forTimeInterval: 0.4) // Capture the settled segmented-control animation.
             for (index, screen) in XCUIScreen.screens.enumerated() {
                 let image = XCTAttachment(screenshot: screen.screenshot())
                 image.name = "Marketing-\(name)-screen-\(index)"; image.lifetime = .keepAlways; add(image)
@@ -2111,7 +2168,8 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(settings.waitForExistence(timeout: 5))
         }
         XCUIDevice.shared.orientation = .portrait
-        launch(); capture("summary")
+        launch()
+        capture("summary")
         app.scrollViews.firstMatch.swipeUp(); capture("actions")
         launch(); app.buttons["noteDetailTranscriptTab"].tap(); capture("transcript")
         if XCUIScreen.screens.count > 1 {
