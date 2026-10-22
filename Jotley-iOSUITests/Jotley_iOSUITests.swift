@@ -2125,6 +2125,39 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     // BEGIN LOCAL MARKETING CAPTURE
+    @MainActor func testMarketingLiveWaveformCapture() throws {
+        let levels = try XCTUnwrap(ProcessInfo.processInfo.environment["JOTLEY_MARKETING_AUDIO_LEVELS"])
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_AUDIO_LEVELS"] = levels
+        app.launchEnvironment["JOTLEY_SCREENSHOT_LIVE_TEXT"] = "Let’s keep Friday’s launch focused. One clear welcome, readable notes and a final review. Alex will finish the accessibility checks by Thursday. Sam will share the launch checklist."
+        app.launchArguments = ["-selectedThemeColor", "Purple", "-jotleyWelcomeCompleted.v1", "YES", "-jotley.summaryDisplayStyle", "cards"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        let start = app.buttons["notesListNewNoteButton"].firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 15)); start.tap()
+        XCTAssertTrue(app.buttons["transcriptionPauseButton"].waitForExistence(timeout: 10))
+        let waveform = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Live microphone waveform")).firstMatch
+        XCTAssertTrue(waveform.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 3.5) // Fill the native bar history with measured speech peaks.
+        let first = waveform.screenshot().pngRepresentation
+        for (index, screen) in XCUIScreen.screens.enumerated() {
+            let image = XCTAttachment(screenshot: screen.screenshot())
+            image.name = "Marketing-live-waveform-a-screen-\(index)"; image.lifetime = .keepAlways; add(image)
+        }
+        Thread.sleep(forTimeInterval: 0.4)
+        XCTAssertNotEqual(first, waveform.screenshot().pngRepresentation, "Measured speech must move the native waveform, not leave a flat line")
+        for (index, screen) in XCUIScreen.screens.enumerated() {
+            let image = XCTAttachment(screenshot: screen.screenshot())
+            image.name = "Marketing-live-waveform-b-screen-\(index)"; image.lifetime = .keepAlways; add(image)
+        }
+        app.buttons["transcriptionStopButton"].tap()
+        app.terminate()
+    }
+
     @MainActor func testMarketingLayoutCaptures() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_CHAT_READY"] = "1"

@@ -81,6 +81,12 @@ struct JotleyiOSApp: App {
             }
         }
         if ["1", "layout"].contains(ProcessInfo.processInfo.environment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] ?? "") {
+            if let encoded = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_AUDIO_LEVELS"],
+               let data = encoded.data(using: .utf8),
+               let levels = try? JSONDecoder().decode([Float].self, from: data),
+               !levels.isEmpty, levels.allSatisfy({ $0.isFinite && (0...1).contains($0) }) {
+                recorder.simulatedAudioLevels = levels
+            }
             recorder.simulatedSpeechStart = { snapshot in
                 let session = SimulatorLifecycleSpeech(snapshot: snapshot)
                 await session.publishCards()

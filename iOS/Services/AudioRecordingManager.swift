@@ -282,6 +282,8 @@ final class LiveTranscriptionManager: ObservableObject {
     // Explicit test injection only; no synthetic speech is compiled into releases.
     var simulatedSpeechStart: (@MainActor (@escaping @Sendable (LocalTranscript) async -> Void) async throws -> any MobileSpeechSession)?
     var simulatedCaptureStart: (@MainActor () async -> Void)?
+    // Measured PCM peaks for screenshot playback; never part of a release build.
+    var simulatedAudioLevels: [Float] = []
     private var simulatedSegmentStart: TimeInterval?
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
     var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
@@ -500,6 +502,10 @@ final class LiveTranscriptionManager: ObservableObject {
         guard transcriptionState == .listening, let progress = captureProgress, segmentRate > 0 else { return }
         #if DEBUG && targetEnvironment(simulator)
         if simulatedSpeechStart != nil, let start = simulatedSegmentStart {
+            if !simulatedAudioLevels.isEmpty {
+                let index = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * 10) % simulatedAudioLevels.count
+                audioLevel = simulatedAudioLevels[index]
+            }
             let expectedFrames = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * segmentRate)
             let pendingFrames = expectedFrames - Int(progress.snapshot().frames)
             if pendingFrames > 0 { progress.received(frames: pendingFrames) }
