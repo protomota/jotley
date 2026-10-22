@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct NoteRowView: View {
     @ObservedObject var note: Note
@@ -6,6 +7,10 @@ struct NoteRowView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @EnvironmentObject private var transcriptionManager: LiveTranscriptionManager
     @Environment(\.colorScheme) var colorScheme
+    @ScaledMetric(relativeTo: .subheadline) private var phoneTitleSize = 17
+    @ScaledMetric(relativeTo: .footnote) private var phonePreviewSize = 15
+
+    private var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private var hasRenderedSummary: Bool {
         guard let summary = note.summary?.trimmingCharacters(in: .whitespacesAndNewlines) else {
@@ -51,10 +56,10 @@ struct NoteRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: isPhone ? 4 : 2) {
             // Title - bold like Apple Notes
             Text(note.title ?? "Untitled")
-                .font(.subheadline.weight(.semibold))
+                .font(isPhone ? .system(size: phoneTitleSize, weight: .semibold) : .subheadline.weight(.semibold))
                 .foregroundColor(Color.themeTextPrimary)
                 .lineLimit(1)
                 .accessibilityIdentifier("noteRowTitle")
@@ -62,7 +67,7 @@ struct NoteRowView: View {
             // Date and preview on same line, like Apple Notes
             HStack(spacing: 6) {
                 Text(note.timestamp ?? Date(), style: hasRenderedSummary ? .time : .date)
-                    .font(.footnote)
+                    .font(isPhone ? .system(size: phonePreviewSize) : .footnote)
                     .foregroundColor(Color.themeTextSecondary)
                     .accessibilityIdentifier("noteRowTimestamp")
 
@@ -70,7 +75,7 @@ struct NoteRowView: View {
 
                 if !previewText.isEmpty {
                     Text(previewText)
-                        .font(.footnote)
+                        .font(isPhone ? .system(size: phonePreviewSize) : .footnote)
                         .foregroundColor(Color.themeTextSecondary.opacity(0.8))
                         .lineLimit(1)
 
@@ -80,7 +85,7 @@ struct NoteRowView: View {
         .accessibilityIdentifier("noteRow")
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, isPhone ? 10 : 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? Color.themePrimaryAccent.opacity(0.3) : Color.themeContentBackground)

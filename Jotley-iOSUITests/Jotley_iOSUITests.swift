@@ -867,7 +867,7 @@ final class Jotley_iOSUITests: XCTestCase {
         for mode in ["Dark", "Light"] {
             app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch.tap()
             app.buttons[mode].tap()
-            for theme in ["Purple", "Magenta", "Orange", "Yellow", "Light Blue"] {
+            for theme in ["Purple", "Magenta", "Orange", "Yellow", "Light Blue", "Neutral"] {
                 app.descendants(matching: .any)["settingsThemeColorPicker"].firstMatch.tap()
                 app.buttons[theme].tap()
                 let done = app.buttons["settingsDoneButton"]
@@ -886,9 +886,9 @@ final class Jotley_iOSUITests: XCTestCase {
                 }
                 XCTAssertLessThan(Double(colored) / Double(image.width * image.height), 0.05,
                                   "Done must have neutral glass, not an accent fill: \(mode), \(theme)")
-                if theme == "Magenta" {
+                if theme == "Magenta" || theme == "Neutral" {
                     let attachment = XCTAttachment(screenshot: app.screenshot())
-                    attachment.name = "Neutral glass Done with Magenta theme - \(mode)"
+                    attachment.name = "Neutral glass Done with \(theme) theme - \(mode)"
                     attachment.lifetime = .keepAlways; add(attachment)
                 }
             }
@@ -2293,6 +2293,13 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(settings.waitForExistence(timeout: 5))
         }
         XCUIDevice.shared.orientation = .portrait
+        if ProcessInfo.processInfo.environment["JOTLEY_CAPTURE_NEUTRAL_ONLY"] == "1" {
+            launch("Neutral"); capture("neutral")
+            library(); capture("neutral-library")
+            launch("Neutral", "Dark"); capture("neutral-dark")
+            app.terminate()
+            return
+        }
         launch()
         capture("summary")
         app.scrollViews.firstMatch.swipeUp(); capture("actions")
@@ -2311,6 +2318,8 @@ final class Jotley_iOSUITests: XCTestCase {
         launch("Orange"); capture("orange")
         launch("Light Blue"); capture("blue")
         launch("Purple", "Dark"); capture("dark")
+        launch("Neutral"); capture("neutral")
+        launch("Neutral", "Dark"); capture("neutral-dark")
         launch(); app.buttons["notesListNewNoteButton"].firstMatch.tap()
         XCTAssertTrue(app.buttons["transcriptionPauseButton"].waitForExistence(timeout: 10)); capture("live")
         app.buttons["transcriptionStopButton"].tap()

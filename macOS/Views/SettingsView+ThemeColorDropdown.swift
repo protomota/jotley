@@ -13,7 +13,7 @@ struct ThemeColorDropdown: View {
         } label: {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(selection.color)
+                    .fill(selection.previewColor)
                     .frame(width: 12, height: 12)
                 Text(selection.displayName)
                     .font(.system(size: 13))
@@ -44,7 +44,7 @@ struct ThemeColorDropdown: View {
                     } label: {
                         HStack(spacing: 10) {
                             Circle()
-                                .fill(color.color)
+                                .fill(color.previewColor)
                                 .frame(width: 12, height: 12)
                             Text(color.displayName)
                                 .font(.system(size: 13))

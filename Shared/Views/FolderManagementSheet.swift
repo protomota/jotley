@@ -8,13 +8,15 @@ struct FolderManagementSheet: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
 
-    @FetchRequest(
-        sortDescriptors: [
+    @FetchRequest(fetchRequest: {
+        // Resolve the entity in the environment's context, including isolated stores.
+        let request = NSFetchRequest<Folder>(entityName: "Folder")
+        request.sortDescriptors = [
             NSSortDescriptor(keyPath: \Folder.sortOrder, ascending: true),
             NSSortDescriptor(keyPath: \Folder.name, ascending: true)
-        ],
-        animation: .default
-    )
+        ]
+        return request
+    }(), animation: .default)
     private var folders: FetchedResults<Folder>
 
     @State private var newFolderName: String = ""

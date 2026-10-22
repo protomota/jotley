@@ -36,7 +36,8 @@ public extension Folder {
         if let existing = find(named: trimmed, in: context) {
             return existing
         }
-        let folder = Folder(context: context)
+        // Use this context's entity when several isolated stores/models exist.
+        let folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: context) as! Folder
         folder.id = UUID()
         folder.name = trimmed
         folder.createdAt = Date()

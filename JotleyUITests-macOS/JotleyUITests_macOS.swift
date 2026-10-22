@@ -269,7 +269,7 @@ private struct MacSupportPreviewRoot: View {
               let study = Folder.find(named: "Study", in: fresh.context) else { throw LocalError.message("New libraries need three starter folders.") }
         personal.name = "Life"; fresh.context.delete(study); try fresh.save()
         let reopened = try SharedPersistenceController(root: starterRoot)
-        guard Set(try reopened.context.fetch(request).compactMap(\.name)) == ["Life", "Work"] else { throw LocalError.message("Starter folders were recreated after a rename or deletion.") }
+        guard Set(try reopened.context.fetch(Folder.fetchRequest()).compactMap(\.name)) == ["Life", "Work"] else { throw LocalError.message("Starter folders were recreated after a rename or deletion.") }
         print("PASS: new libraries start with Personal, Study and Work; renamed/deleted folders stay changed after reopening.")
         entity.managedObjectClassName = NSStringFromClass(RoutingRefusedNote.self)
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("JotleyMacRouting-\(UUID())")

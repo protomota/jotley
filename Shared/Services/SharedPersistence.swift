@@ -123,8 +123,16 @@ public final class SharedPersistenceController: ObservableObject {
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.undoManager = UndoManager()
         if ready && !inMemory {
-            if isNewLibrary {
-                for name in ["Personal", "Study", "Work"] { Folder.getOrCreate(named: name, in: context) }
+            if isNewLibrary, resolvedModel.entitiesByName["Folder"] != nil {
+                for name in ["Personal", "Study", "Work"] {
+                    // Resolve against this store's model, including isolated test
+                    // stores, rather than Core Data's global subclass lookup.
+                    let folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: context)
+                    folder.setValue(UUID(), forKey: "id")
+                    folder.setValue(name, forKey: "name")
+                    folder.setValue(Date(), forKey: "createdAt")
+                    folder.setValue(0, forKey: "sortOrder")
+                }
                 try save()
             }
             try resolveRecordingDeletions()

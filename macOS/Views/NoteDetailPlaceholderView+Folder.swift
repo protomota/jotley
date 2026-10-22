@@ -17,13 +17,15 @@ struct FolderChipView: View {
     @ObservedObject var note: Note
     let onChange: () -> Void
 
-    @FetchRequest(
-        sortDescriptors: [
+    @FetchRequest(fetchRequest: {
+        // Resolve the entity in the environment's context, including isolated stores.
+        let request = NSFetchRequest<Folder>(entityName: "Folder")
+        request.sortDescriptors = [
             NSSortDescriptor(keyPath: \Folder.sortOrder, ascending: true),
             NSSortDescriptor(keyPath: \Folder.name, ascending: true)
-        ],
-        animation: .default
-    )
+        ]
+        return request
+    }(), animation: .default)
     private var folders: FetchedResults<Folder>
 
     @State private var showingCreate = false

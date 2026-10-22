@@ -279,7 +279,7 @@ struct iOSCurrentScopeIndicator: View {
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
                 }
-                .foregroundColor(.white)
+                .foregroundColor(Color.themeTextOnAccent)
                 .padding(.leading, 12)
                 .padding(.trailing, 8)
                 .padding(.vertical, 6)
@@ -289,7 +289,7 @@ struct iOSCurrentScopeIndicator: View {
             Button(action: onClear) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(Color.themeTextOnAccent.opacity(0.9))
                     .padding(.trailing, 10)
                     .padding(.vertical, 6)
                     .contentShape(Rectangle())

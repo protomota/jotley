@@ -20,6 +20,7 @@ enum ThemeColor: String, CaseIterable, Codable {
     case magenta = "Magenta"
     case yellow = "Yellow"
     case lightBlue = "Light Blue"
+    case neutral = "Neutral"
 
     var displayName: String {
         return self.rawValue
@@ -37,18 +38,16 @@ enum ThemeColor: String, CaseIterable, Codable {
             return Color.yellow
         case .lightBlue:
             return Color(red: 0.3, green: 0.7, blue: 1.0) // Light blue
+        case .neutral:
+            // Gray glass stays subtle while its icons and labels remain readable.
+            return Color(white: Color.shouldUseDarkTheme() ? 0.75 : 0.38)
         }
     }
 
     var previewColor: Color {
-        // For preview in settings, ensure visibility on dark background
-        switch self {
-        case .yellow:
-            return self.color
-        default:
-            return self.color
-        }
+        self == .neutral ? Color(white: 0.72) : color
     }
+
 }
 
 // Appearance mode enum for light/dark/system theme selection
@@ -270,6 +269,12 @@ extension Color {
     // Dynamic theme primary accent color
     static var themePrimaryAccent: Color {
         ThemeManager.shared.currentThemeColor.color
+    }
+
+    /// Contrast for labels drawn directly on a solid accent fill.
+    static var themeTextOnAccent: Color {
+        let theme = ThemeManager.shared.currentThemeColor
+        return theme == .yellow || theme == .lightBlue || (theme == .neutral && shouldUseDarkTheme()) ? .black : .white
     }
 
     /// Text actions must remain readable against dark sheets and tinted cards.

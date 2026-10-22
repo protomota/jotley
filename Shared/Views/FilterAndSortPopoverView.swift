@@ -141,7 +141,7 @@ struct FilterAndSortPopoverView: View {
     }
 
     private var selectedMatchText: Color {
-        theme.currentThemeColor == .yellow || theme.currentThemeColor == .lightBlue ? .black : .white
+        Color.themeTextOnAccent
     }
 
     private var tagSection: some View {
@@ -218,7 +218,7 @@ struct FilterAndSortPopoverView: View {
             } label: {
                 Text("Done")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.themeTextOnAccent)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
                     .background(

@@ -96,7 +96,7 @@ struct RecordingIndicator: View {
                     // Fallback icon when no app icon is provided
                     Image(systemName: "mic.fill")
                         .font(.system(size: self.size * 0.5))
-                        .foregroundColor(.white)
+                        .foregroundColor(Color.themeTextOnAccent)
                 }
             }
             .frame(width: size, height: size) // Ensure consistent frame

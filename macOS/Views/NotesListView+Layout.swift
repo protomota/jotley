@@ -433,7 +433,7 @@ extension NotesListView {
 
                 Image(systemName: "mic.fill")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.themeTextOnAccent)
                     .shadow(color: Color.black.opacity(0.35), radius: 1, x: 0, y: 1)
             }
             .id(themeUpdateId)

@@ -3,6 +3,7 @@ import AVFoundation
 import CoreData
 import CloudKit
 import Speech
+import NaturalLanguage
 @testable import jotley
 
 final class LocalCoreTests: XCTestCase {
@@ -874,5 +875,114 @@ extension LocalCoreTests {
         XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 100)
         try writer.close()
         XCTAssertEqual(try AVAudioFile(forReading: DurableAudioWriter.audioFile(at: directory)).length, 100)
+    }
+}
+
+extension LocalCoreTests {
+    func testConciseOverviewMovesDetailsBelowTheParagraphWithoutLosingFacts() {
+        let input = """
+        ## Summary
+        The team planned the launch.
+        They agreed to test first.
+
+        - **AI in finance:** Brex tested agent policies.
+          The proxy audits traffic.
+
+        A separate paragraph explains the security work.
+
+        ## Key Points
+        - Keep the existing findings.
+
+        ## Action Items
+        - **Maya:** Review on Friday at 10:00.
+        """
+        let output = LocalSummary.conciseOverview(input)
+        XCTAssertTrue(output.hasPrefix("## Summary\nThe team planned the launch. They agreed to test first.\n\n## Key Points\n"), output)
+        XCTAssertEqual(output.components(separatedBy: "## Key Points").count, 2)
+        for fact in ["**AI in finance:** Brex tested agent policies.", "The proxy audits traffic.", "A separate paragraph explains the security work.", "Keep the existing findings.", "**Maya:** Review on Friday at 10:00."] {
+            XCTAssertTrue(output.contains(fact), output)
+        }
+        XCTAssertEqual(LocalSummary.conciseOverview(output), output, "Formatting must be stable when a checkpoint is resumed")
+    }
+
+    func testConciseOverviewBoundsLongAndUnspacedTextWithoutDiscardingDetails() {
+        for paragraph in [String(repeating: "This is a complete sentence with useful context. ", count: 80),
+                          String(repeating: "a long run-on phrase without punctuation ", count: 80),
+                          String(repeating: "非常に長い説明文", count: 400)] {
+            let output = LocalSummary.conciseOverview("## Summary\n" + paragraph + "\n\n## Decisions\n- Approved Friday.")
+            let overview = output.components(separatedBy: "\n\n")[0].components(separatedBy: "\n").dropFirst().joined()
+            XCTAssertLessThanOrEqual(overview.count, LocalSummary.overviewCharacterLimit)
+            XCTAssertLessThanOrEqual(overview.split(whereSeparator: \.isWhitespace).count, LocalSummary.overviewWordLimit)
+            XCTAssertTrue(output.contains("## Decisions\n- Approved Friday."))
+            XCTAssertTrue(output.contains("## Key Points"), "Overflow belongs outside Summary")
+        }
+    }
+
+    func testDevelopedOverviewParagraphIsNotReducedToASentenceOrThreeSentenceCap() {
+        let paragraph = "The team reviewed the launch plan and the feedback collected during the first round of testing. They agreed that the welcome screens need clearer labels so new users can start a transcription without hesitation. Accessibility work remains a priority, especially readable controls and sufficient contrast in dark appearance. Testing will cover both compact phone layouts and larger split views before the launch decision is made. Maya will lead the review on Friday, with Alex checking accessibility and Sam sharing the checklist beforehand. The group will use that review to resolve remaining questions and confirm whether the release is ready."
+        let input = "## Summary\n" + paragraph + "\n\n## Action Items\n- **Alex:** Finish accessibility checks."
+        XCTAssertGreaterThan(paragraph.split(whereSeparator: \.isWhitespace).count, 80)
+        XCTAssertEqual(LocalSummary.conciseOverview(input), input, "A substantive six-sentence paragraph should stay intact")
+    }
+
+    func testAllTemplatesBoundStreamedFinalAndRecoveredSummaryOverviews() async throws {
+        let raw = "## Summary\n" + String(repeating: "The project has a useful finding. ", count: 30) + "\n\n- **Sam:** Test by Thursday.\n\n## Decisions\n- Launch Friday."
+        let expected = LocalSummary.conciseOverview(raw)
+        for template in LocalSummaryTemplate.allCases {
+            let probe = SummaryProbe()
+            let output = try await LocalSummary.run("Complete transcript", template: template, infer: { _, _, _, update in
+                await update(raw)
+                return raw
+            }, partition: { [$0] }) { await probe.accept($0) }
+            XCTAssertEqual(output, expected, template.title)
+            let last = await probe.last()
+            XCTAssertEqual(last, expected, "Streamed and saved summaries must use the same overview policy")
+            var checkpoint = LocalSummaryCheckpoint(input: "Complete transcript", template: template)
+            checkpoint.result = raw
+            let recovered = try await LocalSummary.run("Complete transcript", template: template, infer: { _, _, _, _ in
+                XCTFail("A completed checkpoint must not rerun the model"); return ""
+            }, resuming: checkpoint) { _ in }
+            XCTAssertEqual(recovered, expected)
+        }
+    }
+}
+
+extension LocalCoreTests {
+    func testInstalledModelKeepsLongOverviewShortAndDetailsSeparate() async throws {
+        guard ProcessInfo.processInfo.environment["JOTLEY_RUN_MODEL_TESTS"] == "1" else { throw XCTSkip("Installed-model integration is opt-in") }
+        let locale = Locale(identifier: "en-US")
+        if let reason = LocalSummary.readiness(locale: locale) { throw XCTSkip(reason) }
+        let source = String(repeating: "Maya leads the launch review on Friday. Alex finishes accessibility checks by Thursday. Sam shares the launch checklist and gathers feedback. We agreed to test both compact and larger layouts. The main risk is unreadable controls in dark appearance. The project remains free and keeps notes private.\n", count: 12)
+        let output = try await LocalSummary.generate(source, template: .meeting, locale: locale) { _ in }
+        let blocks = output.components(separatedBy: "\n\n")
+        let overview = try XCTUnwrap(blocks.first)
+        XCTAssertTrue(overview.hasPrefix("## Summary\n"), output)
+        let paragraph = overview.components(separatedBy: "\n").dropFirst().joined()
+        XCTAssertLessThanOrEqual(paragraph.split(whereSeparator: \.isWhitespace).count, LocalSummary.overviewWordLimit)
+        XCTAssertLessThanOrEqual(paragraph.count, LocalSummary.overviewCharacterLimit)
+        let sentences = NLTokenizer(unit: .sentence)
+        sentences.string = paragraph
+        var sentenceCount = 0
+        sentences.enumerateTokens(in: paragraph.startIndex..<paragraph.endIndex) { _, _ in sentenceCount += 1; return true }
+        XCTAssertGreaterThanOrEqual(sentenceCount, 3, "An information-rich transcript needs a developed overview paragraph")
+        XCTAssertFalse(paragraph.hasPrefix("- "))
+        XCTAssertTrue(output.contains("\n## "), "Details must remain in sections below the short overview")
+    }
+}
+
+extension LocalCoreTests {
+    @MainActor func testFreshLibrarySeedsDefaultFoldersOnlyOnceInItsOwnModel() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = try SharedPersistenceController(root: root)
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Folder")
+        let folders = try first.context.fetch(request)
+        XCTAssertEqual(Set(folders.map { $0.text("name") }), Set(["Personal", "Study", "Work"]))
+        XCTAssertEqual(Set(folders.compactMap { $0.value(forKey: "id") as? UUID }).count, 3)
+        for folder in folders { XCTAssertNotNil(folder.value(forKey: "createdAt")) }
+        let reopened = try SharedPersistenceController(root: root)
+        XCTAssertEqual(try reopened.context.count(for: request), 3)
+        for store in first.container.persistentStoreCoordinator.persistentStores { try first.container.persistentStoreCoordinator.remove(store) }
+        for store in reopened.container.persistentStoreCoordinator.persistentStores { try reopened.container.persistentStoreCoordinator.remove(store) }
     }
 }

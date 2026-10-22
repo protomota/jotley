@@ -352,6 +352,89 @@ public enum LocalSummary {
         return lines.joined(separator: "\n")
     }
 
+    static let overviewWordLimit = 240
+    static let overviewCharacterLimit = 1800
+    static let finalResponseTokenLimit = 1024
+
+    /// Keep generated overviews readable in every template, including partial
+    /// streamed output. Extra prose and misplaced bullets remain in the details.
+    static func conciseOverview(_ markdown: String) -> String {
+        let source = markdownForDisplay(markdown)
+        let lines = source.components(separatedBy: "\n")
+        guard let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else { return source }
+        func heading(_ line: String) -> String? {
+            let text = line.trimmingCharacters(in: .whitespaces)
+            if text.hasPrefix("#"), let space = text.firstIndex(of: " "), text[..<space].allSatisfy({ $0 == "#" }) {
+                return String(text[text.index(after: space)...]).trimmingCharacters(in: CharacterSet(charactersIn: " #:"))
+            }
+            if text.hasPrefix("**"), text.hasSuffix("**") { return String(text.dropFirst(2).dropLast(2)).trimmingCharacters(in: CharacterSet(charactersIn: ": ")) }
+            return nil
+        }
+        let overviewTitles: Set<String> = ["summary", "overview", "tl;dr", "tldr", "in short", "at a glance", "executive summary", "résumé", "resume", "resumen", "resumo", "riassunto", "zusammenfassung", "samenvatting", "概要", "要約", "摘要", "요약"]
+        let title = heading(lines[first])
+        if let title, !overviewTitles.contains(title.lowercased()) { return source }
+        let start = title == nil ? first : first + 1
+        let end = (start..<lines.count).first(where: { heading(lines[$0]) != nil }) ?? lines.count
+        guard let lead = (start..<end).first(where: { !lines[$0].trimmingCharacters(in: .whitespaces).isEmpty }) else { return source }
+        func withoutMarker(_ line: String) -> String {
+            line.replacingOccurrences(of: #"^\s*(?:[-+*•]|\d+[.)])\s+"#, with: "", options: .regularExpression)
+        }
+        var stop = lead + 1
+        while stop < end, !lines[stop].trimmingCharacters(in: .whitespaces).isEmpty, withoutMarker(lines[stop]) == lines[stop] { stop += 1 }
+        let paragraph = ([withoutMarker(lines[lead])] + lines[(lead + 1)..<stop]).joined(separator: " ").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !paragraph.isEmpty else { return source }
+        let sentences = NLTokenizer(unit: .sentence); sentences.string = paragraph
+        var cutoff = paragraph.startIndex
+        sentences.enumerateTokens(in: paragraph.startIndex..<paragraph.endIndex) { range, _ in
+            let candidate = paragraph[..<range.upperBound]
+            guard candidate.count <= overviewCharacterLimit, candidate.split(whereSeparator: \.isWhitespace).count <= overviewWordLimit else { return false }
+            cutoff = range.upperBound; return true
+        }
+        var overflow: [String] = []
+        let overview: String
+        if cutoff == paragraph.startIndex {
+            // A model can emit one run-on sentence. Bound that rare fallback at
+            // a word/grapheme boundary and retain its complete text below.
+            var prefix = ""
+            for word in paragraph.split(whereSeparator: \.isWhitespace).prefix(overviewWordLimit - 1) {
+                let candidate = prefix.isEmpty ? String(word) : prefix + " " + word
+                guard candidate.count < overviewCharacterLimit else { break }
+                prefix = candidate
+            }
+            if prefix.isEmpty { prefix = String(paragraph.prefix(overviewCharacterLimit - 1)) }
+            overview = prefix + "…"
+            overflow.append("- " + paragraph)
+        } else {
+            overview = String(paragraph[..<cutoff]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let remainder = paragraph[cutoff...].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !remainder.isEmpty { overflow.append("- " + remainder) }
+        }
+        var extraParagraph: [String] = []
+        var continuesItem = false
+        func flushParagraph() {
+            if !extraParagraph.isEmpty { overflow.append("- " + extraParagraph.joined(separator: " ")); extraParagraph = [] }
+        }
+        for line in lines[stop..<end] {
+            if line.trimmingCharacters(in: .whitespaces).isEmpty { flushParagraph(); continuesItem = false }
+            else if withoutMarker(line) != line { flushParagraph(); overflow.append(line); continuesItem = true }
+            else if continuesItem { overflow[overflow.count - 1] += "\n" + line }
+            else { extraParagraph.append(line.trimmingCharacters(in: .whitespaces)) }
+        }
+        flushParagraph()
+        let header = title == nil ? "## Summary" : lines[first]
+        var remaining = Array(lines[end...])
+        var details = ""
+        if !overflow.isEmpty {
+            if let points = remaining.firstIndex(where: { heading($0)?.lowercased() == "key points" }) {
+                remaining.insert(contentsOf: overflow + [""], at: points + 1)
+            } else { details = "\n\n## Key Points\n" + overflow.joined(separator: "\n") }
+        }
+        let tail = remaining.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        // Keep already generated sections, including their owners and dates.
+        return header + "\n" + overview + details + (tail.isEmpty ? "" : "\n\n" + tail)
+
+    }
+
     // UTF-8 bytes are a conservative bound for multilingual token use, leaving room for output.
     public static func chunks(_ text: String, byteLimit: Int = 2400) -> [String] {
         precondition(byteLimit >= 4)
@@ -409,7 +492,7 @@ public enum LocalSummary {
     static let extractionPrompt = "Extract the key facts, decisions and action items from this source in compact notes. Preserve names, dates, numbers, decisions and unresolved questions across the entire source. Do not repeat facts or add a preamble."
     /// Jotley renders the opening overview as a card and each later heading as a
     /// visual section, so every template shares this Markdown shape.
-    static let structurePrompt = "Format: start with \"## Summary\" and a two or three sentence overview. Then use \"## \" headings with \"- \" list items, and give each heading its own section. Start an item with a short bold label and a colon when it helps scanning. In Action Items, the bold label is the name of the person the source says is responsible, followed by the task; leave the label out when nobody is named. Use only headings the source supports and skip the rest. Never write an empty section or item, a placeholder such as none or not discussed, or an estimate, owner, date or number the source does not state. State each fact once; do not repeat it under another heading."
+    static let structurePrompt = "Format: start with \"## Summary\" and exactly one coherent overview paragraph. Write a developed paragraph, usually three to five sentences, rather than a single-sentence teaser. Longer, information-rich transcripts should receive a fuller paragraph of about five to eight sentences, up to \(overviewWordLimit) words (\(overviewCharacterLimit) characters in languages without spaces). Scale the length to the source's substance; do not pad a very short source or repeat facts to reach a target. Explain the central topic, main outcome and essential context in connected prose. Never put bullets, examples, subtopics or a detailed recap inside Summary; put those only under the later section headings. Then use \"## \" headings with \"- \" list items, and give each heading its own section. Start an item with a short bold label and a colon when it helps scanning. In Action Items, the bold label is the name of the person the source says is responsible, followed by the task; leave the label out when nobody is named. Use only headings the source supports and skip the rest. Never write an empty section or item, a placeholder such as none or not discussed, or an estimate, owner, date or number the source does not state. State each fact once; do not repeat it under another heading."
     static func finalPrompt(_ template: LocalSummaryTemplate) -> String {
         template.prompt + "\n" + structurePrompt + "\nCreate one summary. Combine overlapping facts; do not repeat sections. End after the summary."
     }
@@ -464,10 +547,14 @@ public enum LocalSummary {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LocalError.message("Transcribe some spoken words first.")
         }
+        try Task.checkCancellation()
         await progress(.preparing)
         var state = saved.flatMap { $0.input == text && $0.templateKey == template.key ? $0 : nil }
             ?? LocalSummaryCheckpoint(input: text, template: template)
-        if let result = state.result { await snapshot(result); return result }
+        if let result = state.result {
+            let formatted = conciseOverview(result)
+            await snapshot(formatted); return formatted
+        }
         while state.pass < 8 {
             try Task.checkCancellation()
             let parts: [String]
@@ -479,8 +566,13 @@ public enum LocalSummary {
             try await checkpoint(state)
             if parts.count == 1 {
                 await progress(.writing)
-                let result = try await infer(state.source, finalPrompt(template), 512, snapshot)
+                let generated = try await infer(state.source, finalPrompt(template), finalResponseTokenLimit) { value in
+                    guard !Task.isCancelled else { return }
+                    await snapshot(conciseOverview(value))
+                }
                 try Task.checkCancellation()
+                let result = conciseOverview(generated)
+                await snapshot(result)
                 state.result = result
                 try await checkpoint(state)
                 return result
@@ -556,7 +648,7 @@ public enum LocalSummary {
             try await packedSections(source) { candidate in
                 let finalTokens = try await model.tokenCount(for: Prompt("\(finalPrompt(template))\nSource:\n\(candidate)"))
                 let extractTokens = try await model.tokenCount(for: Prompt("\(extractionPrompt)\nSource:\n\(candidate)"))
-                return instructionTokens + max(finalTokens, extractTokens) + 512 + 256 <= contextSize
+                return instructionTokens + max(finalTokens, extractTokens) + finalResponseTokenLimit + 256 <= contextSize
             }
         }
         return try await run(text, template: template, infer: { source, prompt, limit, update in

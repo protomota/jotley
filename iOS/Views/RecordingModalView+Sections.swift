@@ -47,7 +47,7 @@ extension LiveTranscriptionView {
             Button(action: toggleTranscriptionPause) {
                 Image(systemName: transcriptionManager.transcriptionState == .listening ? "pause.fill" : transcriptionManager.transcriptionState == .paused ? "play.fill" : "arrow.clockwise")
                     .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.themeTextOnAccent)
                     .frame(width: 84, height: 84)
                     .background(Color.themePrimaryAccent, in: Circle())
                     .contentShape(Circle())

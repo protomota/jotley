@@ -656,7 +656,7 @@ struct NoteContentSwitch: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var selectedText: Color {
-        theme.currentThemeColor == .yellow || theme.currentThemeColor == .lightBlue ? .black : .white
+        Color.themeTextOnAccent
     }
     private var tabs: [String] {
         (showsSummary ? ["Summary"] : []) + (showsTranscript ? ["Transcript"] : [])
