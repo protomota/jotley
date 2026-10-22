@@ -2126,7 +2126,9 @@ final class Jotley_iOSUITests: XCTestCase {
 
     // BEGIN LOCAL MARKETING CAPTURE
     @MainActor func testMarketingLiveWaveformCapture() throws {
-        let levels = try XCTUnwrap(ProcessInfo.processInfo.environment["JOTLEY_MARKETING_AUDIO_LEVELS"])
+        guard let levels = ProcessInfo.processInfo.environment["JOTLEY_MARKETING_AUDIO_LEVELS"] else {
+            throw XCTSkip("Marketing waveform capture requires measured speech PCM peaks")
+        }
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
