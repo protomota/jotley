@@ -254,6 +254,17 @@ private struct MacSupportPreviewRoot: View {
               let bundledModel = NSManagedObjectModel(contentsOf: modelURL),
               let model = bundledModel.copy() as? NSManagedObjectModel,
               let entity = model.entitiesByName["Note"] else { throw LocalError.message("Test model missing.") }
+        let starterRoot = FileManager.default.temporaryDirectory.appendingPathComponent("JotleyStarterFolders-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: starterRoot) }
+        let fresh = try SharedPersistenceController(root: starterRoot)
+        let request = Folder.fetchRequest()
+        guard Set(try fresh.context.fetch(request).compactMap(\.name)) == ["Personal", "Study", "Work"],
+              let personal = Folder.find(named: "Personal", in: fresh.context),
+              let study = Folder.find(named: "Study", in: fresh.context) else { throw LocalError.message("New libraries need three starter folders.") }
+        personal.name = "Life"; fresh.context.delete(study); try fresh.save()
+        let reopened = try SharedPersistenceController(root: starterRoot)
+        guard Set(try reopened.context.fetch(request).compactMap(\.name)) == ["Life", "Work"] else { throw LocalError.message("Starter folders were recreated after a rename or deletion.") }
+        print("PASS: new libraries start with Personal, Study and Work; renamed/deleted folders stay changed after reopening.")
         entity.managedObjectClassName = NSStringFromClass(RoutingRefusedNote.self)
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("JotleyMacRouting-\(UUID())")
         let store = try SharedPersistenceController(root: root, model: model)
@@ -266,7 +277,17 @@ private struct MacSupportPreviewRoot: View {
         }
         let recorder = ProcessTapRecorder()
         let viewModel = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
-        viewModel.selectedNoteIDs = [note.objectID]
+        viewModel.ensureSelection(in: [note])
+        viewModel.toggleSelection(for: note, isCommandKeyPressed: true)
+        guard viewModel.selectedNoteIDs == [note.objectID] else { throw LocalError.message("Command-click cleared the last selected note.") }
+        let staleID = NSManagedObjectID()
+        viewModel.selectedNoteIDs = [staleID]
+        viewModel.ensureSelection(in: [note])
+        guard viewModel.selectedNoteIDs == [note.objectID] else { throw LocalError.message("Missing selection did not recover the first note.") }
+        viewModel.ensureSelection(in: [])
+        guard viewModel.selectedNoteIDs.isEmpty else { throw LocalError.message("Empty library retained a stale selection.") }
+        viewModel.ensureSelection(in: [note])
+        print("PASS: the first available note is selected; the last selection cannot be toggled off, stale IDs recover and empty libraries clear safely.")
         viewModel.createBlankNote()
         viewModel.showSyncError = false
         await viewModel.startNewNote()

@@ -157,12 +157,12 @@ extension NoteDetailPlaceholderView {
                         let isGeneratingSummaryForThisNote =
                             (viewModel.isGeneratingSummary && viewModel.generatingSummaryNoteID == note.objectID) ||
                             note.summary?.trimmingCharacters(in: .whitespacesAndNewlines) == "Generating summary..."
-                        if (hasSummary || isGeneratingSummaryForThisNote) && !isRecordingThisNote {
-                            summarizeFloatingButton
-                        }
-
-                        if hasContentToSummarize && !isRecordingThisNote {
-                            transcriptTabButton
+                        if !isRecordingThisNote && (hasSummary || isGeneratingSummaryForThisNote || hasContentToSummarize) {
+                            NoteContentSwitch(selection: Binding(
+                                get: { selectedTab == DetailTab.summary.rawValue ? "Summary" : "Transcript" },
+                                set: { selectedTab = $0 == "Summary" ? DetailTab.summary.rawValue : DetailTab.transcript.rawValue }),
+                                showsSummary: hasSummary || isGeneratingSummaryForThisNote,
+                                showsTranscript: hasContentToSummarize, summaryIsGenerating: isGeneratingSummaryForThisNote)
                         }
 
                         if isRecordingOnAnotherNote {

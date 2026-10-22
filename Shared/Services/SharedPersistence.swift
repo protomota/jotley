@@ -108,7 +108,9 @@ public final class SharedPersistenceController: ObservableObject {
         } else {
             container = NSPersistentContainer(name: "JotleyNotes", managedObjectModel: resolvedModel)
         }
-        let description = try self.syncMode.storeDescription(at: self.root.appendingPathComponent("JotleyNotes.sqlite"), inMemory: inMemory)
+        let storeURL = self.root.appendingPathComponent("JotleyNotes.sqlite")
+        let isNewLibrary = !FileManager.default.fileExists(atPath: storeURL.path)
+        let description = try self.syncMode.storeDescription(at: storeURL, inMemory: inMemory)
         container.persistentStoreDescriptions = [description]
         container.loadPersistentStores { [weak self] _, error in
             // Synchronous completion on the initiating main thread.
@@ -120,7 +122,13 @@ public final class SharedPersistenceController: ObservableObject {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.undoManager = UndoManager()
-        if ready && !inMemory { try resolveRecordingDeletions() }
+        if ready && !inMemory {
+            if isNewLibrary {
+                for name in ["Personal", "Study", "Work"] { Folder.getOrCreate(named: name, in: context) }
+                try save()
+            }
+            try resolveRecordingDeletions()
+        }
     }
 
     /// One capture owner per store, independent of which window initiated it.

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CoreData
 
 struct MainTabView: View {
     private let minimumSidebarWidth: CGFloat = 280
@@ -20,6 +21,8 @@ struct MainTabView: View {
         showingWelcome || replayAfterSettings || (!onboardingCompleted && !JotleyOnboarding.bypassForFixture)
     }
     @AppStorage(JotleyOnboarding.completedKey) private var onboardingCompleted = false
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)])
+    private var notes: FetchedResults<Note>
     @State private var selectedNoteId: UUID?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingTranscriptionModal = false
@@ -78,7 +81,7 @@ struct MainTabView: View {
                 if let selectedNoteId {
                     NoteDetailByIdView(noteId: selectedNoteId, newTranscriptionAction: usesCornerCaptureButton ? { handleWidgetAction(.start) } : nil).id(selectedNoteId).id(summaryNavigationID)
                 } else {
-                    ContentUnavailableView("Select a Note", systemImage: "note.text", description: Text("Choose a note or tap + to transcribe live."))
+                    ContentUnavailableView("No Notes Yet", systemImage: "note.text", description: Text("Tap + to transcribe your first note."))
                 }
             }
             .toolbar(.visible, for: .navigationBar)
@@ -149,6 +152,8 @@ struct MainTabView: View {
         }) {
             LiveTranscriptionView(isPresented: $showingTranscriptionModal, existingNote: newTranscriptionNote, isNewTranscription: newTranscriptionNote != nil, transcriptionManager: transcriptionManager)
         }
+        .onChange(of: notes.map(\.objectID), initial: true) { _, _ in selectFirstNoteIfNeeded() }
+        .onChange(of: selectedNoteId) { _, _ in selectFirstNoteIfNeeded() }
         .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, _ in openNotifiedSummary() }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
@@ -175,6 +180,14 @@ struct MainTabView: View {
         } message: { Text(transcriptionManager.errorMessage ?? "") }
         .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
     }
+    private func selectFirstNoteIfNeeded() {
+        if let selectedNoteId, notes.contains(where: { !$0.isDeleted && $0.id == selectedNoteId }) { return }
+        guard let first = notes.first(where: { !$0.isDeleted }) else { selectedNoteId = nil; return }
+        if first.id == nil { first.id = UUID(); transcriptionManager.saveEdits() }
+        selectedNoteId = first.id
+        preferredCompactColumn = .detail
+    }
+
     private func handleWidgetAction(_ action: MobileTranscriptionAction) {
         switch action {
         case .start:

@@ -171,15 +171,8 @@ extension NoteDetailView {
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top,8).padding(.bottom,16)
     }
     private var noteTabPickerSection: some View {
-        HStack(spacing: 8) {
-            ForEach(hasSummary ? ["Summary", "Transcript"] : ["Transcript"], id: \.self) { tab in
-                Button { selectedTab = tab } label: {
-                    Text(tab).font(.subheadline.weight(.medium)).lineLimit(1)
-                        .padding(.horizontal,16).padding(.vertical,8)
-                        .background(Capsule().fill(selectedTab == tab ? Color.themePrimaryAccent : Color(.systemGray5)))
-                        .foregroundColor(selectedTab == tab ? .white : Color.themeTextSecondary)
-                }.buttonStyle(.plain).accessibilityIdentifier("noteDetail\(tab)Tab")
-            }
+        HStack {
+            NoteContentSwitch(selection: $selectedTab, showsSummary: hasSummary)
             Spacer()
         }.padding(.horizontal).padding(.bottom,16)
     }

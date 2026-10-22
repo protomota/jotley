@@ -317,24 +317,13 @@ extension NotesListView {
                     }
                 }
 
-                // Tappable empty space below the last row so users can always
-                // click-away to clear a stuck selection.
+                // Clicking the unused list area retains the open note.
                 Color.themeContentBackground
                     .frame(maxWidth: .infinity, minHeight: 80)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        viewModel.clearSelection()
-                    }
             }
         }
         .frame(maxWidth: .infinity)
-        .background(
-            Color.themeContentBackground
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    viewModel.clearSelection()
-                }
-        )
+        .background(Color.themeContentBackground)
     }
 
     private func formatDateSectionHeader(for date: Date) -> String? {

@@ -161,12 +161,22 @@ import Combine
         try? LocalAppModel.shared.reload()
         NotificationCenter.default.post(name: Notification.Name("JotVibeSaveCurrentNote"), object: nil)
         if isCommandKeyPressed {
-            if selectedNoteIDs.contains(note.objectID) { selectedNoteIDs.remove(note.objectID) }
+            if selectedNoteIDs.contains(note.objectID) {
+                if selectedNoteIDs.count > 1 { selectedNoteIDs.remove(note.objectID) }
+            }
             else { selectedNoteIDs.insert(note.objectID) }
         } else { selectedNoteIDs = [note.objectID] }
         selectedDetailTab = note.hasMeaningfulSummaryText ? DetailTab.summary.rawValue : DetailTab.transcript.rawValue
     }
-    func clearSelection() { selectedNoteIDs.removeAll() }
+    func ensureSelection(in notes: [Note]) {
+        let available = notes.filter { !$0.isDeleted }
+        let retained = selectedNoteIDs.intersection(Set(available.map(\.objectID)))
+        if !retained.isEmpty {
+            if retained != selectedNoteIDs { selectedNoteIDs = retained }
+        } else if let first = available.first {
+            toggleSelection(for: first)
+        } else if !selectedNoteIDs.isEmpty { selectedNoteIDs = [] }
+    }
     func jumpToActiveRecordingNote() { if let note = activeRecordingNote { selectedNoteIDs = [note.objectID]; selectedDetailTab = DetailTab.transcript.rawValue } }
     func performContextualDelete(for note: Note) { Task { await delete(note) } }
     private func delete(_ note: Note) async {

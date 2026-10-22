@@ -451,8 +451,9 @@ struct StructuredSummaryBlockView: View {
     func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(index + 1)")
-                .font(.callout.weight(.bold).monospacedDigit()).foregroundStyle(.white)
-                .frame(width: numberSize, height: numberSize).background(Circle().fill(palette.accent))
+                .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.secondary)
+                .frame(width: numberSize, height: numberSize)
+                .overlay(Circle().strokeBorder(palette.secondary.opacity(0.45), lineWidth: 1))
                 .accessibilityHidden(true)
             groupText(group, emphasizeLabel: true)
         }
@@ -609,5 +610,55 @@ struct StructuredSummaryBlockView: View {
         }
         if pageOpen { pdf.endPDFPage() }
         pdf.closePDF()
+    }
+}
+
+/// A shared capsule track keeps the two note views visually connected.
+struct NoteContentSwitch: View {
+    @Binding var selection: String
+    var showsSummary: Bool
+    var showsTranscript: Bool = true
+    var summaryIsGenerating = false
+    @Namespace private var highlight
+    @ObservedObject private var theme = ThemeManager.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var selectedText: Color {
+        theme.currentThemeColor == .yellow || theme.currentThemeColor == .lightBlue ? .black : .white
+    }
+    private var tabs: [String] {
+        (showsSummary ? ["Summary"] : []) + (showsTranscript ? ["Transcript"] : [])
+    }
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(tabs, id: \.self) { tab in
+                Button { selection = tab } label: {
+                    HStack(spacing: 5) {
+                        if tab == "Summary" && summaryIsGenerating { ProgressView().controlSize(.mini) }
+                        Text(tab).font(.subheadline.weight(.medium)).lineLimit(1)
+                    }
+                    .foregroundStyle(selection == tab ? selectedText : Color.themeTextPrimary)
+                    .padding(.horizontal, 16).padding(.vertical, 7)
+                    .frame(minWidth: 92)
+                    .background {
+                        if selection == tab {
+                            Capsule().fill(Color.themePrimaryAccent)
+                                .matchedGeometryEffect(id: "selectedTab", in: highlight)
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("noteDetail\(tab)Tab")
+                .accessibilityAddTraits(selection == tab ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Color.themePrimaryAccent.opacity(colorScheme == .dark ? 0.16 : 0.10), in: Capsule())
+        .fixedSize(horizontal: true, vertical: false)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: selection)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Note view")
     }
 }

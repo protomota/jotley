@@ -19,6 +19,36 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
+    @MainActor func testAutomaticFirstNoteSelectionAndDeletion() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Newest note","folder":"","tags":[],"transcript":"First note.","summary":"A useful summary."},{"title":"Older note","folder":"","tags":[],"transcript":"Second note.","summary":""}]"#
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        let title = app.staticTexts["noteDetailTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertEqual(title.label, "Newest note")
+        let transcriptTab = app.buttons["noteDetailTranscriptTab"]
+        let summaryTab = app.buttons["noteDetailSummaryTab"]
+        transcriptTab.tap(); XCTAssertTrue(transcriptTab.isSelected)
+        summaryTab.tap(); XCTAssertTrue(summaryTab.isSelected)
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        app.buttons["Delete Note"].tap()
+        app.alerts["Delete Note"].buttons["Delete"].tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertTrue(NSPredicate(format: "label == %@", "Older note").evaluate(with: title) ||
+            XCTWaiter.wait(for: [expectation(for: NSPredicate(format: "label == %@", "Older note"), evaluatedWith: title)], timeout: 10) == .completed)
+        let back = app.buttons["BackButton"]
+        if back.exists && back.isHittable {
+            back.tap()
+            let row = app.buttons.containing(.staticText, identifier: "Older note").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
+            XCTAssertEqual(title.label, "Older note")
+        }
+        app.terminate(); app.launch()
+        XCTAssertTrue(title.waitForExistence(timeout: 15))
+        XCTAssertEqual(title.label, "Newest note") // The disposable fixture resets on each launch.
+    }
+
     @MainActor func testSummaryStyleAppliesToEveryNoteAndPersistsInSettings() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"First summary","folder":"","tags":[],"transcript":"Maya reviews Friday.","summary":"## Summary\nA focused launch.\n\n## Next Steps\n- **Maya:** Review Friday."},{"title":"Second summary","folder":"","tags":[],"transcript":"Alex tests Monday.","summary":"## Summary\nA clear plan.\n\n## Next Steps\n- Test Monday."}]"###
@@ -1959,6 +1989,161 @@ final class Jotley_iOSUITests: XCTestCase {
         summary.name = "Actual simulator summary title and template regeneration"; summary.lifetime = .keepAlways; add(summary)
     }
     #endif
+
+    // BEGIN LOCAL MARKETING CAPTURE
+    @MainActor func testMarketingLayoutCaptures() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"""
+[
+  {
+    "title": "Friday Launch Plan",
+    "folder": "Work",
+    "tags": [
+      "Design",
+      "Product",
+      "Planning"
+    ],
+    "transcript": "Maya: Let’s keep Friday’s launch focused. The new welcome flow should show people how to start a transcription, find a summary and ask their notes a question.\n\nAlex: I’ll finish the accessibility checks by Thursday afternoon. We should test the compact layout as carefully as the larger one.\n\nSam: I’ll share the launch checklist and gather feedback from the team. Let’s review the final screenshots tomorrow.\n\nMaya: Agreed. We’ll meet Friday at ten, review the remaining questions and make the launch decision together.",
+    "summary": "## Summary\nThe team agreed on a focused Friday launch, with clear onboarding, readable notes and a final accessibility review.\n\n## Key Points\n- Keep the welcome flow simple and useful.\n- Check both compact and larger layouts.\n- Review the final screenshots before launch.\n\n## Decisions\n- Meet Friday at 10:00 for the final launch review.\n\n## Action Items\n- Alex: finish accessibility checks by Thursday.\n- Sam: share the launch checklist and gather feedback.\n- Maya: lead the final review on Friday.",
+    "timestampOffset": -3600,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Who is doing what before Friday?"
+      },
+      {
+        "role": "assistant",
+        "content": "- **Alex:** finish the accessibility checks by Thursday.\n- **Sam:** share the launch checklist and gather feedback.\n- **Maya:** lead the final review on Friday at 10:00."
+      }
+    ]
+  },
+  {
+    "title": "Lecture: Working Memory",
+    "folder": "Study",
+    "tags": [
+      "Learning",
+      "Psychology"
+    ],
+    "transcript": "Working memory holds information while we use it. Focus on one task, group related ideas and test recall without looking at your notes. Space your study sessions over several days.",
+    "summary": "## Summary\nAttention and recall improve when study sessions focus on one task at a time.\n\n## Key Points\n- Group related ideas.\n- Explain concepts in your own words.\n- Review over several days.",
+    "timestampOffset": -7200
+  },
+  {
+    "title": "Ideas for the Weekend",
+    "folder": "Personal",
+    "tags": [
+      "Ideas"
+    ],
+    "transcript": "Walk the river trail. Try a new recipe. Make time for a conversation with friends. Leave the rest of the afternoon open.",
+    "summary": "## Summary\nA little time outside, something new to try and room for the people who matter.",
+    "timestampOffset": -90000
+  },
+  {
+    "title": "Design Review: A Clearer First Step",
+    "folder": "Work",
+    "tags": [
+      "Design",
+      "Research"
+    ],
+    "transcript": "The first screen should make the next step obvious. We agreed to simplify the labels, keep the primary action visible and check the contrast in light and dark mode.",
+    "summary": "## Summary\nA clearer first step helps people start with confidence.\n\n## Key Points\n- Use short, familiar labels.\n- Keep the primary action visible.\n- Check contrast in both appearances.",
+    "timestampOffset": -172800
+  },
+  {
+    "title": "Book Club: Small Habits",
+    "folder": "Personal",
+    "tags": [
+      "Reading",
+      "Ideas"
+    ],
+    "transcript": "Make the habit small enough to start on a busy day. Keep the book where you will see it. Five pages each evening is a better starting point than a perfect plan.",
+    "summary": "## Summary\nSmall, repeatable habits make room for more reading.\n\n## Action Items\n- Leave the next book beside the reading chair.\n- Read five pages each evening.",
+    "timestampOffset": -180000
+  },
+  {
+    "title": "Lecture: How We Learn",
+    "folder": "Study",
+    "tags": [
+      "Learning"
+    ],
+    "transcript": "Practice remembering an idea before checking the answer. Mix short recall sessions with time between reviews. Explain the concept in your own words to spot what is still unclear.",
+    "summary": "## Summary\nRecall, spacing and explanation help ideas stay useful.\n\n## Key Points\n- Try recall before rereading.\n- Leave time between reviews.\n- Explain the concept in your own words.",
+    "timestampOffset": -259200
+  },
+  {
+    "title": "Garden Plans for Spring",
+    "folder": "Personal",
+    "tags": [
+      "Home",
+      "Ideas"
+    ],
+    "transcript": "Grow herbs near the kitchen window and start tomatoes when the weather warms. Check which planters get the most sunlight. Keep the first season simple.",
+    "summary": "## Summary\nStart a small garden with useful herbs and a sunny spot for tomatoes.",
+    "timestampOffset": -345600
+  }
+]
+"""###
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_LIVE_TEXT"] = "Let’s keep Friday’s launch focused. One clear welcome, readable notes and a final review. Alex will finish the accessibility checks by Thursday. Sam will share the launch checklist."
+        func launch(_ theme: String = "Purple", _ appearance: String = "Light") {
+            app.terminate()
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = appearance
+            app.launchArguments = ["-selectedThemeColor", theme, "-jotleyWelcomeCompleted.v1", "YES", "-jotley.summaryDisplayStyle", "cards"]
+            app.launch()
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 20))
+        }
+        func capture(_ name: String) {
+            for (index, screen) in XCUIScreen.screens.enumerated() {
+                let image = XCTAttachment(screenshot: screen.screenshot())
+                image.name = "Marketing-\(name)-screen-\(index)"; image.lifetime = .keepAlways; add(image)
+            }
+        }
+        func library() {
+            let settings = app.buttons["notesListSettingsButton"]
+            if settings.exists && settings.isHittable { return }
+            let back = app.buttons["BackButton"]
+            if back.exists && back.isHittable { back.tap() }
+            else {
+                let sidebar = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+                XCTAssertTrue(sidebar.waitForExistence(timeout: 5)); sidebar.tap()
+            }
+            XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        }
+        XCUIDevice.shared.orientation = .portrait
+        launch(); capture("summary")
+        app.scrollViews.firstMatch.swipeUp(); capture("actions")
+        launch(); app.buttons["noteDetailTranscriptTab"].tap(); capture("transcript")
+        if XCUIScreen.screens.count > 1 {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            XCTAssertTrue(app.buttons["noteDetailTranscriptTab"].waitForExistence(timeout: 5)); capture("landscape-transcript")
+            app.buttons["noteDetailSummaryTab"].tap(); capture("landscape-summary")
+            XCUIDevice.shared.orientation = .portrait
+        }
+        launch(); app.buttons["noteDetailSummaryAskAIButton"].tap()
+        XCTAssertTrue(app.buttons["askAIDoneButton"].waitForExistence(timeout: 10)); capture("chat")
+        app.buttons["askAIDoneButton"].tap(); library(); capture("library")
+        app.buttons["notesListFolderDrawerButton"].tap()
+        XCTAssertTrue(app.buttons["folderDrawerDoneButton"].waitForExistence(timeout: 5)); capture("folders")
+        launch("Orange"); capture("orange")
+        launch("Light Blue"); capture("blue")
+        launch("Purple", "Dark"); capture("dark")
+        launch(); app.buttons["notesListNewNoteButton"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["transcriptionPauseButton"].waitForExistence(timeout: 10)); capture("live")
+        app.buttons["transcriptionStopButton"].tap()
+        app.terminate()
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = "USA"
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launch()
+        XCTAssertTrue(app.buttons["onboardingContinue"].waitForExistence(timeout: 15)); capture("onboarding")
+        app.buttons["onboardingContinue"].tap()
+        app.buttons["onboardingContinue"].tap()
+        XCTAssertTrue(app.staticTexts["onboardingLanguageHint"].waitForExistence(timeout: 60)); capture("language")
+        app.terminate()
+    }
+    // END LOCAL MARKETING CAPTURE
 
     @MainActor func testAppStoreScreenshots() throws {
         let identifier = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? ""

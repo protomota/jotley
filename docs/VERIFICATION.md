@@ -568,3 +568,12 @@ Geometry selects the artwork and layout while the parent onboarding state stays 
 All five pages pass the no-scroll, fixed-footer, language setup/hint visibility and optional-support controls checks on iPhone Pro Max, folded Duo, unfolded Duo landscape and iPad portrait: `/tmp/jotley-responsive-art-{iphone,duo-closed,duo-open,ipad}.xcresult`. The gallery contains all 20 final native captures. Live Device Hub verification preserved the Language step while folding Duo switched to the simplified icon and unfolding restored the detailed globe. iPad was visually checked in portrait and landscape with the original detailed artwork.
 
 No stored notes were replaced. No TestFlight upload, App Store submission, website release or marketing-asset generation was performed.
+
+
+### Release refresh, persistent selection and calmer summary controls — October 22, 2026
+
+The owner requested fresh marketing screenshots, TestFlight and website delivery, then added automatic first-note selection, neutral outlined numbered bullets, a single theme-colored Summary/Transcript switch, three starter folders and reuse of the original onboarding illustrations. iOS now selects the newest note at launch and recovers another selection after deletion; Mac retains its last selection when clicking unused sidebar space or Command-clicking the sole selected row, and recovers after data changes. A truly empty library retains its empty state. The shared segmented switch keeps its accessibility identifiers, selected traits, theme contrast and Reduce Motion behavior. Numbered cards retain their numbering with neutral outline circles.
+
+New on-disk libraries start with Personal, Study and Work. Existing libraries are preserved, and subsequent launches do not recreate renamed/deleted starter folders. A separate-store Mac regression verifies this behavior. All iOS onboarding images are exact copies of the original Mac artwork; the simplified icons and duplicate large catalogs are removed. Compact and wide sizes remain unchanged.
+
+Both native builds pass (`/tmp/jotley-410-original-art-build.log`, `/tmp/jotley-410-original-mac-build.log`). Automatic launch/deletion/relaunch selection and both switch segments pass on iPhone and iPad (`/tmp/jotley-410-{iphone,ipad}.xcresult`, first test). The complete sandboxed Mac routing harness passes, including starter-folder persistence and last-note selection (`/tmp/jotley-410-mac-regression.log`). Final original-art captures and delivery receipts follow below.

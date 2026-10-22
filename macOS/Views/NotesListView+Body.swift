@@ -11,13 +11,19 @@ extension NotesListView {
                 focusMainWindow()
                 summaryNotifications.noteToOpen = nil
             }
+            .onChange(of: notes.map(\.objectID), initial: true) { _, _ in
+                viewModel.ensureSelection(in: Array(notes))
+            }
+            .onChange(of: viewModel.selectedNoteIDs) { _, _ in
+                viewModel.ensureSelection(in: Array(notes))
+            }
             .onDeleteCommand(perform: handleDeleteCommand)
             .onChange(of: viewModel.recorder.transcription) { _, _ in viewModel.updateNewNoteTranscription() }
             .onChange(of: filterState.selectedFolder) { _, value in viewModel.pendingFolderSelection = value }
             .onAppear {
                 JotleyAppDelegate.shared?.activeNotesViewModel = viewModel
                 viewModel.pendingFolderSelection = filterState.selectedFolder
-                if viewModel.selectedNoteIDs.isEmpty, let note = notes.first { viewModel.toggleSelection(for: note) }
+                viewModel.ensureSelection(in: Array(notes))
                 if showRecordingWidget { recordingWidgetController.startMonitoring(recorder: viewModel.recorder, onWidgetTapped: focusMainWindow) }
             }
             .onDisappear { recordingWidgetController.stopMonitoring() }

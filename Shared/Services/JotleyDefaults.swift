@@ -1208,15 +1208,8 @@ struct JotleyOnboardingView: View {
         default: "onboarding-system-audio"
         }
     }
-    private var largeIllustrationAsset: String {
-        #if os(iOS)
-        illustrationAsset + "-large"
-        #else
-        illustrationAsset
-        #endif
-    }
     private func largeIllustration(height: CGFloat? = nil) -> some View {
-        Image(largeIllustrationAsset)
+        Image(illustrationAsset)
             .resizable().interpolation(.high).antialiased(true).scaledToFit()
             .frame(maxWidth: 300)
             .frame(height: height ?? 300)

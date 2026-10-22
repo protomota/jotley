@@ -66,10 +66,8 @@ struct NoteDetailPlaceholderView: View {
     @State var showRawMarkdownSummary: Bool = false // Default: Rendered
 
     // Animation state for sparkle spinner
-    @State var animatingSparkleRotation: Double = 0
 
     // Animation state for transcript loading spinner
-    @State var animatingTranscriptRotation: Double = 0
 
     // State for toolbar button positions
     @State var hasSimulatedStoppedRecordingFlowForUITests = false
