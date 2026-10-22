@@ -179,6 +179,58 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["noteDetailTag-Draft"].firstMatch.exists)
     }
 
+    @MainActor func testOnboardingFitsWithoutScrolling() throws {
+        continueAfterFailure = true
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = "USA"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 15))
+        let initialAction = app.buttons["onboardingContinue"].frame
+        let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Free software.\nSupported by people."]
+        for index in 0..<5 {
+            let titleMatches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", titles[index]), object: app.staticTexts["onboardingTitle"])
+            XCTAssertEqual(XCTWaiter.wait(for: [titleMatches], timeout: 15), .completed)
+            if index == 2 {
+                let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: app.buttons["onboardingLanguagePicker"])
+                XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 60), .completed)
+            }
+            let contentFits = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                let title = app.staticTexts["onboardingTitle"]
+                return title.exists && title.isHittable && !app.scrollViews["onboardingFallbackScroll"].exists
+            }, object: nil)
+            let fitted = XCTWaiter.wait(for: [contentFits], timeout: 5)
+            for (screenIndex, screen) in XCUIScreen.screens.enumerated() {
+                let shot = XCTAttachment(screenshot: screen.screenshot())
+                shot.name = "Fitted onboarding step \(index + 1) screen \(screenIndex)"
+                shot.lifetime = .keepAlways; add(shot)
+            }
+            XCTAssertFalse(app.scrollViews["onboardingFallbackScroll"].exists, "Normal text should use a layout without a scroll view")
+            XCTAssertEqual(fitted, .completed, "The settled page must fit without scrolling")
+            XCTAssertTrue(app.staticTexts["onboardingTitle"].isHittable)
+            if index == 2 {
+                let hint = app.staticTexts["onboardingLanguageHint"]
+                XCTAssertTrue(hint.isHittable)
+                XCTAssertLessThan(hint.frame.maxY, app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.minY - 8)
+                if app.buttons["onboardingSpeechSetup"].exists { XCTAssertTrue(app.buttons["onboardingSpeechSetup"].isHittable) }
+            }
+            if index == 4 {
+                XCTAssertTrue(app.buttons["onboardingTipJotley"].isHittable)
+                XCTAssertTrue(app.buttons["onboardingReviewJotley"].isHittable)
+                XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].isHittable)
+            }
+            XCTAssertEqual(app.buttons["onboardingContinue"].frame.minY, initialAction.minY, accuracy: 1)
+            if index < 4 {
+                if index == 3 && app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
+                else { app.buttons["onboardingContinue"].tap() }
+            }
+        }
+    }
+
     @MainActor func testOnboardingSupportIsOptionalAndStorefrontAware() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()

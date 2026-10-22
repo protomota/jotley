@@ -222,7 +222,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     static let presentedCountKey = "jotleySupportPresentedSummaryCount.v1"
     static let stoppedKey = "jotleySupportAutomaticRemindersStopped.v1"
     static let website = URL(string: "https://jotley.ai")!
-    static let tipURL = URL(string: "https://jotley.ai/tips")!
+    static let tipURL = URL(string: "https://buymeacoffee.com/protomotalab")!
     static let reviewURL = URL(string: "https://apps.apple.com/app/id6746770199?action=write-review")!
     static let feedbackURL = URL(string: "mailto:jotly-support@protomota.com")!
     enum Action: String, CaseIterable { case review, tip, share, feedback }
@@ -489,7 +489,7 @@ struct JotleySupportView: View {
                         .accessibilityIdentifier("jotleySupportReview")
                         if allowsWebsiteTips {
                             Link(destination: JotleyEngagement.tipURL) {
-                                actionLabel("Tip the Developer", subtitle: "Optional · jotley.ai/tips", icon: "heart.circle")
+                                actionLabel("Tip the Developer", subtitle: "Optional · Buy Me a Coffee", icon: "heart.circle")
                             }
                             .buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
                         }
@@ -569,7 +569,7 @@ struct JotleySupportView: View {
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportReview")
                         if allowsWebsiteTips {
                             Button { visit(.tip, url: JotleyEngagement.tipURL) } label: {
-                                macAction("Tip the Developer", detail: "Opens jotley.ai/tips in your browser",
+                                macAction("Tip the Developer", detail: "Opens Buy Me a Coffee in your browser",
                                           icon: "heart.circle", kind: .tip)
                             }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
                         }
@@ -860,6 +860,7 @@ struct JotleyOnboardingView: View {
     @AppStorage("transcriptionLanguage") private var language = "en-US"
     @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @State private var allowsWebsiteTips = false
@@ -918,25 +919,37 @@ struct JotleyOnboardingView: View {
     }
     var body: some View {
         GeometryReader { geometry in
-            let wide = geometry.size.width >= 820
+            let wide = geometry.size.width >= 620
+            let artWidth = min(300, geometry.size.width * 0.3)
             VStack(spacing: 16) {
                 header
                 #if os(macOS)
-                pageLayout(wide: wide)
+                pageLayout(wide: wide, dense: false, artWidth: artWidth)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.vertical, 12)
                 #else
-                ScrollView {
-                    pageLayout(wide: wide)
-                    .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 255))
-                    .padding(.vertical, 12)
+                ViewThatFits(in: .vertical) {
+                    pageLayout(wide: wide, dense: false, artWidth: artWidth)
+                        .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        pageLayout(wide: wide, dense: false, artWidth: artWidth, smallArtwork: true)
+                            .fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
+                        pageLayout(wide: wide, dense: true, artWidth: artWidth)
+                            .fixedSize(horizontal: false, vertical: true).padding(.vertical, 8)
+                    }
+                    ScrollView {
+                        pageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth)
+                            .padding(.vertical, 8)
+                    }
+                    .scrollIndicators(.never).scrollBounceBehavior(.basedOnSize)
+                    .accessibilityIdentifier("onboardingFallbackScroll")
                 }
-                .scrollIndicators(.never)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(step)
                 #endif
                 if wide {
-                    HStack(spacing: 38) {
-                        Color.clear.frame(width: 300, height: 0)
+                    HStack(spacing: 24) {
+                        Color.clear.frame(width: artWidth, height: 0)
                         footer(wide: true).frame(maxWidth: wideFooterWidth)
                             .frame(maxWidth: 380, alignment: .leading)
                     }
@@ -945,7 +958,7 @@ struct JotleyOnboardingView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal, wide ? 38 : 24)
+            .padding(.horizontal, 24)
             .padding(.vertical, 18)
             .frame(maxWidth: wide ? 820 : .infinity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -974,14 +987,16 @@ struct JotleyOnboardingView: View {
             #endif
         }
     }
-    @ViewBuilder private func pageLayout(wide: Bool) -> some View {
+    @ViewBuilder private func pageLayout(wide: Bool, dense: Bool, artWidth: CGFloat, smallArtwork: Bool = false) -> some View {
         if wide {
-            HStack(alignment: .center, spacing: 38) {
-                illustration(compact: false).frame(width: 300)
-                pageContent.frame(maxWidth: 380, alignment: .leading)
+            HStack(alignment: .center, spacing: 24) {
+                illustration(compact: false, height: smallArtwork ? 120 : nil).frame(width: artWidth)
+                pageContent(dense: dense).frame(maxWidth: 380, alignment: .leading)
             }
+        } else if dense {
+            pageContent(dense: true, inlineArtwork: true).frame(maxWidth: 480)
         } else {
-            VStack(spacing: 25) { illustration(compact: true); pageContent }.frame(maxWidth: 480)
+            VStack(spacing: smallArtwork ? 12 : 25) { illustration(compact: true, height: smallArtwork ? 72 : nil); pageContent(dense: false) }.frame(maxWidth: 480)
         }
     }
     private var header: some View {
@@ -999,13 +1014,19 @@ struct JotleyOnboardingView: View {
         }
         .frame(minHeight: 44)
     }
-    private var pageContent: some View {
-        VStack(alignment: .leading, spacing: 22) {
+    private func pageContent(dense: Bool, inlineArtwork: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: dense ? 10 : 22) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(title).font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("onboardingTitle")
-                Text(subtitle).font(.body).foregroundStyle(muted)
+                HStack(spacing: 12) {
+                    if inlineArtwork {
+                        Image(illustrationAsset).resizable().interpolation(.high).antialiased(true).scaledToFit()
+                            .frame(width: 56, height: 56).accessibilityHidden(true)
+                    }
+                    Text(title).font(.system(dense ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("onboardingTitle")
+                }
+                Text(dense && step == 2 ? "Choose your Apple Intelligence language." : subtitle).font(dense ? .callout : .body).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             switch step {
@@ -1024,7 +1045,7 @@ struct JotleyOnboardingView: View {
                                 .font(.body.weight(.semibold)).foregroundStyle(Color.black).frame(maxWidth: .infinity)
                         }
                         .accessibilityIdentifier("onboardingTipJotley")
-                        .accessibilityHint("Opens jotley.ai/tips in your browser")
+                        .accessibilityHint("Opens Buy Me a Coffee in your browser")
                     }
                     Button {
                         JotleyEngagement.shared.recordClick(.review)
@@ -1040,27 +1061,27 @@ struct JotleyOnboardingView: View {
                     .font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("onboardingSupportSettingsHint")
             case 0:
-                feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield")
-                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart")
+                feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield", dense: dense)
+                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart", dense: dense)
             case 1:
                 status(summaryReason == nil ? "Apple Intelligence is ready" : "Apple Intelligence needs setup",
                        detail: summaryReason ?? "Your summaries and Ask AI answers are processed on this device.",
-                       ready: summaryReason == nil)
+                       ready: summaryReason == nil, dense: dense)
                     .accessibilityIdentifier("onboardingIntelligenceStatus")
-                feature("From thoughts to next steps", detail: "Pull out decisions, action items and topic tags. Ask a question when you need more.", icon: "sparkles")
+                feature("From thoughts to next steps", detail: "Pull out decisions, action items and topic tags. Ask a question when you need more.", icon: "sparkles", dense: dense)
                 if summaryReason != nil {
                     Text("Enable Apple Intelligence in your device’s Settings and let its model finish downloading. You can continue now and return to setup later.")
                         .font(.callout).foregroundStyle(muted)
                 }
             case 2:
-                languageSelection
+                languageSelection(dense: dense)
                 if checkingSpeech {
                     ProgressView("Checking Apple speech…").tint(accent)
                 } else {
                     status(setupError != nil ? "Finish setup when you’re ready" : (speechReady ? "Ready to transcribe offline" : (speechCanSetUp ? "One-time speech setup" : "Choose another language")),
                            detail: setupError ?? (speechReady ? "The selected language’s Apple speech model is installed." :
-                            (speechCanSetUp ? "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline." : "Choose an Apple Intelligence language supported by this device. You can also change it later in Settings.")),
-                           ready: speechReady)
+                            (speechCanSetUp ? (dense ? "Download Apple’s speech model once to transcribe offline." : "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline.") : "Choose an Apple Intelligence language supported by this device. You can also change it later in Settings.")),
+                           ready: speechReady, dense: dense)
                         .accessibilityIdentifier(setupError == nil ? "onboardingSpeechStatus" : "onboardingSpeechError")
                 }
                 if settingUpSpeech {
@@ -1072,25 +1093,26 @@ struct JotleyOnboardingView: View {
                         .buttonStyle(.glass).tint(accent)
                         .accessibilityIdentifier("onboardingSpeechSetup")
                 }
-                Text("You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted)
+                Text(dense ? "Change your language or finish setup later in Settings." : "You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboardingLanguageHint")
             case 3:
                 status(microphoneAllowed ? "Microphone access is enabled" : (microphoneDenied ? "Microphone access is off" : "You’re in control"),
                        detail: microphoneAllowed ? "Tap + in your notes list whenever you want to start transcribing." :
                         (microphoneDenied ? "Enable Microphone for Jotley in your device’s privacy settings when you’re ready." : "Jotley listens only when you start a transcription. Browsing your notes doesn’t need microphone access."),
-                       ready: microphoneAllowed)
+                       ready: microphoneAllowed, dense: dense)
                     .accessibilityIdentifier("onboardingMicrophoneStatus")
                 #if os(iOS)
-                feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft")
+                feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft", dense: dense)
                 #else
-                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer")
+                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense)
                 #endif
             default:
                 #if os(macOS)
                 status("A separate macOS permission",
                        detail: "Let Jotley hear other apps. This is separate from microphone access and does not capture your screen.",
-                       ready: false)
+                       ready: false, dense: dense)
                 feature(systemAudioMessage == nil ? "Nothing is saved during setup" : "macOS manages your access",
-                        detail: systemAudioMessage ?? "Request access now, or keep transcription microphone-only. Your choice can be changed in Settings.", icon: "lock.shield")
+                        detail: systemAudioMessage ?? "Request access now, or keep transcription microphone-only. Your choice can be changed in Settings.", icon: "lock.shield", dense: dense)
                     .accessibilityIdentifier("onboardingSystemAudioStatus")
                 Button("Open Audio Privacy Settings") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
@@ -1100,17 +1122,17 @@ struct JotleyOnboardingView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    private var languageSelection: some View {
+    private func languageSelection(dense: Bool) -> some View {
         Button { showingLanguages = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "globe").font(.title2).foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Transcription language").font(.callout).foregroundStyle(muted)
-                    Text(languages.first(where: { $0.id == language })?.name ?? "Choose a supported language").font(.body.weight(.semibold)).foregroundStyle(ink)
+                    Text("Transcription language").font(dense ? .footnote : .callout).foregroundStyle(muted)
+                    Text(languages.first(where: { $0.id == language })?.name ?? "Choose a supported language").font((dense ? Font.callout : .body).weight(.semibold)).foregroundStyle(ink)
                 }
                 Spacer()
                 Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(muted)
-            }.padding(16).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            }.padding(dense ? 12 : 16).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
         }
         .buttonStyle(.plain)
         .disabled(settingUpSpeech || checkingSpeech)
@@ -1146,25 +1168,25 @@ struct JotleyOnboardingView: View {
             .presentationCompactAdaptation(.popover)
         }
     }
-    private func feature(_ title: String, detail: String, icon: String) -> some View {
+    private func feature(_ title: String, detail: String, icon: String, dense: Bool) -> some View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: icon).font(.system(size: 21, weight: .medium)).foregroundStyle(accent).frame(width: 28)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.headline)
-                Text(detail).font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
+                Text(detail).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
             }
         }.accessibilityElement(children: .combine)
     }
-    private func status(_ title: String, detail: String, ready: Bool) -> some View {
+    private func status(_ title: String, detail: String, ready: Bool, dense: Bool) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: ready ? "checkmark.circle.fill" : "info.circle").foregroundStyle(ready ? .green : accent)
                 .font(.title3).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.headline)
-                Text(detail).font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
+                Text(detail).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
             }
-        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(dense ? 12 : 16).frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityElement(children: .combine)
     }
@@ -1178,11 +1200,11 @@ struct JotleyOnboardingView: View {
         default: "onboarding-system-audio"
         }
     }
-    private func illustration(compact: Bool) -> some View {
+    private func illustration(compact: Bool, height: CGFloat? = nil) -> some View {
         Image(illustrationAsset)
             .resizable().interpolation(.high).antialiased(true).scaledToFit()
             .frame(maxWidth: compact ? 270 : 300)
-            .frame(height: compact ? (isSupportStep ? 130 : 180) : 300)
+            .frame(height: height ?? (compact ? (isSupportStep ? 130 : 180) : 300))
             .accessibilityHidden(true)
     }
     private var wideFooterWidth: CGFloat {
