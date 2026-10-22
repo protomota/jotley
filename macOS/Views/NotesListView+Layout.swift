@@ -29,6 +29,8 @@ extension NotesListView {
                 .frame(maxWidth: .infinity)
         }
         .navigationSplitViewStyle(.automatic)
+        // Keep the system sidebar toggle in its native toolbar style.
+        .buttonStyle(.automatic)
         .background(Color.themeContentBackground)
     }
 
