@@ -255,9 +255,6 @@ struct MainTabView: View {
         NotesListView(onSelectNote: openNote, showsNewTranscriptionButton: !usesCornerCaptureButton, usesSplitView: horizontalSizeClass == .regular, bottomContentInset: usesWindowFooter ? duoFooterHeight : 0, showingSettings: $showingSettings,
             selectedNoteId: $selectedNoteId,
             showingTranscriptionModal: $showingTranscriptionModal, columnVisibility: $columnVisibility, newTranscriptionNote: $newTranscriptionNote)
-            .noteContentSwipes(enabled: !onboardingInProgress && !showingSettings && !showingTranscriptionModal) { direction in
-                if direction == .right, let selectedNoteId { openNote(selectedNoteId) }
-            }
     }
 }
 

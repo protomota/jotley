@@ -1867,7 +1867,7 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].waitForExistence(timeout: 3), "The sixth saved action must not trigger a custom review prompt")
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
     }
-    @MainActor func testNoteSwipesFollowTranscriptSummaryNotesOrder() throws {
+    @MainActor func testNoteSwipesFollowVisualTabOrder() throws {
         let isIPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
         XCUIDevice.shared.orientation = isIPad ? .landscapeLeft : .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
@@ -1875,7 +1875,8 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
         let summary = "## Summary\nThe team has a clear plan for Friday.\n\n## Key Points\n" + (1...24).map { "- Check milestone \($0) before launch." }.joined(separator: "\n")
         let notes: [[String: Any]] = [["title": "Swipe navigation", "folder": "Work", "tags": [], "transcript": "These are the original spoken words.", "summary": summary],
-            ["title": "No summary yet", "folder": "Work", "tags": [], "transcript": "Only spoken words.", "summary": ""]]
+            ["title": "No summary yet", "folder": "Work", "tags": [], "transcript": "Only spoken words.", "summary": ""],
+            ["title": "Swipe-delete regression", "folder": "Work", "tags": [], "transcript": "Disposable test note.", "summary": ""]]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: notes), as: UTF8.self)
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
         app.launch()
@@ -1884,30 +1885,37 @@ final class Jotley_iOSUITests: XCTestCase {
         transcript.tap()
         let words = app.descendants(matching: .any)["noteDetailTranscriptContent"].firstMatch
         XCTAssertTrue(words.waitForExistence(timeout: 5))
-        words.swipeLeft()
-        XCTAssertTrue(summaryTab.isSelected, "Left from Transcript should open Summary")
+        words.swipeRight()
+        XCTAssertTrue(summaryTab.isSelected, "Right from Transcript should open Summary")
         let content = app.descendants(matching: .any)["noteDetailSummaryContent"].firstMatch
         content.swipeUp()
         XCTAssertTrue(summaryTab.isSelected, "Vertical scrolling must not switch tabs")
         content.swipeDown()
-        content.swipeRight()
-        XCTAssertTrue(transcript.isSelected, "Right from Summary should open Transcript")
-        words.swipeRight()
-        XCTAssertTrue(transcript.isSelected, "Right from Transcript must not wrap")
-        words.swipeLeft()
         content.swipeLeft()
+        XCTAssertTrue(transcript.isSelected, "Left from Summary should open Transcript")
+        words.swipeLeft()
+        XCTAssertTrue(transcript.isSelected, "Left from Transcript must not wrap")
+        words.swipeRight()
+        content.swipeRight()
         let row = app.buttons.containing(.staticText, identifier: "Swipe navigation").firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertTrue(row.isHittable, "Left from Summary should reveal notes")
-        row.swipeRight()
+        XCTAssertTrue(row.waitForExistence(timeout: 5)); XCTAssertTrue(row.isHittable, "Right from Summary should reveal notes")
+        row.tap()
         XCTAssertTrue(summaryTab.waitForExistence(timeout: 5)); XCTAssertTrue(summaryTab.isSelected)
         let proof = XCTAttachment(screenshot: app.screenshot())
-        proof.name = "Swipe returns to the same summary"; proof.lifetime = .keepAlways; add(proof)
-        content.swipeLeft()
+        proof.name = "Corrected Summary and Transcript swipe order"; proof.lifetime = .keepAlways; add(proof)
+        content.swipeRight()
         let noSummary = app.buttons.containing(.staticText, identifier: "No summary yet").firstMatch
         XCTAssertTrue(noSummary.waitForExistence(timeout: 5)); noSummary.tap()
         XCTAssertTrue(words.waitForExistence(timeout: 5))
-        words.swipeLeft()
+        words.swipeRight()
         XCTAssertTrue(noSummary.waitForExistence(timeout: 5)); XCTAssertTrue(noSummary.isHittable)
+        let disposable = app.buttons.containing(.staticText, identifier: "Swipe-delete regression").firstMatch
+        XCTAssertTrue(disposable.waitForExistence(timeout: 5)); disposable.swipeLeft()
+        let delete = app.buttons["Delete"].firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "A left swipe on a list row must reveal its native Delete action")
+        delete.tap()
+        XCTAssertTrue(disposable.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(noSummary.exists)
     }
 
     @MainActor func testMoreMenuKeepsBothEditorsOnEitherTab() throws {

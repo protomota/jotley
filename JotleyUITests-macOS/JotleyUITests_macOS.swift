@@ -553,19 +553,19 @@ private struct MacSupportPreviewRoot: View {
         var notesOpened = 0
         let detail = NoteDetailPlaceholderView(note: note, selectedTab: Binding(get: { selection }, set: { selection = $0 }),
             viewModel: model, showNotesAction: { notesOpened += 1 })
-        detail.navigateNoteSwipe(.left)
-        guard selection == DetailTab.summary.rawValue, notesOpened == 0 else { throw LocalError.message("Left from Transcript must open Summary first.") }
-        detail.navigateNoteSwipe(.left)
-        guard selection == DetailTab.summary.rawValue, notesOpened == 1 else { throw LocalError.message("Left from Summary must reveal the notes sidebar.") }
         detail.navigateNoteSwipe(.right)
-        guard selection == DetailTab.transcript.rawValue else { throw LocalError.message("Right from Summary must open Transcript.") }
+        guard selection == DetailTab.summary.rawValue, notesOpened == 0 else { throw LocalError.message("Right from Transcript must open Summary first.") }
         detail.navigateNoteSwipe(.right)
-        guard selection == DetailTab.transcript.rawValue, notesOpened == 1 else { throw LocalError.message("Right from Transcript must not wrap.") }
+        guard selection == DetailTab.summary.rawValue, notesOpened == 1 else { throw LocalError.message("Right from Summary must reveal the notes sidebar.") }
+        detail.navigateNoteSwipe(.left)
+        guard selection == DetailTab.transcript.rawValue else { throw LocalError.message("Left from Summary must open Transcript.") }
+        detail.navigateNoteSwipe(.left)
+        guard selection == DetailTab.transcript.rawValue, notesOpened == 1 else { throw LocalError.message("Left from Transcript must not wrap.") }
         let savedSummary = note.summary; note.summary = nil
-        detail.navigateNoteSwipe(.left)
+        detail.navigateNoteSwipe(.right)
         guard selection == DetailTab.transcript.rawValue, notesOpened == 2 else { throw LocalError.message("A missing Summary must be skipped.") }
         note.summary = savedSummary
-        print("PASS: left navigates Transcript → Summary → notes; right reverses without wrapping; missing summaries are skipped.")
+        print("PASS: right navigates Transcript → Summary → notes; left reverses without wrapping; missing summaries are skipped.")
 
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 400, height: 600),
             styleMask: [.titled], backing: .buffered, defer: false)

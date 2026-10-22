@@ -67,11 +67,11 @@ struct NoteDetailView: View {
     }
     func navigateNoteSwipe(_ direction: NoteContentSwipeDirection) {
         switch direction {
-        case .left:
+        case .right:
             if selectedTab == "Transcript", hasSummary { selectedTab = "Summary" }
             else if let showNotesAction { showNotesAction() }
             else { dismiss() }
-        case .right:
+        case .left:
             if selectedTab == "Summary", hasTranscript || noteIsTranscribing { selectedTab = "Transcript" }
         }
     }

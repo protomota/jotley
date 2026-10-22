@@ -4,11 +4,6 @@ extension NotesListView {
     var navigationView: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             mainContent
-                .noteContentSwipes(enabled: !showingSettingsSheet && !showingTagFilter && !showingFolderManagement) { direction in
-                    if direction == .right, !viewModel.selectedNoteIDs.isEmpty {
-                        withAnimation { columnVisibility = .detailOnly }
-                    }
-                }
                 .frame(minWidth: 280)
                 .background(Color.themeContentBackground.ignoresSafeArea())
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)

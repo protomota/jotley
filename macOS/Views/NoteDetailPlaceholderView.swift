@@ -87,12 +87,12 @@ struct NoteDetailPlaceholderView: View {
     }
     func navigateNoteSwipe(_ direction: NoteContentSwipeDirection) {
         switch direction {
-        case .left:
+        case .right:
             if selectedTab == DetailTab.transcript.rawValue,
                note.hasMeaningfulSummaryText || isGeneratingThisSummary {
                 selectedTab = DetailTab.summary.rawValue
             } else { showNotesAction?() }
-        case .right:
+        case .left:
             if selectedTab == DetailTab.summary.rawValue, hasContentToSummarize || isRecordingThisNote {
                 selectedTab = DetailTab.transcript.rawValue
             }
