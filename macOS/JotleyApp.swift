@@ -16,7 +16,6 @@ import FoundationModels
                 RootView(recorder: local.recorder)
                     .environment(\.managedObjectContext, store.context)
                     .environmentObject(store)
-                    .preferredColorScheme(themeManager.effectiveColorScheme)
                     .tint(Color.themePrimaryAccent)
                     .frame(minWidth: 900, minHeight: 600)
             } else { Text(local.message).padding().frame(minWidth: 600, minHeight: 300) }

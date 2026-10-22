@@ -161,9 +161,10 @@ extension NoteDetailView {
                         iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
                             .accessibilityIdentifier("noteDetailTag-\(tag)")
                     }
-                    Button("Add Tag", systemImage: "plus") { showingAddTag = true }
+                    Button("Add Tag", systemImage: "plus.circle") { showingAddTag = true }
                         .font(.caption.weight(.medium))
-                        .buttonStyle(JotleyGlassButtonStyle())
+                        .buttonStyle(.plain).foregroundStyle(Color.themeTextSecondary)
+                        .frame(minHeight: 44)
                         .accessibilityIdentifier("noteDetailAddTagButton")
                 }.padding(.horizontal)
             }.padding(.top,8)

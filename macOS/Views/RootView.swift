@@ -34,6 +34,7 @@ struct RootView: View {
                 }
             }))
             .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))
+            .preferredColorScheme(onboardingInProgress ? .light : themeManager.effectiveColorScheme)
             .safeAreaInset(edge: .bottom) {
                 if !onboardingInProgress && !local.message.isEmpty {
                     HStack {

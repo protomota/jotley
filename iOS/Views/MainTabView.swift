@@ -130,7 +130,7 @@ struct MainTabView: View {
             windowBounds = bounds
             if usesExpandedPhoneLayout && becameWide { columnVisibility = .automatic }
         }
-        .preferredColorScheme(themeManager.effectiveColorScheme)
+        .preferredColorScheme(onboardingInProgress ? .light : themeManager.effectiveColorScheme)
         .observeThemeChanges()
         .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
             if returnToSettingsAfterWelcome {

@@ -1,0 +1,34 @@
+# Illustrated onboarding — October 22, 2026
+
+Jotley uses a pearl-white (#FAF9FF) setup canvas, lilac (#E9DDFF), violet (#9734E8), restrained mint (#CDEFE6) and sky (#D6E9FA). SF Rounded carries headlines; native body text stays dark and readable. Wide layouts align illustrations on the left with copy and actions on the right. Phones stack a compact illustration above the copy. The app's selected appearance resumes when setup ends.
+
+Illustrations show the work Jotley does: conversation becoming notes, organizing ideas, language, microphone capture, Mac app audio and optional community support. The single header logo remains unchanged. There are no duplicate logos or text embedded in illustrations.
+
+Generated with the built-in image generation tool. Transparent PNGs are copied into both iOS and macOS asset catalogs as `onboarding-*.imageset/illustration.png`; each has 1280px sides and is rendered with high-quality interpolation. The originals remain under Codex generated_images. No API fallback or image post-processing was used.
+
+## Final prompts
+
+### welcome
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: An open ivory paper notebook with a flowing lavender audio ribbon becoming neat unlettered paper note slips; a deep violet fountain pen rests beside it. An inviting scene about turning conversation into notes.
+
+### intelligence
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: Several gently floating ivory paper sheets organizing themselves into one tidy checklist card with small unlettered indented lines and violet checkmarks; a translucent lavender magnifying lens and a tiny four-point sparkle. An editorial scene about finding clarity.
+
+### language
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: A beautiful translucent pale-lavender terrestrial globe with simplified frosted continents, surrounded by three paper speech bubbles in violet, soft sky blue and mint, with abstract unlettered strokes only. An editorial scene about speaking your own language.
+
+### microphone
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: A refined rounded lavender studio microphone on a small ivory desk stand, a floating ribbon of tiny violet audio wave bars curving into a blank cream note slip; subtle soft mint accent. Rich dimensional object illustration, not an app icon.
+
+### system-audio
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: An elegant unbranded open silver laptop in three-quarter view, with a flowing translucent lavender sound ribbon emerging from its display and becoming ivory note slips; subtle pale sky-blue highlights. No interface or text on display.
+
+### support
+
+Use case: stylized-concept. Asset type: production illustration for Jotley native app onboarding. Style: premium sculptural editorial 3D with tactile matte paper, satin ceramic, softly frosted translucent glass, delicate depth and soft ambient shadows. Bright, airy, friendly daylight. Palette: pearl white #FAF9FF, lilac #E9DDFF, rich violet #9734E8, restrained mint #CDEFE6 and sky #D6E9FA. One centered composed vignette, isolated on genuinely transparent alpha; full objects visible with generous clear margins; square 1024x1024. No background panel, no circle medallion, no dark background, no lettering, words, logos, watermark, people, buttons or app mockups. Not a flat SF Symbol or generic line icon. Subject: A beautiful lavender ceramic coffee cup and ivory saucer with a soft rising steam curl shaped loosely like a heart, beside two small blank paper thank-you cards and a tiny violet flower. Warm welcoming editorial still life about community support.
+

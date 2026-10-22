@@ -251,10 +251,7 @@ struct TranscriptBubbleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: isLikelyMultiLine ? .infinity : nil, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.themePrimaryAccent.opacity(0.1))
-            )
+            .modifier(JotleyTranscriptCard())
 
             if !isLikelyMultiLine {
                 Spacer(minLength: 0)

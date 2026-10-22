@@ -156,6 +156,22 @@ enum JotleyAppleIntelligenceEligibility {
     }
 }
 
+/// Neutral glass keeps transcript surfaces quiet in every accent theme.
+struct JotleyTranscriptCard: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        content.background {
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+            if reduceTransparency {
+                shape.fill(Color.themeContentBackground)
+            } else {
+                Color.clear.glassEffect(.regular.tint(Color.gray.opacity(0.08)), in: shape)
+            }
+        }
+    }
+}
+
 /// Keep glass controls consistent across the Mac and mobile custom headers.
 struct JotleyGlassButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
@@ -843,9 +859,11 @@ struct JotleyOnboardingView: View {
     @AppStorage(JotleyOnboarding.completedKey) private var completed = false
     @AppStorage("transcriptionLanguage") private var language = "en-US"
     @ObservedObject private var theme = ThemeManager.shared
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
+    @State private var allowsWebsiteTips = false
+    @State private var showingLanguages = false
     @State private var step = 0
     @State private var languages: [LocalSpeech.Language] = []
     @State private var speechReady = false
@@ -868,16 +886,19 @@ struct JotleyOnboardingView: View {
     #endif
     private var steps: [String] {
         #if os(macOS)
-        ["Welcome", "Intelligence", "Language", "Microphone", "System audio"]
+        ["Welcome", "Intelligence", "Language", "Microphone", "System audio", "Support"]
         #else
-        ["Welcome", "Intelligence", "Language", "Microphone"]
+        ["Welcome", "Intelligence", "Language", "Microphone", "Support"]
         #endif
     }
+    private var supportStep: Int { steps.count - 1 }
+    private var isSupportStep: Bool { step == supportStep }
     private var accent: Color { theme.currentThemeColor.color }
-    private var ink: Color { colorScheme == .dark ? .white : Color(red: 0.14, green: 0.11, blue: 0.19) }
-    private var muted: Color { ink.opacity(colorScheme == .dark ? 0.7 : 0.68) }
+    private var ink: Color { Color(red: 0.14, green: 0.11, blue: 0.19) }
+    private var muted: Color { ink.opacity(0.68) }
     private var title: String {
-        switch step {
+        if isSupportStep { return "Free software.\nSupported by people." }
+        return switch step {
         case 0: "Stay in the conversation."
         case 1: "Find the useful parts."
         case 2: "Start with your language."
@@ -886,7 +907,8 @@ struct JotleyOnboardingView: View {
         }
     }
     private var subtitle: String {
-        switch step {
+        if isSupportStep { return "Jotley is free, with every feature included.\nYour support helps us keep building." }
+        return switch step {
         case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
         case 1: "Summaries, useful titles and answers.\nPowered by Apple Intelligence on your device."
         case 2: "Choose your Apple Intelligence language.\nTranscription, summaries and Ask AI stay on-device."
@@ -896,7 +918,7 @@ struct JotleyOnboardingView: View {
     }
     var body: some View {
         GeometryReader { geometry in
-            let wide = geometry.size.width >= 740
+            let wide = geometry.size.width >= 820
             VStack(spacing: 16) {
                 header
                 #if os(macOS)
@@ -909,7 +931,8 @@ struct JotleyOnboardingView: View {
                     .frame(maxWidth: .infinity, minHeight: max(0, geometry.size.height - 255))
                     .padding(.vertical, 12)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.never)
+                .id(step)
                 #endif
                 if wide {
                     HStack(spacing: 38) {
@@ -928,16 +951,18 @@ struct JotleyOnboardingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 ZStack(alignment: .topLeading) {
-                    (colorScheme == .dark ? Color(red: 0.075, green: 0.065, blue: 0.095) : Color(red: 0.985, green: 0.98, blue: 0.995))
-                    RadialGradient(colors: [accent.opacity(colorScheme == .dark ? 0.18 : 0.13), .clear],
+                    Color(red: 0.985, green: 0.98, blue: 0.995)
+                    RadialGradient(colors: [Color(red: 0.91, green: 0.86, blue: 0.99).opacity(0.65), .clear],
                                    center: .topLeading, startRadius: 20, endRadius: wide ? 700 : 560)
                 }.ignoresSafeArea()
             }
         }
         .foregroundStyle(ink)
-        .preferredColorScheme(theme.effectiveColorScheme)
+        .preferredColorScheme(.light)
+        .environment(\.colorScheme, .light)
         .observeThemeChanges()
         .task(id: language) { await refreshModels() }
+        .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
         .onAppear { refreshMicrophone() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshMicrophone(); summaryReason = intelligenceReadiness() }
@@ -966,8 +991,9 @@ struct JotleyOnboardingView: View {
                 .accessibilityHidden(true)
             Text("Jotley").font(.system(size: 23, weight: .semibold, design: .rounded))
             Spacer()
-            Button { finish() } label: { Text("Skip setup").frame(minHeight: 32).padding(.horizontal, 5) }
+            Button { finish() } label: { Text("Skip setup") }
                 .font(.subheadline.weight(.medium)).buttonStyle(.glass).buttonBorderShape(.capsule)
+                .controlSize(.small).frame(minHeight: 36)
                 .disabled(settingUpSpeech || requestingMicrophone)
                 .accessibilityIdentifier("onboardingSkip")
         }
@@ -983,6 +1009,36 @@ struct JotleyOnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             switch step {
+            case let value where value == supportStep:
+                Text(allowsWebsiteTips
+                     ? "Enjoying Jotley? A coffee helps fund development. A rating or review helps more people discover it."
+                     : "A rating or review helps more people discover Jotley. Your feedback helps us make it better.")
+                    .font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 10) {
+                    if allowsWebsiteTips {
+                        Button {
+                            JotleyEngagement.shared.recordClick(.tip)
+                            openURL(JotleyEngagement.tipURL)
+                        } label: {
+                            Label("Buy Me a Coffee", systemImage: "cup.and.saucer")
+                                .font(.body.weight(.semibold)).foregroundStyle(Color.black).frame(maxWidth: .infinity)
+                        }
+                        .accessibilityIdentifier("onboardingTipJotley")
+                        .accessibilityHint("Opens jotley.ai/tips in your browser")
+                    }
+                    Button {
+                        JotleyEngagement.shared.recordClick(.review)
+                        openURL(JotleyEngagement.reviewURL)
+                    } label: {
+                        Label("Rate & Review Jotley", systemImage: "star")
+                            .font(.body.weight(.semibold)).foregroundStyle(Color.black).frame(maxWidth: .infinity)
+                    }
+                    .accessibilityIdentifier("onboardingReviewJotley")
+                }
+                .buttonStyle(JotleyGlassButtonStyle())
+                Text("Support is always optional. You can find these options again in Settings.")
+                    .font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("onboardingSupportSettingsHint")
             case 0:
                 feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield")
                 feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart")
@@ -1045,14 +1101,7 @@ struct JotleyOnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     private var languageSelection: some View {
-        Menu {
-            Picker("Transcription language", selection: $language) {
-                if !languages.contains(where: { $0.id == language }) {
-                    Text("Choose a supported language").tag(language).disabled(true)
-                }
-                ForEach(languages) { item in Text(item.name).tag(item.id) }
-            }
-        } label: {
+        Button { showingLanguages = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "globe").font(.title2).foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 4) {
@@ -1066,6 +1115,36 @@ struct JotleyOnboardingView: View {
         .buttonStyle(.plain)
         .disabled(settingUpSpeech || checkingSpeech)
         .accessibilityIdentifier("onboardingLanguagePicker")
+        .popover(isPresented: $showingLanguages, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Transcription language").font(.headline).foregroundStyle(ink)
+                ScrollView {
+                    LazyVStack(spacing: 3) {
+                        ForEach(languages) { item in
+                            Button { language = item.id; showingLanguages = false } label: {
+                                HStack {
+                                    Text(item.name).foregroundStyle(ink)
+                                    Spacer()
+                                    if item.id == language {
+                                        Image(systemName: "checkmark").foregroundStyle(accent).accessibilityHidden(true)
+                                    }
+                                }
+                                .font(.body).padding(.horizontal, 12).padding(.vertical, 10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(item.id == language ? accent.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain).accessibilityLabel(item.name)
+                        }
+                    }
+                }
+                .scrollIndicators(.never).frame(maxHeight: 310)
+            }
+            .padding(16).frame(width: 290)
+            .background(Color(red: 0.985, green: 0.98, blue: 0.995))
+            .environment(\.colorScheme, .light)
+            .presentationCompactAdaptation(.popover)
+        }
     }
     private func feature(_ title: String, detail: String, icon: String) -> some View {
         HStack(alignment: .top, spacing: 13) {
@@ -1089,74 +1168,22 @@ struct JotleyOnboardingView: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityElement(children: .combine)
     }
-    private func illustration(compact: Bool) -> some View {
-        VStack(spacing: 18) {
-            if step == 0 {
-                sampleNote(icon: "waveform", title: "Live transcription", text: "Let’s meet Friday.\nI’ll bring the first draft.")
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 23).strokeBorder(accent.opacity(0.18), lineWidth: 1)
-                    }
-                    .rotationEffect(.degrees(-4))
-                HStack(spacing: 7) {
-                    Circle().fill(accent).frame(width: 5, height: 5)
-                    Capsule().fill(accent.opacity(0.3)).frame(width: 28, height: 2)
-                    Image(systemName: "sparkles").foregroundStyle(accent).font(.caption)
-                }
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Your next step", systemImage: "sparkles")
-                        .font(.callout.weight(.semibold)).foregroundStyle(accent)
-                    if !compact {
-                        Text("Ready for Friday")
-                            .font(.system(.title3, design: .rounded).weight(.semibold))
-                    }
-                    HStack(alignment: .top, spacing: 9) {
-                        Image(systemName: "circle").foregroundStyle(accent)
-                        Text("Bring the first draft.").font(.callout).foregroundStyle(muted)
-                    }
-                }
-                .padding(compact ? 14 : 18).frame(width: 248, alignment: .leading)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(accent.opacity(0.2), lineWidth: 1) }
-                .rotationEffect(.degrees(3)).offset(x: 12)
-                .shadow(color: accent.opacity(0.12), radius: 22, y: 10)
-            } else if step == 1 {
-                sampleNote(icon: "sparkles", title: "A little clarity", text: "Meet Friday.\nBring the first draft.")
-                    .rotationEffect(.degrees(3))
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(accent)
-                    Text("One clear next step.").font(.callout.weight(.medium))
-                }
-            } else {
-                ZStack {
-                    Circle().fill(accent.opacity(0.09)).frame(width: 142, height: 142)
-                    Circle().stroke(accent.opacity(0.12), lineWidth: 1).frame(width: 174, height: 174)
-                    Image(systemName: step == 2 ? "globe" : (step == 3 ? "mic" : "desktopcomputer"))
-                        .font(.system(size: 65, weight: .light)).foregroundStyle(accent)
-                }
-                Text(step == 2 ? "Your voice. Your language." : (step == 3 ? "Ready when you are." : "More of the conversation."))
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-            }
+    private var illustrationAsset: String {
+        if isSupportStep { return "onboarding-support" }
+        return switch step {
+        case 0: "onboarding-welcome"
+        case 1: "onboarding-intelligence"
+        case 2: "onboarding-language"
+        case 3: "onboarding-microphone"
+        default: "onboarding-system-audio"
         }
-        .padding(.horizontal, 12)
-        .accessibilityHidden(true)
     }
-    private func sampleNote(icon: String, title: String, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 8) {
-                if step == 0 {
-                    HStack(spacing: 3) {
-                        ForEach(Array([12.0, 23.0, 16.0].enumerated()), id: \.offset) { _, height in
-                            Capsule().fill(accent).frame(width: 4, height: height)
-                        }
-                    }.frame(width: 24, height: 24)
-                } else { Image(systemName: icon).foregroundStyle(accent) }
-                Text(title).font(.callout.weight(.semibold)).foregroundStyle(muted)
-            }
-            Text(text).font(.system(.title3, design: .rounded).weight(.medium)).lineSpacing(4)
-        }
-        .padding(22).frame(maxWidth: 300, alignment: .leading)
-        .background(colorScheme == .dark ? Color.white.opacity(0.065) : .white, in: RoundedRectangle(cornerRadius: 23))
-        .shadow(color: accent.opacity(colorScheme == .dark ? 0.1 : 0.12), radius: 24, y: 12)
+    private func illustration(compact: Bool) -> some View {
+        Image(illustrationAsset)
+            .resizable().interpolation(.high).antialiased(true).scaledToFit()
+            .frame(maxWidth: compact ? 270 : 300)
+            .frame(height: compact ? (isSupportStep ? 130 : 180) : 300)
+            .accessibilityHidden(true)
     }
     private var wideFooterWidth: CGFloat {
         #if os(macOS)
@@ -1167,7 +1194,7 @@ struct JotleyOnboardingView: View {
     }
     private var onboardingBackButton: some View {
         Button { changeStep(step - 1) } label: {
-            Image(systemName: "chevron.left").font(.system(size: 14, weight: .medium))
+            Image(systemName: "chevron.left").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.black)
         }
         .buttonStyle(JotleyGlassButtonStyle(circular: true)).frame(width: 54)
         .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
@@ -1175,25 +1202,31 @@ struct JotleyOnboardingView: View {
     }
     private func footer(wide: Bool) -> some View {
         // Wide layouts align the primary action with the copy; Back sits outside that column.
-        let actionInset: CGFloat = !wide && step > 0 ? 66 : 0
+        let actionInset: CGFloat = !wide ? 66 : 0
         return VStack(spacing: 13) {
             HStack(spacing: 6) {
                 ForEach(0..<steps.count, id: \.self) { index in
                     Capsule().fill(index == step ? accent : ink.opacity(0.13)).frame(width: index == step ? 25 : 6, height: 6)
                 }
                 Text("\(step + 1) of \(steps.count) · \(steps[step])").font(.caption).foregroundStyle(muted).padding(.leading, 5)
+                    .frame(width: 130, alignment: .leading)
             }
             .padding(.leading, actionInset)
             .accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of \(steps.count), \(steps[step])")
+            .accessibilityIdentifier("onboardingProgress")
             HStack(spacing: 12) {
-                if step > 0 && !wide { onboardingBackButton }
+                if !wide {
+                    onboardingBackButton.opacity(step > 0 ? 1 : 0)
+                        .allowsHitTesting(step > 0).accessibilityHidden(step == 0)
+                }
                 Button {
-                    if step == 3 {
+                    if isSupportStep { finish() }
+                    else if step == 3 {
                         if microphoneAllowed || microphoneDenied { advancePastMicrophone() }
                         else { allowMicrophone() }
                     } else if step == 4 {
                         #if os(macOS)
-                        if systemAudioRequested { finish() } else { requestSystemAudio() }
+                        if systemAudioRequested { changeStep(supportStep) } else { requestSystemAudio() }
                         #endif
                     } else { changeStep(step + 1) }
                 } label: {
@@ -1210,30 +1243,42 @@ struct JotleyOnboardingView: View {
             .overlay(alignment: .leading) {
                 if wide && step > 0 { onboardingBackButton.offset(x: -66) }
             }
-            if step == 3 && !microphoneAllowed && !microphoneDenied {
-                Button("Not now") { advancePastMicrophone() }.buttonStyle(.glass).buttonBorderShape(.capsule)
-                    .frame(minHeight: 36).padding(.leading, actionInset).accessibilityIdentifier("onboardingNotNow")
-            }
-            #if os(macOS)
-            if step == 4 {
-                Button("Use Microphone Only") { includeSystemAudio = false; finish() }
-                    .buttonStyle(.glass).buttonBorderShape(.capsule).frame(minHeight: 36)
-                    .padding(.leading, actionInset)
-                    .accessibilityIdentifier("onboardingMicrophoneOnly")
-            }
-            #endif
+            onboardingSecondaryAction.frame(maxWidth: .infinity, minHeight: 36, maxHeight: 36)
+                .padding(.leading, actionInset)
         }
+        .frame(height: 128, alignment: .top)
+    }
+    private var onboardingSecondaryAction: some View {
+        Group {
+            if step == 3 && !microphoneAllowed && !microphoneDenied {
+                Button("Not now") { advancePastMicrophone() }
+                    .accessibilityIdentifier("onboardingNotNow")
+            } else {
+                #if os(macOS)
+                if step == 4 {
+                    Button("Use Microphone Only") { includeSystemAudio = false; changeStep(supportStep) }
+                        .accessibilityLabel("Use Microphone Only")
+                        .accessibilityIdentifier("onboardingMicrophoneOnly")
+                } else { Color.clear.allowsHitTesting(false).accessibilityHidden(true) }
+                #else
+                Color.clear.allowsHitTesting(false).accessibilityHidden(true)
+                #endif
+            }
+        }
+        .buttonStyle(.glass).buttonBorderShape(.capsule)
+        .font(.subheadline.weight(.medium)).controlSize(.small).foregroundStyle(Color.black)
     }
     private var primaryTitle: String {
+        if isSupportStep { return "Open Jotley" }
         if step == 3 {
             #if os(macOS)
             return microphoneAllowed || microphoneDenied ? "Continue" : "Allow Microphone"
             #else
-            return microphoneAllowed || microphoneDenied ? "Open Jotley" : "Allow Microphone"
+            return microphoneAllowed || microphoneDenied ? "Continue" : "Allow Microphone"
             #endif
         }
         #if os(macOS)
-        if step == 4 { return systemAudioRequested ? "Open Jotley" : "Request System Audio Access" }
+        if step == 4 { return systemAudioRequested ? "Continue" : "Request System Audio Access" }
         #endif
         return "Continue"
     }
@@ -1241,7 +1286,7 @@ struct JotleyOnboardingView: View {
         #if os(macOS)
         changeStep(4)
         #else
-        finish()
+        changeStep(supportStep)
         #endif
     }
     private func changeStep(_ next: Int) {

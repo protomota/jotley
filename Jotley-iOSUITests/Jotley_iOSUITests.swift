@@ -179,6 +179,57 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["noteDetailTag-Draft"].firstMatch.exists)
     }
 
+    @MainActor func testOnboardingSupportIsOptionalAndStorefrontAware() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Keep this note","folder":"","tags":[],"transcript":"Existing notes stay safe.","summary":""}]"###
+        app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        for country in ["USA", "GBR"] {
+            app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = country
+            app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = country == "USA" ? "Dark" : "Light"
+            app.launch()
+            let title = app.staticTexts["onboardingTitle"]
+            XCTAssertTrue(title.waitForExistence(timeout: 15))
+            for _ in 0..<3 { app.buttons["onboardingContinue"].tap() }
+            if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
+            else { app.buttons["onboardingContinue"].tap() }
+            XCTAssertEqual(title.label, "Free software.\nSupported by people.")
+            let tip = app.buttons["onboardingTipJotley"]
+            if country == "USA" {
+                XCTAssertTrue(tip.waitForExistence(timeout: 5))
+                if !tip.isHittable { app.scrollViews.firstMatch.swipeUp() }
+                XCTAssertTrue(tip.isHittable)
+            } else { XCTAssertFalse(tip.exists) }
+            let review = app.buttons["onboardingReviewJotley"]
+            XCTAssertTrue(review.exists)
+            if !review.isHittable { app.scrollViews.firstMatch.swipeUp() }
+            XCTAssertTrue(review.isHittable)
+            XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].exists)
+            XCTAssertEqual(app.alerts.count, 0)
+            for (index, screen) in XCUIScreen.screens.enumerated() {
+                let shot = XCTAttachment(screenshot: screen.screenshot())
+                shot.name = "Optional onboarding support - \(country) - screen \(index)"
+                shot.lifetime = .keepAlways; add(shot)
+            }
+            let back = app.buttons["onboardingBack"]
+            XCTAssertTrue(back.isHittable); back.tap()
+            XCTAssertEqual(title.label, "Give your words a place.")
+            if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
+            else { app.buttons["onboardingContinue"].tap() }
+            app.buttons["onboardingContinue"].tap()
+            XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 8))
+            app.terminate()
+            app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
+            app.launch()
+            XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 10))
+            XCTAssertFalse(title.exists)
+            app.terminate()
+        }
+    }
+
     @MainActor func testFirstSummaryFooterClearsLastTranscriptLine() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
@@ -433,11 +484,22 @@ final class Jotley_iOSUITests: XCTestCase {
             app.launch()
             let title = app.staticTexts["onboardingTitle"]
             XCTAssertTrue(title.waitForExistence(timeout: 15))
+            let actionFrame = app.buttons["onboardingContinue"].frame
+            let progressY = app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.midY
             for expected in ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place."] {
                 XCTAssertEqual(title.label, expected)
                 XCTAssertTrue(app.buttons["onboardingContinue"].isHittable, "The primary action must remain visible")
                 XCTAssertLessThanOrEqual(app.buttons["onboardingContinue"].frame.maxX, app.frame.maxX - 12, "The action must fit completely inside the window")
                 XCTAssertGreaterThanOrEqual(app.buttons["onboardingContinue"].frame.minX, app.frame.minX + 12)
+                XCTAssertEqual(app.buttons["onboardingContinue"].frame.minY, actionFrame.minY, accuracy: 1)
+                XCTAssertEqual(app.buttons["onboardingContinue"].frame.minX, actionFrame.minX, accuracy: 1)
+                XCTAssertEqual(app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.midY, progressY, accuracy: 1)
+                if expected == "Give your words a place.", app.buttons["onboardingNotNow"].exists {
+                    let secondary = app.buttons["onboardingNotNow"].frame
+                    let primary = app.buttons["onboardingContinue"].frame
+                    XCTAssertEqual(secondary.midX, primary.midX, accuracy: 1)
+                    XCTAssertGreaterThanOrEqual(secondary.minY, primary.maxY + 8)
+                }
                 XCTAssertEqual(app.alerts.count, 0, "No permission alert should appear without an explicit request")
                 if expected == "Start with your language." {
                     let picker = app.buttons["onboardingLanguagePicker"]
@@ -462,6 +524,9 @@ final class Jotley_iOSUITests: XCTestCase {
             }
             if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
             else { app.buttons["onboardingContinue"].tap() }
+            XCTAssertEqual(title.label, "Free software.\nSupported by people.")
+            XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].exists)
+            app.buttons["onboardingContinue"].tap()
             XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 8))
             app.terminate()
             app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
