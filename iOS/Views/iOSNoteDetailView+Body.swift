@@ -313,7 +313,7 @@ extension NoteDetailView {
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(JotleyGlassButtonStyle(prominent: true))
+        .buttonStyle(JotleyGlassButtonStyle())
         .modifier(FloatingNoteControlShadow())
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")

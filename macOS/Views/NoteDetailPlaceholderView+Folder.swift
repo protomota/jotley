@@ -13,6 +13,7 @@ extension NoteDetailPlaceholderView {
 /// bloating NoteDetailPlaceholderView's state.
 struct FolderChipView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @ObservedObject private var theme = ThemeManager.shared
     @ObservedObject var note: Note
     let onChange: () -> Void
 
@@ -65,11 +66,13 @@ struct FolderChipView: View {
             HStack(spacing: 4) {
                 Image(systemName: note.folder == nil ? "folder" : "folder.fill")
                     .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(theme.currentThemeColor.color)
                 Text(note.folder?.displayName ?? "No Folder")
                     .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(theme.currentThemeColor.color)
                     .lineLimit(1)
             }
-            .foregroundColor(note.folder == nil ? Color.themeTextSecondary : Color.themePrimaryAccent)
+            .foregroundStyle(theme.currentThemeColor.color)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(
@@ -77,7 +80,8 @@ struct FolderChipView: View {
                     .fill(Color.themeAccent.opacity(0.35))
             )
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button).buttonStyle(.plain)
+        .tint(theme.currentThemeColor.color)
         .fixedSize()
         .accessibilityIdentifier("noteDetailFolderChip")
         .sheet(isPresented: $showingCreate) {

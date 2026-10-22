@@ -23,7 +23,7 @@ struct iOSNoteFolderRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: note.folder == nil ? "folder" : "folder.fill")
-                .foregroundColor(note.folder == nil ? .themeTextSecondary : .themePrimaryAccent)
+                .foregroundColor(.themePrimaryAccent)
             Menu {
                 if note.folder != nil {
                     Button("Remove from folder", role: .destructive) {
@@ -56,10 +56,10 @@ struct iOSNoteFolderRow: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(note.folder?.displayName ?? "No folder")
-                        .foregroundColor(.themeTextSecondary)
+                        .foregroundColor(.themePrimaryAccent)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption2.weight(.semibold))
-                        .foregroundColor(.themeTextSecondary)
+                        .foregroundColor(.themePrimaryAccent)
                 }
             }
         }

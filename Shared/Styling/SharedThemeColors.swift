@@ -331,7 +331,7 @@ struct MobileDoneButton: View {
     }
 }
 
-/// Keep accent icons separate from readable action text.
+/// Match compact action text and icons to the selected accent.
 struct MobileActionLabel: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     let title: String
@@ -344,7 +344,7 @@ struct MobileActionLabel: View {
 
     var body: some View {
         Label {
-            Text(title).foregroundStyle(Color.themeActionText)
+            Text(title).foregroundStyle(Color.themePrimaryAccent)
         } icon: {
             Image(systemName: systemImage).foregroundStyle(Color.themePrimaryAccent)
         }

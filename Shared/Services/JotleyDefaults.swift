@@ -156,18 +156,35 @@ enum JotleyAppleIntelligenceEligibility {
     }
 }
 
-/// Neutral glass keeps transcript surfaces quiet in every accent theme.
+/// Shared tinted glass for transcript and Ask AI bubbles.
 struct JotleyTranscriptCard: ViewModifier {
+    var emphasized = false
+    var neutral = false
+    var cornerRadius: CGFloat = 12
+    @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         content.background {
-            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             if reduceTransparency {
                 shape.fill(Color.themeContentBackground)
+                    .overlay { shape.fill((neutral ? Color.gray : theme.currentThemeColor.color).opacity(emphasized ? 0.16 : 0.08)) }
             } else {
-                Color.clear.glassEffect(.regular.tint(Color.gray.opacity(0.08)), in: shape)
+                Color.clear.glassEffect(.regular.tint((neutral ? Color.gray : theme.currentThemeColor.color).opacity(emphasized ? 0.16 : 0.08)), in: shape)
             }
+        }
+    }
+}
+
+/// A translucent sheet surface; accessibility can request a solid backing.
+struct JotleyGlassPanel: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    func body(content: Content) -> some View {
+        content.background {
+            let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+            if reduceTransparency { shape.fill(Color.themeBackground) }
+            else { Color.clear.glassEffect(.regular, in: shape) }
         }
     }
 }
@@ -197,7 +214,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                     .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
-        .foregroundStyle(configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themeTextPrimary)
+        .foregroundStyle(configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themePrimaryAccent)
         .opacity(isEnabled ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)

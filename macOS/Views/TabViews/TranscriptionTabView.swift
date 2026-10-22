@@ -28,7 +28,7 @@ struct TranscriptBubbleView: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let timestampLabel, !timestampLabel.isEmpty {
                     Text(timestampLabel)
-                        .font(.caption2)
+                        .font(.caption2.monospacedDigit())
                         .foregroundColor(Color.themeTextSecondary.opacity(0.8))
                 }
 
@@ -159,7 +159,7 @@ struct TranscriptParagraphsView: View {
     let isRecordingActive: Bool
     let showEllipsis: Bool
     private let liveRecordingTimestampInterval: TimeInterval = 10.0
-    private let minimumDisplayTimestampStart: TimeInterval = 1.0
+    private let minimumDisplayTimestampStart: TimeInterval = 0.0
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 4) {
@@ -252,7 +252,7 @@ struct TranscriptParagraphsView: View {
         let totalSeconds = max(0, Int(seconds.rounded()))
         let minutes = totalSeconds / 60
         let remainingSeconds = totalSeconds % 60
-        return String(format: "%d:%02d", minutes, remainingSeconds)
+        return String(format: "%02d:%02d", minutes, remainingSeconds)
     }
 }
 

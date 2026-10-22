@@ -216,7 +216,7 @@ extension NoteDetailPlaceholderView {
                             } label: {
                                 Label("Continue Transcription", systemImage: "mic.fill")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Color.themeTextPrimary)
+                                    .foregroundStyle(Color.themePrimaryAccent)
                             }
                             .buttonStyle(JotleyGlassButtonStyle())
                             .accessibilityIdentifier("noteDetailTranscriptResumeButton")
@@ -244,7 +244,7 @@ extension NoteDetailPlaceholderView {
                                     Text(isGenerating ? "Generating..." : "Generate Summary")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                                .foregroundStyle(Color.themeTextPrimary)
+                                .foregroundStyle(Color.themePrimaryAccent)
                             }
                             .buttonStyle(JotleyGlassButtonStyle())
                             .disabled(isGenerating)
@@ -271,7 +271,7 @@ struct MacSummaryActionsFooter: View {
     var body: some View {
         Button(action: onAsk) {
             Label {
-                Text("Ask AI").foregroundStyle(Color.themeTextPrimary)
+                Text("Ask AI").foregroundStyle(Color.themePrimaryAccent)
             } icon: {
                 Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
             }

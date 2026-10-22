@@ -2046,6 +2046,32 @@ final class Jotley_iOSUITests: XCTestCase {
     }
     #endif
 
+    @MainActor func testMarketingChatCaptureAndControls() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Friday Launch Plan","folder":"Work","tags":["Design","Planning","Product"],"transcript":"Alex will finish accessibility checks Thursday. Sam will share the launch checklist. Maya leads the review Friday at 10:00.","summary":"The team agreed on a focused Friday launch.","messages":[{"role":"user","content":"Who is doing what before Friday?"},{"role":"assistant","content":"- **Alex:** finish the accessibility checks by Thursday.\n- **Sam:** share the launch checklist and gather feedback.\n- **Maya:** lead the final review on Friday at 10:00."}]}]"#
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchArguments = ["-selectedThemeColor", "Purple", "-jotleyWelcomeCompleted.v1", "YES"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        let ask = app.buttons["noteDetailSummaryAskAIButton"]
+        XCTAssertTrue(ask.waitForExistence(timeout: 15)); ask.tap()
+        let done = app.buttons["askAIDoneButton"]
+        XCTAssertTrue(done.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["askAICopyConversationButton"].isEnabled)
+        XCTAssertTrue(app.buttons["askAIShareConversationButton"].isEnabled)
+        for (index, screen) in XCUIScreen.screens.enumerated() {
+            let shot = XCTAttachment(screenshot: screen.screenshot())
+            shot.name = "Marketing-chat-screen-\(index)"; shot.lifetime = .keepAlways; add(shot)
+        }
+        app.buttons["askAICopyConversationButton"].tap()
+        app.buttons["askAIClearButton"].tap()
+        app.alerts["Clear Chat History?"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["askAICopyConversationButton"].isEnabled)
+        done.tap(); XCTAssertTrue(ask.waitForExistence(timeout: 5))
+        ask.tap(); XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
+    }
+
     // BEGIN LOCAL MARKETING CAPTURE
     @MainActor func testMarketingLayoutCaptures() throws {
         let app = XCUIApplication()

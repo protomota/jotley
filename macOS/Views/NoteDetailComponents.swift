@@ -70,7 +70,7 @@ struct LocalMacAskNoteView: View {
                                     else { MacChatAnswerText(content: preview) }
                                     Button("Stop Answer") { cancel() }.buttonStyle(JotleyGlassButtonStyle())
                                         .accessibilityIdentifier("askAIStopButton")
-                                }.id("answer").padding().background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
+                                }.id("answer").padding().modifier(JotleyTranscriptCard(neutral: true))
                             }
                         }.padding()
                     }
@@ -94,7 +94,7 @@ struct LocalMacAskNoteView: View {
                         .tint(Color.themePrimaryAccent)
                         .accentColor(Color.themePrimaryAccent)
                         .lineLimit(1...5).padding(12).frame(minHeight: 44)
-                        .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
+                        .modifier(JotleyTranscriptCard(cornerRadius: 20))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20)
                                 .strokeBorder(inputFocused ? Color.themePrimaryAccent : .clear, lineWidth: 2)
@@ -123,7 +123,6 @@ struct LocalMacAskNoteView: View {
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
-            .background(Color.themeBackground)
             .alert("Clear Chat History?", isPresented: $showingClear) {
                 Button("Cancel", role: .cancel) { }
                 Button("Clear", role: .destructive) {
@@ -144,7 +143,8 @@ struct LocalMacAskNoteView: View {
             .font(.system(size: 15))
         }.frame(width: 580, height: 650)
             .foregroundStyle(Color.themeTextPrimary)
-            .background(Color.themeBackground)
+            .modifier(JotleyGlassPanel())
+            .presentationBackground(.clear)
             .preferredColorScheme(themeManager.effectiveColorScheme)
     }
     private var welcome: some View {
@@ -168,10 +168,15 @@ struct LocalMacAskNoteView: View {
         HStack {
             if message.role == "user" { Spacer(minLength: 32) }
             VStack(alignment: .leading, spacing: 8) {
-                Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)
+                HStack(spacing: 12) {
+                    Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Text(message.timestamp, format: .dateTime.hour().minute())
+                        .font(.caption2.monospacedDigit())
+                }.foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { MacChatAnswerText(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-            }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
+            }.padding().modifier(JotleyTranscriptCard(emphasized: message.role == "user", neutral: message.role == "assistant"))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
     }

@@ -62,8 +62,8 @@ extension NotesListView {
             .accessibilityIdentifier("notesListNoteRow-\(rowIndex)")
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(Color.themeTextSecondary.opacity(0.12))
-                    .frame(height: 0.5)
+                    .fill(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.13))
+                    .frame(height: 1)
                     .padding(.leading, 20)
                     .padding(.trailing, 14)
             }

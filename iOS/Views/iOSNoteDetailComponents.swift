@@ -231,7 +231,7 @@ struct TranscriptBubbleView: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let timestampText, !timestampText.isEmpty {
                     Text(timestampText)
-                        .font(.caption2)
+                        .font(.caption2.monospacedDigit())
                         .foregroundColor(Color.themeTextSecondary.opacity(0.9))
                 }
 
@@ -319,7 +319,7 @@ struct LocalAskNoteView: View {
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
             VStack(spacing: 0) {
                 header
                 Divider()
@@ -336,7 +336,7 @@ struct LocalAskNoteView: View {
                                     else { MarkdownContentView(content: preview) }
                                     Button("Stop Answer") { cancel() }
                                         .accessibilityIdentifier("askAIStopButton")
-                                }.id("answer").padding().background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
+                                }.id("answer").padding().modifier(JotleyTranscriptCard(neutral: true))
                             }
                         }.padding()
                     }
@@ -364,7 +364,7 @@ struct LocalAskNoteView: View {
                                                isEnabled: generation == nil, onSend: send)
                     }
                     .padding(12).frame(minHeight: 44)
-                    .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 20))
+                    .modifier(JotleyTranscriptCard(cornerRadius: 20))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
                     .onTapGesture { if generation == nil { inputFocused = true } }
                     Button(action: send) {
@@ -375,8 +375,6 @@ struct LocalAskNoteView: View {
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
-            .background(Color.themeBackground)
-            .toolbar(.hidden, for: .navigationBar)
             .alert("Clear Chat History?", isPresented: $showingClear) {
                 Button("Cancel", role: .cancel) { }
                 Button("Clear", role: .destructive) {
@@ -394,7 +392,9 @@ struct LocalAskNoteView: View {
             .onDisappear { cancel() }
             .onChange(of: scenePhase) { _, phase in if phase == .background { cancel() } }
             .onReceive(NotificationCenter.default.publisher(for: LiveTranscriptionManager.willBeginTranscription)) { _ in cancel() }
-            .tint(.themeActionText).observeThemeChanges()
+            .tint(.themePrimaryAccent).observeThemeChanges()
+            .modifier(JotleyGlassPanel())
+            .presentationBackground(.clear)
         }
     }
     private var header: some View {
@@ -439,10 +439,15 @@ struct LocalAskNoteView: View {
         HStack {
             if message.role == "user" { Spacer(minLength: 32) }
             VStack(alignment: .leading, spacing: 8) {
-                Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)
+                HStack(spacing: 12) {
+                    Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Text(message.timestamp, format: .dateTime.hour().minute())
+                        .font(.caption2.monospacedDigit())
+                }.foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { MarkdownContentView(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-            }.padding().background(message.role == "user" ? Color.themePrimaryAccent.opacity(0.14) : Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 16))
+            }.padding().modifier(JotleyTranscriptCard(emphasized: message.role == "user", neutral: message.role == "assistant"))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
     }
