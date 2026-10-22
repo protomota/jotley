@@ -521,7 +521,8 @@ private struct MacSupportPreviewRoot: View {
             guard host.fittingSize.width >= 580, host.fittingSize.height >= 650 else {
                 throw LocalError.message("Mac Ask AI did not mount at its intended readable size.")
             }
-            let renderer = ImageRenderer(content: content.frame(width: 580, height: 650))
+            // Glass has transparent rounded corners; composite against the window’s appearance for this offscreen snapshot.
+            let renderer = ImageRenderer(content: content.frame(width: 580, height: 650).background(Color.themeBackground))
             renderer.proposedSize = ProposedViewSize(width: 580, height: 650)
             guard let rendered = renderer.cgImage else { throw LocalError.message("Mac Ask AI snapshot failed.") }
             let bitmap = NSBitmapImageRep(cgImage: rendered)

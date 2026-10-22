@@ -171,7 +171,11 @@ struct JotleyTranscriptCard: ViewModifier {
                 shape.fill(Color.themeContentBackground)
                     .overlay { shape.fill((neutral ? Color.gray : theme.currentThemeColor.color).opacity(emphasized ? 0.16 : 0.08)) }
             } else {
-                Color.clear.glassEffect(.regular.tint((neutral ? Color.gray : theme.currentThemeColor.color).opacity(emphasized ? 0.16 : 0.08)), in: shape)
+                Color.clear.glassEffect(.regular, in: shape)
+                    .overlay {
+                        shape.fill((neutral ? Color.gray : theme.currentThemeColor.color)
+                            .opacity(emphasized ? 0.16 : neutral ? 0.04 : 0.08))
+                    }
             }
         }
     }
@@ -226,6 +230,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                 .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
         } else {
             Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(prominent ? 1 : 0.12)).interactive(), in: shape)
+                .overlay { if !prominent { shape.fill(Color.themePrimaryAccent.opacity(0.08)) } }
         }
     }
 }
