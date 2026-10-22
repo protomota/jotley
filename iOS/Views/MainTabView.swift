@@ -23,6 +23,7 @@ struct MainTabView: View {
     @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)])
     private var notes: FetchedResults<Note>
     @State private var selectedNoteId: UUID?
+    @State private var hasInitializedNoteSelection = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showingTranscriptionModal = false
     @State private var newTranscriptionNote: Note?
@@ -149,6 +150,7 @@ struct MainTabView: View {
         }
         .onChange(of: notes.map(\.objectID), initial: true) { _, _ in selectFirstNoteIfNeeded() }
         .onChange(of: selectedNoteId) { _, _ in selectFirstNoteIfNeeded() }
+        .onChange(of: horizontalSizeClass) { _, _ in selectFirstNoteIfNeeded() }
         .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, _ in openNotifiedSummary() }
         .onOpenURL { url in
             guard let action = MobileTranscriptionAction(url: url) else { return }
@@ -175,8 +177,21 @@ struct MainTabView: View {
         .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettings && !showingTranscriptionModal && !transcriptionManager.isTranscribing && !transcriptionManager.busy && transcriptionManager.summaryNoteID == nil && transcriptionManager.errorMessage == nil))
     }
     private func selectFirstNoteIfNeeded() {
-        if let selectedNoteId, notes.contains(where: { !$0.isDeleted && $0.id == selectedNoteId }) { return }
+        if let selectedNoteId, notes.contains(where: { !$0.isDeleted && $0.id == selectedNoteId }) {
+            hasInitializedNoteSelection = true
+            return
+        }
+        // Once a compact phone's selected note is deleted, leave the user in the
+        // list. Initial launch and layouts with room for a detail still select a note.
+        if hasInitializedNoteSelection,
+           UIDevice.current.userInterfaceIdiom == .phone,
+           horizontalSizeClass != .regular {
+            selectedNoteId = nil
+            preferredCompactColumn = .sidebar
+            return
+        }
         guard let first = notes.first(where: { !$0.isDeleted }) else { selectedNoteId = nil; return }
+        hasInitializedNoteSelection = true
         if first.id == nil { first.id = UUID(); transcriptionManager.saveEdits() }
         selectedNoteId = first.id
         preferredCompactColumn = .detail

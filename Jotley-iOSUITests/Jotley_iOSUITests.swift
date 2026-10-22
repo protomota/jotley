@@ -42,9 +42,13 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testAutomaticFirstNoteSelectionAndDeletion() throws {
+        let isIPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
+        XCUIDevice.shared.orientation = isIPad ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
         let app = XCUIApplication()
-        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Newest note","folder":"","tags":[],"transcript":"First note.","summary":"A useful summary."},{"title":"Older note","folder":"","tags":[],"transcript":"Second note.","summary":""}]"#
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Newest note","folder":"","tags":[],"transcript":"First note.","summary":"A useful summary."},{"title":"Older note","folder":"","tags":[],"transcript":"Second note.","summary":""},{"title":"Oldest note","folder":"","tags":[],"transcript":"Third note.","summary":""}]"#
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES"]
         app.launch()
         let title = app.staticTexts["noteDetailTitle"]
         XCTAssertTrue(title.waitForExistence(timeout: 15))
@@ -53,22 +57,29 @@ final class Jotley_iOSUITests: XCTestCase {
         let summaryTab = app.buttons["noteDetailSummaryTab"]
         transcriptTab.tap(); XCTAssertTrue(transcriptTab.isSelected)
         summaryTab.tap(); XCTAssertTrue(summaryTab.isSelected)
+        if !isIPad { app.buttons["BackButton"].tap() }
+        let older = app.buttons.containing(.staticText, identifier: "Older note").firstMatch
+        XCTAssertTrue(older.waitForExistence(timeout: 5)); older.tap()
+        XCTAssertEqual(title.label, "Older note")
         app.buttons["noteDetailMoreActionsButton"].tap()
         app.buttons["Delete Note"].tap()
         app.alerts["Delete Note"].buttons["Delete"].tap()
-        XCTAssertTrue(title.waitForExistence(timeout: 10))
-        XCTAssertTrue(NSPredicate(format: "label == %@", "Older note").evaluate(with: title) ||
-            XCTWaiter.wait(for: [expectation(for: NSPredicate(format: "label == %@", "Older note"), evaluatedWith: title)], timeout: 10) == .completed)
-        let back = app.buttons["BackButton"]
-        if back.exists && back.isHittable {
-            back.tap()
-            let row = app.buttons.containing(.staticText, identifier: "Older note").firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5)); row.tap()
-            XCTAssertEqual(title.label, "Older note")
+        if isIPad {
+            let selectedNewest = expectation(for: NSPredicate(format: "label == %@", "Newest note"), evaluatedWith: title)
+            wait(for: [selectedNewest], timeout: 10)
+            XCTAssertTrue(app.buttons.containing(.staticText, identifier: "Newest note").firstMatch.isHittable)
+        } else {
+            XCTAssertTrue(title.waitForNonExistence(timeout: 10), "Deleting on a single-column iPhone must return to the list, not open the newest note")
+            let settings = app.buttons["notesListSettingsButton"]
+            XCTAssertTrue(settings.waitForExistence(timeout: 5)); XCTAssertTrue(settings.isHittable)
+            XCTAssertTrue(app.buttons.containing(.staticText, identifier: "Newest note").firstMatch.isHittable)
         }
+        let oldest = app.buttons.containing(.staticText, identifier: "Oldest note").firstMatch
+        XCTAssertTrue(oldest.waitForExistence(timeout: 5)); oldest.tap()
+        XCTAssertEqual(title.label, "Oldest note", "A remaining note must still open normally")
         app.terminate(); app.launch()
         XCTAssertTrue(title.waitForExistence(timeout: 15))
-        XCTAssertEqual(title.label, "Newest note") // The disposable fixture resets on each launch.
+        XCTAssertEqual(title.label, "Newest note") // Initial selection is unchanged; fixtures reset on launch.
     }
 
     @MainActor func testSummaryStyleAppliesToEveryNoteAndPersistsInSettings() throws {
