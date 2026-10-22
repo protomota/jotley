@@ -8,6 +8,17 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+
+    @MainActor private func triggerSummaryAction(in app: XCUIApplication) {
+        let firstSummary = app.buttons["noteDetailGenerateSummaryButton"]
+        if firstSummary.exists && firstSummary.isHittable { firstSummary.tap() }
+        else {
+            app.buttons["noteDetailMoreActionsButton"].tap()
+            let regenerate = app.buttons["noteDetailGenerateSummaryMenuButton"]
+            XCTAssertTrue(regenerate.waitForExistence(timeout: 5)); regenerate.tap()
+        }
+    }
+
     @MainActor func testDuoCornerCaptureStaysClearOfNoteActions() throws {
         guard ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4" else {
             throw XCTSkip("Requires iPhone Duo")
@@ -31,12 +42,13 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertLessThanOrEqual(app.frame.maxX - plus.frame.maxX, 24)
             for tab in ["noteDetailSummaryTab", "noteDetailTranscriptTab"] {
                 app.buttons[tab].tap()
-                let regenerate = app.buttons["noteDetailGenerateSummaryButton"]
-                XCTAssertTrue(regenerate.isHittable)
-                XCTAssertFalse(plus.frame.intersects(regenerate.frame), "The corner + must never cover Regenerate Summary")
-                XCTAssertEqual(plus.frame.height, regenerate.frame.height, accuracy: 1)
-                XCTAssertEqual(plus.frame.midY, regenerate.frame.midY, accuracy: 1,
-                               "The + and primary note action must share the same horizontal row")
+                let quickAction = app.buttons[tab == "noteDetailSummaryTab" ? "noteDetailSummaryAskAIButton" : "noteDetailContinueTranscriptionButton"]
+                XCTAssertTrue(quickAction.isHittable)
+                XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
+                XCTAssertFalse(plus.frame.intersects(quickAction.frame))
+                XCTAssertEqual(quickAction.frame.height, 44, accuracy: 1)
+                XCTAssertEqual(plus.frame.midY, quickAction.frame.midY, accuracy: 1)
+                XCTAssertEqual(quickAction.frame.midX, app.frame.midX, accuracy: 1)
                 XCTAssertTrue(app.buttons["noteDetailShareButton"].isHittable)
                 XCTAssertTrue(app.buttons["noteDetailMoreActionsButton"].isHittable)
             }
@@ -76,27 +88,34 @@ final class Jotley_iOSUITests: XCTestCase {
             for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .portrait] {
                 XCUIDevice.shared.orientation = orientation
                 let primary = app.buttons["noteDetailGenerateSummaryButton"]
-                XCTAssertTrue(primary.waitForExistence(timeout: 5))
-                let title = hasSummary ? "Regenerate Summary" : "Generate Summary"
-                let textWidth = (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)]).width
-                XCTAssertTrue(primary.isHittable)
-                XCTAssertEqual(primary.label, title)
-                XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 39, "The unscaled label needs 20 points of padding on each side")
-                for identifier in ["noteDetailTemplatesButton", "noteDetailGenerateSummaryButton", "notesListNewNoteButton"] {
-                    let button = app.buttons[identifier]
-                    if button.exists {
-                        XCTAssertGreaterThanOrEqual(button.frame.minX, app.frame.minX)
-                        XCTAssertLessThanOrEqual(button.frame.maxX, app.frame.maxX)
-                    }
+                if hasSummary {
+                    XCTAssertFalse(primary.exists, "Regeneration belongs in More after a summary exists")
+                    XCTAssertFalse(app.buttons["noteDetailTemplatesButton"].exists)
+                    let quickAction = app.buttons["noteDetailSummaryAskAIButton"]
+                    let settled = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: quickAction)
+                    wait(for: [settled], timeout: 5)
+                    XCTAssertEqual(quickAction.frame.height, 44, accuracy: 1)
+                    app.buttons["noteDetailMoreActionsButton"].tap()
+                    XCTAssertTrue(app.buttons["noteDetailGenerateSummaryMenuButton"].waitForExistence(timeout: 5))
+                    XCTAssertEqual(app.buttons["noteDetailGenerateSummaryMenuButton"].label, "Regenerate Summary")
+                    app.buttons["noteDetailSummaryTemplateMenu"].tap()
+                    let template = app.buttons["Personal Note"]
+                    XCTAssertTrue(template.waitForExistence(timeout: 5)); template.tap()
+                    XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].isHittable)
+                } else {
+                    XCTAssertTrue(primary.waitForExistence(timeout: 5))
+                    XCTAssertEqual(primary.label, "Generate Summary")
+                    let textWidth = ("Generate Summary" as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold)]).width
+                    XCTAssertGreaterThanOrEqual(primary.frame.width, textWidth + 39)
+                    XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].isHittable)
+                    XCTAssertLessThan(primary.frame.maxY, app.buttons["noteDetailContinueTranscriptionButton"].frame.minY,
+                                      "First-time generation belongs in the scrolling content above the floating action")
                 }
                 if orientation == .portrait {
-                    let plus = app.buttons["notesListNewNoteButton"]
                     let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
-                    let cornerButton = isDuo ? plus : primary
-                    let expectedInset: CGFloat = isDuo ? 24 : 16
-                    XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, expectedInset, accuracy: 2,
-                                   "Bottom controls must use the same edge padding as their sides")
-                    XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, expectedInset, accuracy: 2)
+                    let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : app.buttons[hasSummary ? "noteDetailSummaryAskAIButton" : "noteDetailContinueTranscriptionButton"]
+                    XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isDuo ? 24 : 16, accuracy: 2)
+                    if isDuo { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
                 }
                 for (index, screen) in XCUIScreen.screens.enumerated() {
                     let capture = XCTAttachment(screenshot: screen.screenshot())
@@ -177,13 +196,12 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(last.exists && last.isHittable)
             XCTAssertLessThan(last.frame.maxY, continueButton.frame.minY - 8, "The last line must scroll fully clear of the floating controls")
             XCTAssertTrue(continueButton.isHittable)
-            let primary = app.buttons["noteDetailGenerateSummaryButton"]
-            XCTAssertTrue(primary.isHittable)
+            XCTAssertEqual(continueButton.frame.height, 44, accuracy: 1)
+            XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
             let isDuo = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] == "iPhone19,4"
-            let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : primary
-            let expectedInset: CGFloat = isDuo ? 24 : 16
-            XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, expectedInset, accuracy: 2)
-            XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, expectedInset, accuracy: 2)
+            let cornerButton = isDuo ? app.buttons["notesListNewNoteButton"] : continueButton
+            XCTAssertEqual(app.frame.maxY - cornerButton.frame.maxY, isDuo ? 24 : 16, accuracy: 2)
+            if isDuo { XCTAssertEqual(app.frame.maxX - cornerButton.frame.maxX, 24, accuracy: 2) }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Floating controls with complete transcript - \(appearance)"
             screenshot.lifetime = .keepAlways; add(screenshot)
@@ -390,7 +408,7 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         XCTAssertTrue(app.staticTexts["Outdated-1"].waitForExistence(timeout: 5))
         for _ in 0..<2 {
-            app.buttons["noteDetailGenerateSummaryButton"].tap()
+            triggerSummaryAction(in: app)
             XCTAssertTrue(app.staticTexts["AI"].waitForExistence(timeout: 10))
             XCTAssertTrue(app.staticTexts["Design"].exists)
             for old in oldTags { XCTAssertFalse(app.staticTexts[old].exists, "Old tags must disappear without reopening the note") }
@@ -398,7 +416,7 @@ final class Jotley_iOSUITests: XCTestCase {
             for tag in ["AI", "Design", "Research", "Planning", "Meetings"] {
                 XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", tag)).count, 1)
             }
-            XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 5))
         }
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Regeneration replaces ten visible tags with five library-aware tags"
@@ -737,9 +755,10 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launch()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
-        app.buttons["noteDetailGenerateSummaryButton"].tap()
+        triggerSummaryAction(in: app)
         let cancel = app.buttons["noteDetailCancelGenerationButton"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 10)); XCTAssertTrue(cancel.isHittable)
+        XCTAssertEqual(cancel.frame.height, 44, accuracy: 1)
         XCTAssertTrue(app.staticTexts["Preparing summary"].exists)
         XCTAssertFalse(app.alerts.firstMatch.exists)
         let preparing = XCTAttachment(screenshot: app.screenshot())
@@ -754,7 +773,7 @@ final class Jotley_iOSUITests: XCTestCase {
         let stopped = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cancel)
         wait(for: [stopped], timeout: 10)
         XCTAssertTrue(app.staticTexts["Existing summary remains after Cancel."].exists)
-        XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].isEnabled)
+        XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].isEnabled)
         XCTAssertFalse(app.staticTexts["Summary update 25"].waitForExistence(timeout: 2))
     }
 
@@ -766,7 +785,7 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launch()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
-        app.buttons["noteDetailGenerateSummaryButton"].tap()
+        triggerSummaryAction(in: app)
         XCTAssertTrue(app.buttons["noteDetailCancelGenerationButton"].waitForExistence(timeout: 10))
         XCUIDevice.shared.press(.home)
         Thread.sleep(forTimeInterval: 6)
@@ -809,8 +828,8 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(resume.waitForExistence(timeout: 5)); XCTAssertFalse(ask.exists)
             app.buttons["noteDetailSummaryTab"].tap()
             XCTAssertTrue(ask.waitForExistence(timeout: 5)); XCTAssertFalse(resume.exists)
-            XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].exists)
-            XCTAssertEqual(app.buttons["noteDetailGenerateSummaryButton"].label, "Regenerate Summary")
+            XCTAssertFalse(app.buttons["noteDetailTemplatesButton"].exists)
+            XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
         }
         let footer = XCTAttachment(screenshot: app.screenshot())
         footer.name = "Summary tab with contextual Ask AI"; footer.lifetime = .keepAlways; add(footer)
@@ -1474,27 +1493,25 @@ final class Jotley_iOSUITests: XCTestCase {
         let row = app.buttons.containing(.staticText, identifier: "Long template verification").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         XCTAssertTrue(app.staticTexts["Long recording summary"].waitForExistence(timeout: 5))
-        let templates = app.buttons["noteDetailTemplatesButton"]
-        let templateFrame = templates.frame
-        let summaryFrame = app.buttons["noteDetailGenerateSummaryButton"].frame
+        let quickAction = app.buttons["noteDetailSummaryAskAIButton"]
+        let quickActionFrame = quickAction.frame
         for (key, title) in [("lecture", "Lecture"), ("meetings/general", "General Meeting"), ("default-summary", "Auto"), ("lecture", "Lecture")] {
-            templates.tap()
-            let choice = app.buttons["noteTemplate-\(key)"]
+            app.buttons["noteDetailMoreActionsButton"].tap()
+            app.buttons["noteDetailSummaryTemplateMenu"].tap()
+            let choice = app.buttons[title]
             XCTAssertTrue(choice.waitForExistence(timeout: 5))
             let start = Date(); choice.tap()
-            let updated = expectation(for: NSPredicate(format: "label == %@", "Templates: " + title), evaluatedWith: templates)
-            wait(for: [updated], timeout: 5)
-            for (actual, expected) in [(templates.frame, templateFrame), (app.buttons["noteDetailGenerateSummaryButton"].frame, summaryFrame)] {
-                XCTAssertEqual(actual.width, expected.width, accuracy: 0.5)
-                XCTAssertEqual(actual.height, expected.height, accuracy: 0.5)
-                XCTAssertEqual(actual.minX, expected.minX, accuracy: 0.5)
-                XCTAssertEqual(actual.minY, expected.minY, accuracy: 0.5)
-            }
+            XCTAssertTrue(quickAction.isHittable)
+            let actual = quickAction.frame
+            XCTAssertEqual(actual.width, quickActionFrame.width, accuracy: 0.5)
+            XCTAssertEqual(actual.height, quickActionFrame.height, accuracy: 0.5)
+            XCTAssertEqual(actual.minX, quickActionFrame.minX, accuracy: 0.5)
+            XCTAssertEqual(actual.minY, quickActionFrame.minY, accuracy: 0.5)
             print("Long-note template selection \(title): \(Date().timeIntervalSince(start))s")
             XCTAssertTrue(app.staticTexts["Long recording summary"].exists)
             XCTAssertTrue(app.descendants(matching: .any)["markdownListItem-1"].firstMatch.exists)
             XCTAssertFalse(app.textViews.firstMatch.exists, "Template selection must not enter editing")
-            XCTAssertEqual(app.buttons["noteDetailGenerateSummaryButton"].label, "Regenerate Summary")
+            XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
         }
         app.buttons["noteDetailMoreActionsButton"].tap()
         let edit = app.buttons["noteDetailEditSummaryButton"]
@@ -1627,14 +1644,16 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
         XCTAssertFalse(app.alerts.firstMatch.exists, app.debugDescription)
         let generatedTitle = title.label
-        templates.tap(); app.buttons["noteTemplate-meetings/general"].tap()
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        app.buttons["noteDetailSummaryTemplateMenu"].tap()
+        app.buttons["General Meeting"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists,
                       "Changing templates keeps the rendered summary open")
-        generate.tap()
+        triggerSummaryAction(in: app)
         XCTAssertFalse(app.alerts.firstMatch.exists, "Regenerate starts without a confirmation")
-        let finished = expectation(for: NSPredicate(format: "exists == true AND enabled == true"), evaluatedWith: generate)
+        let finished = expectation(for: NSPredicate(format: "exists == true AND enabled == true"), evaluatedWith: app.buttons["noteDetailSummaryAskAIButton"])
         wait(for: [finished], timeout: 60)
-        XCTAssertEqual(templates.label, "Templates: General Meeting")
+        XCTAssertFalse(templates.exists)
         XCTAssertEqual(title.label, generatedTitle, "Regeneration preserves the generated title")
         XCTAssertFalse(app.alerts.firstMatch.exists, app.debugDescription)
         let summary = XCTAttachment(screenshot: app.screenshot())
@@ -1672,14 +1691,12 @@ final class Jotley_iOSUITests: XCTestCase {
         openMeeting()
         XCTAssertTrue(app.buttons["Summary"].waitForExistence(timeout: 5))
         capture("01-summary-dark")
-        let templates = app.buttons["noteDetailTemplatesButton"]
-        XCTAssertTrue(templates.exists && templates.isEnabled)
-        templates.tap(); app.buttons["noteTemplate-default-summary"].tap()
-        XCTAssertEqual(templates.label, "Templates: Auto")
+        app.buttons["noteDetailMoreActionsButton"].tap()
+        app.buttons["noteDetailSummaryTemplateMenu"].tap()
+        app.buttons["Auto"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists,
                       "Template choice must keep the rendered summary visible")
-        let regenerate = app.buttons["noteDetailGenerateSummaryButton"]
-        XCTAssertEqual(regenerate.label, "Regenerate Summary")
+        XCTAssertFalse(app.buttons["noteDetailGenerateSummaryButton"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["noteDetailSummaryContent"].exists)
         launch("Light")
         openMeeting()

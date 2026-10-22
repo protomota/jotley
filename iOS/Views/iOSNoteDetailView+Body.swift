@@ -7,6 +7,13 @@ extension NoteDetailView {
             VStack(spacing: 0) {
                 noteHeaderSection
                 if hasTranscript || hasSummary { noteTabPickerSection }
+                if hasTranscript && !hasSummary {
+                    NoteSummaryActionsLayout(spacing: 8) {
+                        summaryTemplateButton
+                        primarySummaryButton
+                    }
+                    .padding(.horizontal, 16).padding(.bottom, 16)
+                }
                 if selectedTab == "Summary", hasSummary {
                     if summaryIsRunning && transcriptionManager.summaryPreview.isEmpty {
                         Text("Long transcripts are reviewed in sections on this device. Your summary will appear here as it is written. You can leave this note or lock your phone; the summary keeps going and is saved when it finishes.")
@@ -80,6 +87,17 @@ extension NoteDetailView {
                         .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
                         .accessibilityIdentifier("noteDetailAskAIButton")
                     if hasTranscript {
+                        Menu("Summary Template", systemImage: "sparkles") {
+                            summaryTemplateChoices
+                        }
+                        .disabled(!transcriptionManager.canStart)
+                        .accessibilityIdentifier("noteDetailSummaryTemplateMenu")
+                        Button(hasSummary ? "Regenerate Summary" : "Generate Summary", systemImage: "arrow.clockwise") {
+                            generateSummary()
+                        }
+                        .disabled(!transcriptionManager.canStart || !hasTranscript)
+                        .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
+                        Divider()
                         Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
                             .disabled(!transcriptionManager.canStart)
                             .accessibilityIdentifier("noteDetailEditTranscriptButton")
@@ -182,8 +200,6 @@ extension NoteDetailView {
             if summaryIsRunning { summaryProgressFooter }
             else { transcriptionAndSummaryFooter }
         }
-        // The footer host reaches the bottom edge, so its bottom inset matches
-        // its horizontal inset instead of adding the home-indicator safe area.
         .background { FloatingNoteGlassBackground().ignoresSafeArea(.container, edges: .bottom) }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsFooterHeight = $0 }
     }
@@ -206,15 +222,12 @@ extension NoteDetailView {
                     Button { transcriptionManager.cancelProcessing() } label: {
                         MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
                             .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 48)
                     }.buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
                         .modifier(FloatingNoteControlShadow())
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
-                        }
+                        .frame(maxWidth: .infinity)
                     if let newTranscriptionAction {
-                        NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction)
+                        NotesNewTranscriptionButton(diameter: 58, action: newTranscriptionAction)
                     }
                     }
                 }
@@ -224,36 +237,18 @@ extension NoteDetailView {
     }
 
     private var transcriptionAndSummaryFooter: some View {
-        VStack(spacing: 8) {
-            if selectedTab == "Summary" {
-                Button { showingAskAI = true } label: {
-                    MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
-                }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
-                    .modifier(FloatingNoteControlShadow())
-                    .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
-                    .accessibilityIdentifier("noteDetailSummaryAskAIButton")
-            } else {
-                Button { showingTranscription = true } label: {
-                    MobileActionLabel("Continue Transcription", systemImage: "waveform")
-                }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
-                    .modifier(FloatingNoteControlShadow())
-                    .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
-                    .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
-            }
-            if hasTranscript {
-                NoteSummaryActionsLayout(spacing: newTranscriptionAction == nil ? 8 : 12) {
-                    summaryTemplateButton
-                    primarySummaryButton
-                    if let newTranscriptionAction {
-                        NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction)
-                    }
-                }
-            } else if let newTranscriptionAction {
-                HStack { Spacer(); NotesNewTranscriptionButton(diameter: duoPrimaryActionHeight, action: newTranscriptionAction) }
+        HStack {
+            Spacer(minLength: 0)
+            contextualNoteAction
+            Spacer(minLength: 0)
+        }
+        // Reserve equal space on both sides so the quick action stays centered
+        // on Duo while the separate + remains tucked into its corner.
+        .padding(.horizontal, newTranscriptionAction == nil ? 0 : 70)
+        .frame(minHeight: newTranscriptionAction == nil ? 44 : 58)
+        .overlay(alignment: .bottomTrailing) {
+            if let newTranscriptionAction {
+                NotesNewTranscriptionButton(diameter: 58, action: newTranscriptionAction)
             }
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
@@ -261,14 +256,39 @@ extension NoteDetailView {
         .frame(maxWidth: .infinity)
     }
 
+    @ViewBuilder private var contextualNoteAction: some View {
+        if selectedTab == "Summary" {
+            Button { showingAskAI = true } label: {
+                MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
+            }
+            .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
+            .modifier(FloatingNoteControlShadow())
+            .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
+            .accessibilityIdentifier("noteDetailSummaryAskAIButton")
+        } else {
+            Button { showingTranscription = true } label: {
+                MobileActionLabel("Continue Transcription", systemImage: "waveform")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
+            .modifier(FloatingNoteControlShadow())
+            .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
+            .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
+        }
+    }
+
+    @ViewBuilder private var summaryTemplateChoices: some View {
+        ForEach(LocalSummaryTemplate.allCases) { template in
+            Button { selectTemplate(template) } label: {
+                if selectedTemplate == template { Label(template.title, systemImage: "checkmark") }
+                else { Text(template.title) }
+            }.accessibilityIdentifier("noteTemplate-\(template.key)")
+        }
+    }
+
     private var summaryTemplateButton: some View {
         Menu {
-            ForEach(LocalSummaryTemplate.allCases) { template in
-                Button { selectTemplate(template) } label: {
-                    if selectedTemplate == template { Label(template.title, systemImage: "checkmark") }
-                    else { Text(template.title) }
-                }.accessibilityIdentifier("noteTemplate-\(template.key)")
-            }
+            summaryTemplateChoices
         } label: {
             MobileActionLabel(selectedTemplate.title, systemImage: "sparkles")
                 .font(.system(size: 15, weight: .medium))
@@ -297,8 +317,5 @@ extension NoteDetailView {
         .modifier(FloatingNoteControlShadow())
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-            if newTranscriptionAction != nil { duoPrimaryActionHeight = $0 }
-        }
     }
 }

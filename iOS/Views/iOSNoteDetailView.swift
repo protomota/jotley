@@ -21,7 +21,6 @@ struct NoteDetailView: View {
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) var scenePhase
-    @State var duoPrimaryActionHeight: CGFloat = 58
     @State var actionsFooterHeight: CGFloat = 150
     @State var selectedTab = "Transcript"
     @State var isEditingTitle = false
