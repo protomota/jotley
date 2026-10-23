@@ -340,10 +340,11 @@ struct NotesListView: View {
     private var settingsButton: some View {
         Button(action: { showingSettings = true }) {
             Image(systemName: "gearshape")
-                .font(.system(size: 24, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
+                .font(.system(size: 24, weight: .medium))
             .frame(width: 44, height: 44)
         }
         .buttonStyle(JotleyGlassButtonStyle(circular: true))
+        .modifier(FloatingNoteControlShadow())
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("notesListSettingsButton")
     }

@@ -194,19 +194,21 @@ extension NotesListView {
             HStack(alignment: .center) {
                 Button { showingSettingsSheet = true } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 18, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
-                        .frame(width: 36, height: 36).contentShape(Rectangle())
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 36, height: 36)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(JotleyGlassButtonStyle(circular: true))
+                .modifier(FloatingNoteControlShadow())
                 .help("Settings")
                 .accessibilityLabel("Settings")
                 .accessibilityIdentifier("notesListSettingsButton")
                 Spacer()
                 Button { Task { await viewModel.startNewNote() } } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.themePrimaryAccent)
+                        .font(.system(size: 18, weight: .semibold))
                 }
                 .buttonStyle(JotleyGlassButtonStyle(circular: true))
+                .modifier(FloatingNoteControlShadow())
                 .disabled(!canCreateNewNote)
                 .help("New Transcription")
                 .accessibilityLabel("New Transcription")

@@ -239,8 +239,21 @@ private struct JotleyTransparentSheetWindow: NSViewRepresentable {
 }
 #endif
 
+/// The floating control halo follows live theme and appearance changes.
+struct FloatingNoteControlShadow: ViewModifier {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: themeManager.currentThemeColor.color.opacity(colorScheme == .dark ? 0.30 : 0.18), radius: 10, y: 2)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.14), radius: 6, y: 3)
+    }
+}
+
 /// Keep glass controls consistent across the Mac and mobile custom headers.
 struct JotleyGlassButtonStyle: ButtonStyle {
+    @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var circular = false
@@ -265,7 +278,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                     .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
-        .foregroundStyle((configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themePrimaryAccent)
+        .foregroundStyle((configuration.role == .destructive ? Color.red : prominent ? Color.white : themeManager.currentThemeColor.color)
             .opacity(!isEnabled && keepsDisabledSurfaceVisible ? 0.82 : 1))
         .opacity(isEnabled || keepsDisabledSurfaceVisible ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
@@ -274,14 +287,14 @@ struct JotleyGlassButtonStyle: ButtonStyle {
 
     @ViewBuilder private func background<S: Shape>(in shape: S) -> some View {
         if reduceTransparency {
-            shape.fill(prominent ? Color.themePrimaryAccent : Color.themeBackground)
-                .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
+            shape.fill(prominent ? themeManager.currentThemeColor.color : Color.themeBackground)
+                .overlay { shape.fill(themeManager.currentThemeColor.color.opacity(0.12)) }
         } else {
             Color.clear.glassEffect((prominent ? Glass.regular : Glass.clear)
-                .tint(Color.themePrimaryAccent.opacity(prominent ? 1 : 0.06)).interactive(), in: shape)
+                .tint(themeManager.currentThemeColor.color.opacity(prominent ? 1 : 0.06)).interactive(), in: shape)
                 .overlay {
                     if !prominent {
-                        shape.fill(LinearGradient(colors: [Color.themePrimaryAccent.opacity(0.06), Color.themePrimaryAccent.opacity(0.02)],
+                        shape.fill(LinearGradient(colors: [themeManager.currentThemeColor.color.opacity(0.06), themeManager.currentThemeColor.color.opacity(0.02)],
                             startPoint: .top, endPoint: .bottom))
                         shape.stroke(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.12), .white.opacity(0.38)],
                             startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)

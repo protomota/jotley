@@ -282,13 +282,15 @@ struct MacSummaryActionsFooter: View {
     var body: some View {
         Button(action: onAsk) {
             Label {
-                Text("Ask AI").foregroundStyle(Color.themePrimaryAccent)
+                Text("Ask AI")
             } icon: {
-                Image(systemName: "bubble.left.and.bubble.right").foregroundStyle(Color.themePrimaryAccent)
+                Image(systemName: "bubble.left.and.bubble.right")
             }
             .font(.system(size: 13, weight: .medium))
         }
         .accessibilityIdentifier("noteDetailSummaryAskAIButton")
-        .buttonStyle(JotleyGlassButtonStyle()).disabled(!isEnabled)
+        .buttonStyle(JotleyGlassButtonStyle())
+        .modifier(FloatingNoteControlShadow())
+        .disabled(!isEnabled)
     }
 }

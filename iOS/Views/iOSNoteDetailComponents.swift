@@ -53,24 +53,15 @@ struct NoteSummaryActionsLayout: Layout {
 /// Glass belongs to each pill, leaving the space around the controls clear.
 typealias FloatingNoteSecondaryButtonStyle = JotleyGlassButtonStyle
 
-struct FloatingNoteControlShadow: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        content
-            .shadow(color: Color.themePrimaryAccent.opacity(colorScheme == .dark ? 0.30 : 0.18), radius: 10, y: 2)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.14), radius: 6, y: 3)
-    }
-}
-
 struct NotesNewTranscriptionButton: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.themePrimaryAccent)
+                .foregroundStyle(themeManager.currentThemeColor.color)
         }
         .buttonStyle(JotleyGlassButtonStyle(circular: true))
         .modifier(FloatingNoteControlShadow())

@@ -2220,6 +2220,78 @@ final class Jotley_iOSUITests: XCTestCase {
     }
     #endif
 
+    @MainActor func testFloatingButtonGlowsFollowLiveThemeChanges() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let isPad = UIDevice.current.model.hasPrefix("iPad")
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple", "-jotleyWelcomeCompleted.v1", "YES"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"""
+        [{"title":"Live theme controls","folder":"Work","tags":[],"transcript":"The team will review the launch on Friday.","summary":"## Summary\nThe team has a clear plan for Friday."}]
+        """#
+        app.launch()
+        XCTAssertTrue(app.buttons["noteDetailSummaryTab"].waitForExistence(timeout: 15))
+        if !isPad { app.buttons["BackButton"].tap() }
+
+        func assertGlow(_ button: XCUIElement, theme: String) throws {
+            XCTAssertTrue(button.isHittable)
+            let screenshot = app.screenshot()
+            let image = try XCTUnwrap(screenshot.image.cgImage)
+            let context = try XCTUnwrap(CGContext(data: nil, width: image.width, height: image.height,
+                bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+            let frame = button.frame
+            let scale = CGFloat(image.width) / app.frame.width
+            var sum = [Double](repeating: 0, count: 3)
+            var count = 0.0
+            // Sample outside the capsule, excluding its border and icon. These
+            // pixels must change even when the control itself isn't recreated.
+            for edge in [frame.minY - 7, frame.maxY + 2] {
+                for y in max(0, Int(edge * scale))..<min(image.height, Int((edge + 5) * scale)) {
+                    for x in max(0, Int((frame.midX - 5) * scale))..<min(image.width, Int((frame.midX + 5) * scale)) {
+                        let offset = y * context.bytesPerRow + x * 4
+                        for channel in 0..<3 { sum[channel] += Double(pixels[offset + channel]) }
+                        count += 1
+                    }
+                }
+            }
+            XCTAssertGreaterThan(count, 0)
+            let rgb = sum.map { $0 / max(1, count) }
+            print("LIVE GLOW \(button.identifier) \(theme): \(rgb)")
+            switch theme {
+            case "Orange": XCTAssertGreaterThan(rgb[0] - rgb[2], 1, "Orange glow must replace the previous purple glow")
+            case "Light Blue": XCTAssertGreaterThan(rgb[2] - rgb[0], 1); XCTAssertGreaterThan(rgb[1] - rgb[0], 0.5)
+            case "Neutral": XCTAssertLessThan(rgb.max()! - rgb.min()!, 2, "Neutral glow must not retain a colored cast")
+            default: XCTAssertGreaterThan(rgb[2] - rgb[1], 1)
+            }
+        }
+        for mode in ["Dark", "Light"] {
+            for theme in ["Orange", "Light Blue", "Neutral", "Purple"] {
+                let gear = app.buttons["notesListSettingsButton"]
+                gear.tap()
+                app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch.tap()
+                app.buttons[mode].tap()
+                app.descendants(matching: .any)["settingsThemeColorPicker"].firstMatch.tap()
+                app.buttons[theme].tap()
+                app.buttons["settingsDoneButton"].tap()
+                XCTAssertTrue(gear.waitForExistence(timeout: 5))
+                let shot = XCTAttachment(screenshot: app.screenshot())
+                shot.name = "Live floating glows - \(mode) - \(theme)"; shot.lifetime = .keepAlways; add(shot)
+                try assertGlow(app.buttons["notesListNewNoteButton"].firstMatch, theme: theme)
+                try assertGlow(gear, theme: theme)
+                if !isPad { app.buttons.containing(.staticText, identifier: "Live theme controls").firstMatch.tap() }
+                let ask = app.buttons["noteDetailSummaryAskAIButton"]
+                XCTAssertTrue(ask.waitForExistence(timeout: 5))
+                try assertGlow(ask, theme: theme)
+                if !isPad { app.buttons["BackButton"].tap() }
+            }
+        }
+    }
+
     @MainActor func testSettingsGlassAndAskAIReadability() throws {
         let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
         XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
