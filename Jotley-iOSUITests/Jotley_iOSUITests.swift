@@ -251,7 +251,7 @@ final class Jotley_iOSUITests: XCTestCase {
         let title = app.staticTexts["onboardingTitle"]
         XCTAssertTrue(title.waitForExistence(timeout: 15))
         func expectTitle(_ text: String) {
-            let match = expectation(for: NSPredicate(format: "label == %@", text), evaluatedWith: title)
+            let match = expectation(for: NSPredicate(format: "label == %@", onboardingTitle(text, in: app)), evaluatedWith: title)
             wait(for: [match], timeout: 5)
         }
         title.swipeRight(); expectTitle("Stay in the conversation.")
@@ -265,6 +265,17 @@ final class Jotley_iOSUITests: XCTestCase {
         title.swipeLeft(); expectTitle("Free software.\nSupported by people.")
         XCTAssertTrue(app.buttons["onboardingContinue"].exists, "Swiping past the end must not finish setup")
         app.buttons["onboardingBack"].tap(); expectTitle("Give your words a place.")
+    }
+
+    @MainActor private func onboardingTitle(_ text: String, in app: XCUIApplication) -> String {
+        guard UIDevice.current.model.hasPrefix("iPad"), app.frame.width >= 620 else { return text }
+        return switch text {
+        case "Stay in the conversation.": "Stay in the\nconversation."
+        case "Find the useful parts.": "Find clarity in\nevery conversation."
+        case "Start with your language.": "Start with\nyour language."
+        case "Give your words a place.": "Give your words\na place."
+        default: text
+        }
     }
 
     @MainActor func testOnboardingFitsWithoutScrolling() throws {
@@ -310,6 +321,7 @@ final class Jotley_iOSUITests: XCTestCase {
         }
         var tallestPageHeight: CGFloat = 0
         let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Free software.\nSupported by people."]
+            .map { onboardingTitle($0, in: app) }
         for index in 0..<5 {
             let titleMatches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", titles[index]), object: app.staticTexts["onboardingTitle"])
             XCTAssertEqual(XCTWaiter.wait(for: [titleMatches], timeout: 15), .completed)
@@ -355,8 +367,10 @@ final class Jotley_iOSUITests: XCTestCase {
         }
         let headerBottom = app.descendants(matching: .any)["onboardingHeader"].firstMatch.frame.maxY
         let footerTop = app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.minY
-        XCTAssertEqual(initialBlock.minY + tallestPageHeight / 2, (headerBottom + footerTop) / 2, accuracy: 4,
-            "The shared block, sized for the tallest page, must be centered between header and footer")
+        XCTAssertGreaterThan(initialBlock.minY + tallestPageHeight / 2, (headerBottom + footerTop) / 2 + 8,
+            "The shared content block should sit lower in the available area")
+        XCTAssertLessThanOrEqual(initialBlock.minY + tallestPageHeight, footerTop - 8,
+            "Even the tallest page must remain clear of the footer")
     }
 
     @MainActor func testOnboardingSupportIsOptionalAndStorefrontAware() throws {
@@ -396,7 +410,7 @@ final class Jotley_iOSUITests: XCTestCase {
             }
             let back = app.buttons["onboardingBack"]
             XCTAssertTrue(back.isHittable); back.tap()
-            XCTAssertEqual(title.label, "Give your words a place.")
+            XCTAssertEqual(title.label, onboardingTitle("Give your words a place.", in: app))
             if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
             else { app.buttons["onboardingContinue"].tap() }
             app.buttons["onboardingContinue"].tap()
@@ -696,7 +710,7 @@ final class Jotley_iOSUITests: XCTestCase {
             let actionFrame = app.buttons["onboardingContinue"].frame
             let progressY = app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.midY
             for expected in ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place."] {
-                XCTAssertEqual(title.label, expected)
+                XCTAssertEqual(title.label, onboardingTitle(expected, in: app))
                 XCTAssertTrue(app.buttons["onboardingContinue"].isHittable, "The primary action must remain visible")
                 XCTAssertLessThanOrEqual(app.buttons["onboardingContinue"].frame.maxX, app.frame.maxX - 12, "The action must fit completely inside the window")
                 XCTAssertGreaterThanOrEqual(app.buttons["onboardingContinue"].frame.minX, app.frame.minX + 12)
@@ -771,7 +785,7 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(replay.isHittable)
             replay.tap()
             XCTAssertTrue(title.waitForExistence(timeout: 5))
-            XCTAssertEqual(title.label, "Stay in the conversation.")
+            XCTAssertEqual(title.label, onboardingTitle("Stay in the conversation.", in: app))
             XCTAssertFalse(app.buttons["settingsDoneButton"].exists, "Replaying welcome must dismiss Settings first")
             if mode == "Dark" {
                 app.buttons["onboardingSkip"].tap()

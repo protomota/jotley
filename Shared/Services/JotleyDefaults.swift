@@ -977,6 +977,25 @@ struct JotleyOnboardingPresentation: ViewModifier {
     }
 }
 
+#if os(iOS)
+/// Bias the shared page block toward the screen's center without allowing
+/// its tallest page to overlap the footer on shorter windows.
+private struct JotleyOnboardingContentLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        proposal.replacingUnspecifiedDimensions()
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let content = subviews.first else { return }
+        let contentProposal = ProposedViewSize(width: bounds.width, height: bounds.height)
+        let size = content.sizeThatFits(contentProposal)
+        let spareHeight = max(0, bounds.height - size.height)
+        let lowerBy = min(72, spareHeight / 2)
+        content.place(at: CGPoint(x: bounds.midX, y: bounds.minY + spareHeight / 2 + lowerBy),
+                      anchor: .top, proposal: contentProposal)
+    }
+}
+#endif
+
 struct JotleyOnboardingView: View {
     let onFinish: () -> Void
     @AppStorage(JotleyOnboarding.completedKey) private var completed = false
@@ -1026,7 +1045,16 @@ struct JotleyOnboardingView: View {
     private var actionInk: Color { colorScheme == .dark ? accent.mix(with: .white, by: 0.45) : accent.mix(with: .black, by: 0.42) }
     private var muted: Color { ink.opacity(colorScheme == .dark ? 0.76 : 0.68) }
     private var onboardingBackground: Color { colorScheme == .dark ? Color(red: 0.065, green: 0.055, blue: 0.085) : Color(red: 0.985, green: 0.98, blue: 0.995) }
-    private func title(for page: Int) -> String {
+    private func title(for page: Int, twoLines: Bool = false) -> String {
+        if twoLines && page != supportStep {
+            return switch page {
+            case 0: "Stay in the\nconversation."
+            case 1: "Find clarity in\nevery conversation."
+            case 2: "Start with\nyour language."
+            case 3: "Give your words\na place."
+            default: "Bring app audio along."
+            }
+        }
         if page == supportStep { return "Free software.\nSupported by people." }
         return switch page {
         case 0: "Stay in the conversation."
@@ -1059,17 +1087,19 @@ struct JotleyOnboardingView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.vertical, 12)
                 #else
-                ViewThatFits(in: .vertical) {
-                    mobilePageLayout(wide: wide, dense: compact, artWidth: artWidth, scale: scale)
-                        .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
-                    ScrollView {
-                        mobilePageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth, scale: scale)
-                            .padding(.vertical, 8)
+                JotleyOnboardingContentLayout {
+                    ViewThatFits(in: .vertical) {
+                        mobilePageLayout(wide: wide, dense: compact, artWidth: artWidth, scale: scale)
+                            .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
+                        ScrollView {
+                            mobilePageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth, scale: scale)
+                                .padding(.vertical, 8)
+                        }
+                        .scrollIndicators(.never).scrollBounceBehavior(.basedOnSize)
+                        .accessibilityIdentifier("onboardingFallbackScroll")
                     }
-                    .scrollIndicators(.never).scrollBounceBehavior(.basedOnSize)
-                    .accessibilityIdentifier("onboardingFallbackScroll")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(step)
                 #endif
                 if wide {
@@ -1164,9 +1194,9 @@ struct JotleyOnboardingView: View {
             ZStack(alignment: .topLeading) {
                 ForEach(steps.indices, id: \.self) { page in
                     if page == step {
-                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale)
+                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale, twoLineTitle: wide && UIDevice.current.userInterfaceIdiom == .pad)
                     } else {
-                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale)
+                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale, twoLineTitle: wide && UIDevice.current.userInterfaceIdiom == .pad)
                             .hidden()
                             .allowsHitTesting(false)
                             .accessibilityElement(children: .ignore)
@@ -1201,7 +1231,7 @@ struct JotleyOnboardingView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("onboardingHeader")
     }
-    private func pageContent(page: Int, dense: Bool, inlineArtwork: Bool = false, scale: CGFloat = 1) -> some View {
+    private func pageContent(page: Int, dense: Bool, inlineArtwork: Bool = false, scale: CGFloat = 1, twoLineTitle: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: (dense ? 10 : 22) * scale) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
@@ -1209,7 +1239,7 @@ struct JotleyOnboardingView: View {
                         Image(illustrationAsset(for: page)).resizable().interpolation(.high).antialiased(true).scaledToFit()
                             .frame(width: 68, height: 68).accessibilityHidden(true)
                     }
-                    Text(title(for: page)).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                    Text(title(for: page, twoLines: twoLineTitle)).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("onboardingTitle")
                 }
