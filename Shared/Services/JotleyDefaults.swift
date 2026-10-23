@@ -192,12 +192,18 @@ struct JotleyTranscriptCard: ViewModifier {
 /// A translucent sheet surface; accessibility can request a solid backing.
 struct JotleyGlassPanel: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
         content.background {
             let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
             if reduceTransparency { shape.fill(Color.themeBackground) }
             else {
                 Color.clear.glassEffect(.clear, in: shape)
+                    .overlay {
+                        if colorScheme == .dark {
+                            shape.fill(Color.themeBackground.opacity(0.92))
+                        }
+                    }
                     .overlay {
                         shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.70), .white.opacity(0.08), .white.opacity(0.35)],
                             startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
@@ -240,6 +246,7 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     var circular = false
     var diameter: CGFloat? = nil
     var prominent = false
+    var keepsDisabledSurfaceVisible = false
     private var controlHeight: CGFloat {
         if let diameter { return diameter }
         #if os(macOS)
@@ -258,8 +265,9 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                     .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
-        .foregroundStyle(configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themePrimaryAccent)
-        .opacity(isEnabled ? 1 : 0.45)
+        .foregroundStyle((configuration.role == .destructive ? Color.red : prominent ? Color.white : Color.themePrimaryAccent)
+            .opacity(!isEnabled && keepsDisabledSurfaceVisible ? 0.82 : 1))
+        .opacity(isEnabled || keepsDisabledSurfaceVisible ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -981,6 +989,7 @@ struct JotleyOnboardingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
     @State private var allowsWebsiteTips = false
     @State private var showingLanguages = false
     @State private var step = 0
@@ -1013,12 +1022,13 @@ struct JotleyOnboardingView: View {
     private var supportStep: Int { steps.count - 1 }
     private var isSupportStep: Bool { step == supportStep }
     private var accent: Color { theme.currentThemeColor.color }
-    private var ink: Color { Color(red: 0.14, green: 0.11, blue: 0.19) }
-    private var actionInk: Color { accent.mix(with: .black, by: 0.42) }
-    private var muted: Color { ink.opacity(0.68) }
-    private var title: String {
-        if isSupportStep { return "Free software.\nSupported by people." }
-        return switch step {
+    private var ink: Color { colorScheme == .dark ? Color(white: 0.94) : Color(red: 0.14, green: 0.11, blue: 0.19) }
+    private var actionInk: Color { colorScheme == .dark ? accent.mix(with: .white, by: 0.45) : accent.mix(with: .black, by: 0.42) }
+    private var muted: Color { ink.opacity(colorScheme == .dark ? 0.76 : 0.68) }
+    private var onboardingBackground: Color { colorScheme == .dark ? Color(red: 0.065, green: 0.055, blue: 0.085) : Color(red: 0.985, green: 0.98, blue: 0.995) }
+    private func title(for page: Int) -> String {
+        if page == supportStep { return "Free software.\nSupported by people." }
+        return switch page {
         case 0: "Stay in the conversation."
         case 1: "Find the useful parts."
         case 2: "Start with your language."
@@ -1026,9 +1036,9 @@ struct JotleyOnboardingView: View {
         default: "Bring app audio along."
         }
     }
-    private var subtitle: String {
-        if isSupportStep { return "Jotley is free, with every feature included.\nYour support helps us keep building." }
-        return switch step {
+    private func subtitle(for page: Int) -> String {
+        if page == supportStep { return "Jotley is free, with every feature included.\nYour support helps us keep building." }
+        return switch page {
         case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
         case 1: "Summaries, useful titles and answers.\nPowered by Apple Intelligence on your device."
         case 2: "Choose your Apple Intelligence language.\nTranscription, summaries and Ask AI stay on-device."
@@ -1039,34 +1049,36 @@ struct JotleyOnboardingView: View {
     var body: some View {
         GeometryReader { geometry in
             let wide = geometry.size.width >= 620
-            let artWidth = min(300, geometry.size.width * 0.3)
+            let scale = onboardingScale(in: geometry.size)
+            let artWidth = min(300 * scale, geometry.size.width * 0.3)
             let compact = !dynamicTypeSize.isAccessibilitySize && (geometry.size.height < 800 || (!wide && geometry.size.width < 390))
             VStack(spacing: 16) {
-                header
+                header(scale: scale)
                 #if os(macOS)
                 pageLayout(wide: wide, dense: compact, artWidth: artWidth)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.vertical, 12)
                 #else
                 ViewThatFits(in: .vertical) {
-                    pageLayout(wide: wide, dense: compact, artWidth: artWidth)
+                    mobilePageLayout(wide: wide, dense: compact, artWidth: artWidth, scale: scale)
                         .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
                     ScrollView {
-                        pageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth)
+                        mobilePageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth, scale: scale)
                             .padding(.vertical, 8)
                     }
                     .scrollIndicators(.never).scrollBounceBehavior(.basedOnSize)
                     .accessibilityIdentifier("onboardingFallbackScroll")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .id(step)
                 #endif
                 if wide {
-                    HStack(spacing: 24) {
+                    HStack(spacing: 24 * scale) {
                         Color.clear.frame(width: artWidth, height: 0)
-                        footer(wide: true).frame(maxWidth: wideFooterWidth)
-                            .frame(maxWidth: 380, alignment: .leading)
+                        footer(wide: true, scale: scale).frame(maxWidth: wideFooterWidth * scale)
+                            .frame(maxWidth: 380 * scale, alignment: .leading)
                     }
+                    .dynamicTypeSize(onboardingTextSize(scale: scale))
                 } else {
                     footer(wide: false).frame(maxWidth: 480)
                         .frame(maxWidth: .infinity)
@@ -1079,12 +1091,14 @@ struct JotleyOnboardingView: View {
             #else
             .padding(.bottom, 12)
             #endif
+            #if os(macOS)
             .frame(maxWidth: wide ? 820 : .infinity)
+            #endif
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 ZStack(alignment: .topLeading) {
-                    Color(red: 0.985, green: 0.98, blue: 0.995)
-                    RadialGradient(colors: [Color(red: 0.91, green: 0.86, blue: 0.99).opacity(0.65), .clear],
+                    onboardingBackground
+                    RadialGradient(colors: [colorScheme == .dark ? accent.opacity(0.13) : Color(red: 0.91, green: 0.86, blue: 0.99).opacity(0.65), .clear],
                                    center: .topLeading, startRadius: 20, endRadius: wide ? 700 : 560)
                 }.ignoresSafeArea()
             }
@@ -1101,8 +1115,7 @@ struct JotleyOnboardingView: View {
             }
         )
         .foregroundStyle(ink)
-        .preferredColorScheme(.light)
-        .environment(\.colorScheme, .light)
+        .preferredColorScheme(theme.effectiveColorScheme)
         .observeThemeChanges()
         .task(id: language) { await refreshModels() }
         .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
@@ -1117,51 +1130,97 @@ struct JotleyOnboardingView: View {
             #endif
         }
     }
+    // Enlarge only roomy iPad windows; phones and narrow multitasking windows
+    // retain the compact layout. Never reduce the user's Dynamic Type choice.
+    private func onboardingScale(in size: CGSize) -> CGFloat {
+        #if os(iOS)
+        guard UIDevice.current.userInterfaceIdiom == .pad, size.width >= 800, size.height >= 700 else { return 1 }
+        return max(1, min(1.3, (size.width - 48) / 720, (size.height - 200) / 620))
+        #else
+        return 1
+        #endif
+    }
+    private func onboardingTextSize(scale: CGFloat) -> DynamicTypeSize {
+        guard scale > 1 else { return dynamicTypeSize }
+        let minimum: DynamicTypeSize = scale >= 1.24 ? .xxLarge : .xLarge
+        return max(dynamicTypeSize, minimum)
+    }
     @ViewBuilder private func pageLayout(wide: Bool, dense: Bool, artWidth: CGFloat, smallArtwork: Bool = false) -> some View {
         if wide {
             HStack(alignment: .top, spacing: 24) {
                 largeIllustration(height: smallArtwork ? 240 : nil).frame(width: artWidth)
-                pageContent(dense: dense).frame(maxWidth: 380, alignment: .leading)
+                pageContent(page: step, dense: dense).frame(maxWidth: 380, alignment: .leading)
             }
         } else {
-            pageContent(dense: dense, inlineArtwork: true).frame(maxWidth: 480)
+            pageContent(page: step, dense: dense, inlineArtwork: true).frame(maxWidth: 480)
         }
     }
-    private var header: some View {
+    #if os(iOS)
+    /// Every page reserves the tallest page's size. Center this shared block,
+    /// keeping its children top-aligned so headings and artwork never jump.
+    private func mobilePageLayout(wide: Bool, dense: Bool, artWidth: CGFloat, scale: CGFloat) -> some View {
+        HStack(alignment: .top, spacing: wide ? 24 * scale : 0) {
+            if wide { largeIllustration(height: artWidth).frame(width: artWidth) }
+            ZStack(alignment: .topLeading) {
+                ForEach(steps.indices, id: \.self) { page in
+                    if page == step {
+                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale)
+                    } else {
+                        pageContent(page: page, dense: dense, inlineArtwork: !wide, scale: scale)
+                            .hidden()
+                            .allowsHitTesting(false)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+            .frame(maxWidth: wide ? 380 * scale : 480, alignment: .leading)
+        }
+        .dynamicTypeSize(onboardingTextSize(scale: scale))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboardingContentBlock")
+    }
+    #endif
+
+    private func header(scale: CGFloat) -> some View {
         HStack(spacing: 10) {
-            Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 34, height: 34)
+            Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 34 * scale, height: 34 * scale)
                 .shadow(color: accent.opacity(0.3), radius: 10)
                 .accessibilityHidden(true)
-            Text("Jotley").font(.system(size: 23, weight: .semibold, design: .rounded))
+            Text("Jotley").font(.system(size: 23 * scale, weight: .semibold, design: .rounded))
+                .accessibilityIdentifier("onboardingBrand")
             Spacer()
             Button { finish() } label: { Text("Skip setup").foregroundStyle(actionInk) }
                 .font(.subheadline.weight(.medium)).buttonStyle(.glass).buttonBorderShape(.capsule)
-                .controlSize(.small).frame(minHeight: 36)
+                .controlSize(.small).frame(minHeight: 36 * scale)
                 .disabled(settingUpSpeech || requestingMicrophone)
                 .accessibilityIdentifier("onboardingSkip")
         }
-        .frame(minHeight: 44)
+        .frame(minHeight: 44 * scale)
+        .dynamicTypeSize(onboardingTextSize(scale: scale))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboardingHeader")
     }
-    private func pageContent(dense: Bool, inlineArtwork: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: dense ? 10 : 22) {
+    private func pageContent(page: Int, dense: Bool, inlineArtwork: Bool = false, scale: CGFloat = 1) -> some View {
+        VStack(alignment: .leading, spacing: (dense ? 10 : 22) * scale) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
                     if inlineArtwork {
-                        Image(illustrationAsset).resizable().interpolation(.high).antialiased(true).scaledToFit()
+                        Image(illustrationAsset(for: page)).resizable().interpolation(.high).antialiased(true).scaledToFit()
                             .frame(width: 68, height: 68).accessibilityHidden(true)
                     }
-                    Text(title).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                    Text(title(for: page)).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("onboardingTitle")
                 }
-                .frame(height: inlineArtwork ? 68 : 88, alignment: .topLeading)
+                .frame(height: (inlineArtwork ? 68 : 88) * scale, alignment: .topLeading)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("onboardingHeading")
-                Text(dense && step == 2 ? "Choose your Apple Intelligence language." : subtitle).font(dense ? .callout : .body).foregroundStyle(muted)
+                Text(dense && page == 2 ? "Choose your Apple Intelligence language." : subtitle(for: page)).font(dense ? .callout : .body).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(minHeight: dense ? 48 : 64, alignment: .topLeading)
+                    .frame(minHeight: (dense ? 48 : 64) * scale, alignment: .topLeading)
             }
-            switch step {
+            switch page {
             case let value where value == supportStep:
                 Text(allowsWebsiteTips
                      ? "Enjoying Jotley? A coffee helps fund development. A rating or review helps more people discover it."
@@ -1193,14 +1252,14 @@ struct JotleyOnboardingView: View {
                     .font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("onboardingSupportSettingsHint")
             case 0:
-                feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield", dense: dense)
-                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart", dense: dense)
+                feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield", dense: dense, scale: scale)
+                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart", dense: dense, scale: scale)
             case 1:
                 status(summaryReason == nil ? "Apple Intelligence is ready" : "Apple Intelligence needs setup",
                        detail: summaryReason ?? "Your summaries and Ask AI answers are processed on this device.",
-                       ready: summaryReason == nil, dense: dense)
+                       ready: summaryReason == nil, dense: dense, scale: scale)
                     .accessibilityIdentifier("onboardingIntelligenceStatus")
-                feature("From thoughts to next steps", detail: "Pull out decisions, action items and topic tags. Ask a question when you need more.", icon: "sparkles", dense: dense)
+                feature("From thoughts to next steps", detail: "Pull out decisions, action items and topic tags. Ask a question when you need more.", icon: "sparkles", dense: dense, scale: scale)
                 if summaryReason != nil {
                     Text("Enable Apple Intelligence in your device’s Settings and let its model finish downloading. You can continue now and return to setup later.")
                         .font(.callout).foregroundStyle(muted)
@@ -1213,7 +1272,7 @@ struct JotleyOnboardingView: View {
                     status(setupError != nil ? "Finish setup when you’re ready" : (speechReady ? "Ready to transcribe offline" : (speechCanSetUp ? "One-time speech setup" : "Choose another language")),
                            detail: setupError ?? (speechReady ? "The selected language’s Apple speech model is installed." :
                             (speechCanSetUp ? (dense ? "Download Apple’s speech model once to transcribe offline." : "Speech uses a separate Apple model. Setup needs internet access; transcription then works offline.") : "Choose an Apple Intelligence language supported by this device. You can also change it later in Settings.")),
-                           ready: speechReady, dense: dense)
+                           ready: speechReady, dense: dense, scale: scale)
                         .accessibilityIdentifier(setupError == nil ? "onboardingSpeechStatus" : "onboardingSpeechError")
                 }
                 if settingUpSpeech {
@@ -1231,20 +1290,20 @@ struct JotleyOnboardingView: View {
                 status(microphoneAllowed ? "Microphone access is enabled" : (microphoneDenied ? "Microphone access is off" : "You’re in control"),
                        detail: microphoneAllowed ? "Tap + in your notes list whenever you want to start transcribing." :
                         (microphoneDenied ? "Enable Microphone for Jotley in your device’s privacy settings when you’re ready." : "Jotley listens only when you start a transcription. Browsing your notes doesn’t need microphone access."),
-                       ready: microphoneAllowed, dense: dense)
+                       ready: microphoneAllowed, dense: dense, scale: scale)
                     .accessibilityIdentifier("onboardingMicrophoneStatus")
                 #if os(iOS)
-                feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft", dense: dense)
+                feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft", dense: dense, scale: scale)
                 #else
-                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense)
+                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense, scale: scale)
                 #endif
             default:
                 #if os(macOS)
                 status("A separate macOS permission",
                        detail: "Let Jotley hear other apps. This is separate from microphone access and does not capture your screen.",
-                       ready: false, dense: dense)
+                       ready: false, dense: dense, scale: scale)
                 feature(systemAudioMessage == nil ? "Nothing is saved during setup" : "macOS manages your access",
-                        detail: systemAudioMessage ?? "Request access now, or keep transcription microphone-only. Your choice can be changed in Settings.", icon: "lock.shield", dense: dense)
+                        detail: systemAudioMessage ?? "Request access now, or keep transcription microphone-only. Your choice can be changed in Settings.", icon: "lock.shield", dense: dense, scale: scale)
                     .accessibilityIdentifier("onboardingSystemAudioStatus")
                 Button("Open Audio Privacy Settings") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
@@ -1295,14 +1354,13 @@ struct JotleyOnboardingView: View {
                 .scrollIndicators(.never).frame(maxHeight: 310)
             }
             .padding(16).frame(width: 290)
-            .background(Color(red: 0.985, green: 0.98, blue: 0.995))
-            .environment(\.colorScheme, .light)
+            .background(onboardingBackground)
             .presentationCompactAdaptation(.popover)
         }
     }
-    private func feature(_ title: String, detail: String, icon: String, dense: Bool) -> some View {
+    private func feature(_ title: String, detail: String, icon: String, dense: Bool, scale: CGFloat = 1) -> some View {
         HStack(alignment: .top, spacing: 13) {
-            Image(systemName: icon).font(.system(size: 21, weight: .medium)).foregroundStyle(accent).frame(width: 28)
+            Image(systemName: icon).font(.system(size: 21 * scale, weight: .medium)).foregroundStyle(accent).frame(width: 28 * scale)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
@@ -1310,7 +1368,7 @@ struct JotleyOnboardingView: View {
             }
         }.accessibilityElement(children: .combine)
     }
-    private func status(_ title: String, detail: String, ready: Bool, dense: Bool) -> some View {
+    private func status(_ title: String, detail: String, ready: Bool, dense: Bool, scale: CGFloat = 1) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: ready ? "checkmark.circle.fill" : "info.circle").foregroundStyle(ready ? .green : accent)
                 .font(.title3).accessibilityHidden(true)
@@ -1318,13 +1376,13 @@ struct JotleyOnboardingView: View {
                 Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
                 Text(detail).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
             }
-        }.padding(dense ? 12 : 16).frame(maxWidth: .infinity, alignment: .leading)
+        }.padding((dense ? 12 : 16) * scale).frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
             .accessibilityElement(children: .combine)
     }
-    private var illustrationAsset: String {
-        if isSupportStep { return "onboarding-support" }
-        return switch step {
+    private func illustrationAsset(for page: Int) -> String {
+        if page == supportStep { return "onboarding-support" }
+        return switch page {
         case 0: "onboarding-welcome"
         case 1: "onboarding-intelligence"
         case 2: "onboarding-language"
@@ -1333,9 +1391,9 @@ struct JotleyOnboardingView: View {
         }
     }
     private func largeIllustration(height: CGFloat? = nil) -> some View {
-        Image(illustrationAsset)
+        Image(illustrationAsset(for: step))
             .resizable().interpolation(.high).antialiased(true).scaledToFit()
-            .frame(maxWidth: 300)
+            .frame(maxWidth: height ?? 300)
             .frame(height: height ?? 300)
             .accessibilityHidden(true)
     }
@@ -1354,7 +1412,7 @@ struct JotleyOnboardingView: View {
         .accessibilityLabel("Back").accessibilityIdentifier("onboardingBack")
         .disabled(settingUpSpeech || requestingMicrophone)
     }
-    private func footer(wide: Bool) -> some View {
+    private func footer(wide: Bool, scale: CGFloat = 1) -> some View {
         // Wide layouts align the primary action with the copy; Back sits outside that column.
         let actionInset: CGFloat = !wide ? 66 : 0
         return VStack(spacing: 13) {
@@ -1363,7 +1421,7 @@ struct JotleyOnboardingView: View {
                     Capsule().fill(index == step ? accent : ink.opacity(0.13)).frame(width: index == step ? 25 : 6, height: 6)
                 }
                 Text("\(step + 1) of \(steps.count) · \(steps[step])").font(.caption).foregroundStyle(muted).padding(.leading, 5)
-                    .frame(width: 130, alignment: .leading)
+                    .frame(width: 130 * scale, alignment: .leading)
             }
             .padding(.leading, actionInset)
             .accessibilityElement(children: .ignore).accessibilityLabel("Step \(step + 1) of \(steps.count), \(steps[step])")

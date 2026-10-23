@@ -342,9 +342,8 @@ struct NotesListView: View {
             Image(systemName: "gearshape")
                 .font(.system(size: 24, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
             .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(JotleyGlassButtonStyle(circular: true))
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("notesListSettingsButton")
     }

@@ -414,13 +414,19 @@ struct LocalAskNoteView: View {
             Text("Ask AI").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
             Spacer(minLength: 8)
             Button("Copy Conversation", systemImage: "doc.on.doc") { UIPasteboard.general.string = conversation }
-                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .labelStyle(.iconOnly)
+                .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                .disabled(messages.isEmpty || generation != nil)
                 .accessibilityIdentifier("askAICopyConversationButton")
             Button("Share Conversation", systemImage: "square.and.arrow.up") { share = LocalSharePayload(items: [conversation]) }
-                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .labelStyle(.iconOnly)
+                .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                .disabled(messages.isEmpty || generation != nil)
                 .accessibilityIdentifier("askAIShareConversationButton")
             Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
-                .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                .labelStyle(.iconOnly)
+                .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                .disabled(messages.isEmpty || generation != nil)
                 .accessibilityIdentifier("askAIClearButton")
             Button("Done") { dismiss() }
                 .accessibilityIdentifier("askAIDoneButton")

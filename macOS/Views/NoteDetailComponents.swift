@@ -45,13 +45,19 @@ struct LocalMacAskNoteView: View {
                 Button("Copy Conversation", systemImage: "doc.on.doc") {
                     NSPasteboard.general.clearContents(); NSPasteboard.general.setString(conversation, forType: .string)
                 }
-                    .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
                     .help("Copy Conversation").accessibilityIdentifier("askAICopyConversationButton")
                 ShareLink(item: conversation) { Label("Share Conversation", systemImage: "square.and.arrow.up") }
-                    .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
                     .help("Share Conversation").accessibilityIdentifier("askAIShareConversationButton")
                 Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
-                    .labelStyle(.iconOnly).disabled(messages.isEmpty || generation != nil)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
                     .accessibilityIdentifier("askAIClearButton")
                 Button("Done") { dismiss() }.accessibilityIdentifier("askAIDoneButton")
             }.buttonStyle(JotleyGlassButtonStyle()).padding(16)

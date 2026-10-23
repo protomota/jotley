@@ -268,18 +268,47 @@ final class Jotley_iOSUITests: XCTestCase {
     }
 
     @MainActor func testOnboardingFitsWithoutScrolling() throws {
+        try verifyCenteredOnboarding(orientation: .portrait)
+    }
+
+    @MainActor func testOnboardingIsCenteredInIPadLandscape() throws {
+        guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad") else { throw XCTSkip("iPad landscape layout") }
+        try verifyCenteredOnboarding(orientation: .landscapeLeft, appearance: "Dark")
+    }
+
+    @MainActor func testOnboardingDarkModeKeepsCenteredLayout() throws {
+        try verifyCenteredOnboarding(orientation: .portrait, appearance: "Dark")
+    }
+
+    @MainActor private func verifyCenteredOnboarding(orientation: UIDeviceOrientation, appearance: String = "Light") throws {
         continueAfterFailure = true
-        XCUIDevice.shared.orientation = .portrait
+        XCUIDevice.shared.orientation = orientation
+        defer { XCUIDevice.shared.orientation = .portrait }
         let app = XCUIApplication()
         app.launchArguments = ["-selectedThemeColor", "Purple"]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
         app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
         app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
         app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = "USA"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = appearance
         app.launch()
         XCTAssertTrue(app.staticTexts["onboardingTitle"].waitForExistence(timeout: 15))
         let initialAction = app.buttons["onboardingContinue"].frame
         let initialTitleTop = app.staticTexts["onboardingTitle"].frame.minY
+        let block = app.descendants(matching: .any)["onboardingContentBlock"].firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 5))
+        let initialBlock = block.frame
+        if UIDevice.current.model.hasPrefix("iPad") {
+            let skip = app.buttons["onboardingSkip"].frame
+            let brand = app.staticTexts["onboardingBrand"].frame
+            XCTAssertLessThan(brand.minX, 100, "Brand belongs at the window's top-left corner")
+            XCTAssertLessThan(app.frame.maxX - skip.maxX, 60, "Skip setup belongs at the window's top-right corner")
+            if app.frame.width >= 1000 {
+                XCTAssertGreaterThan(initialBlock.width, 800, "Roomy iPad windows should enlarge the whole content area")
+                XCTAssertGreaterThan(app.staticTexts["onboardingTitle"].frame.height, 40)
+            }
+        }
+        var tallestPageHeight: CGFloat = 0
         let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Free software.\nSupported by people."]
         for index in 0..<5 {
             let titleMatches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", titles[index]), object: app.staticTexts["onboardingTitle"])
@@ -312,6 +341,11 @@ final class Jotley_iOSUITests: XCTestCase {
                 XCTAssertTrue(app.buttons["onboardingReviewJotley"].isHittable)
                 XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].isHittable)
             }
+            XCTAssertEqual(block.frame.minY, initialBlock.minY, accuracy: 1, "Center one outer block, not each page individually")
+            tallestPageHeight = max(tallestPageHeight, block.frame.height)
+            let headerBottom = app.descendants(matching: .any)["onboardingHeader"].firstMatch.frame.maxY
+            let footerTop = app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.minY
+            print("ONBOARDING step=\(index) block=\(block.frame) headerBottom=\(headerBottom) footerTop=\(footerTop) heading=\(app.staticTexts["onboardingTitle"].frame)")
             XCTAssertEqual(app.buttons["onboardingContinue"].frame.minY, initialAction.minY, accuracy: 1)
             XCTAssertEqual(app.staticTexts["onboardingTitle"].frame.minY, initialTitleTop, accuracy: 1, "Onboarding headings must stay at the same height on every page")
             if index < 4 {
@@ -319,6 +353,10 @@ final class Jotley_iOSUITests: XCTestCase {
                 else { app.buttons["onboardingContinue"].tap() }
             }
         }
+        let headerBottom = app.descendants(matching: .any)["onboardingHeader"].firstMatch.frame.maxY
+        let footerTop = app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.minY
+        XCTAssertEqual(initialBlock.minY + tallestPageHeight / 2, (headerBottom + footerTop) / 2, accuracy: 4,
+            "The shared block, sized for the tallest page, must be centered between header and footer")
     }
 
     @MainActor func testOnboardingSupportIsOptionalAndStorefrontAware() throws {
@@ -2167,6 +2205,46 @@ final class Jotley_iOSUITests: XCTestCase {
         summary.name = "Actual simulator summary title and template regeneration"; summary.lifetime = .keepAlways; add(summary)
     }
     #endif
+
+    @MainActor func testSettingsGlassAndAskAIReadability() throws {
+        let isPad = (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPad")
+        XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["-selectedThemeColor", "Purple", "-jotleyWelcomeCompleted.v1", "YES"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_CHAT_READY"] = "1"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"""
+        [{"title":"Readable Ask AI controls","folder":"Work","tags":[],"transcript":"The team will review the launch on Friday.","summary":"## Summary\nThe team has a clear plan for Friday."}]
+        """#
+        for mode in ["Dark", "Light"] {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = mode
+            app.launch()
+            XCTAssertTrue(app.buttons["noteDetailSummaryTab"].waitForExistence(timeout: 15))
+            if !isPad { app.buttons["BackButton"].tap() }
+            let gear = app.buttons["notesListSettingsButton"]
+            XCTAssertTrue(gear.waitForExistence(timeout: 5)); XCTAssertTrue(gear.isHittable)
+            XCTAssertEqual(gear.frame.width, 44, accuracy: 1); XCTAssertEqual(gear.frame.height, 44, accuracy: 1)
+            let gearShot = XCTAttachment(screenshot: app.screenshot())
+            gearShot.name = "Settings glass - \(mode)"; gearShot.lifetime = .keepAlways; add(gearShot)
+            gear.tap()
+            let settingsDone = app.buttons["settingsDoneButton"]
+            XCTAssertTrue(settingsDone.waitForExistence(timeout: 5)); settingsDone.tap()
+            if !isPad { app.buttons.containing(.staticText, identifier: "Readable Ask AI controls").firstMatch.tap() }
+            let ask = app.buttons["noteDetailSummaryAskAIButton"]
+            XCTAssertTrue(ask.waitForExistence(timeout: 5)); ask.tap()
+            let done = app.buttons["askAIDoneButton"]
+            XCTAssertTrue(done.waitForExistence(timeout: 5)); XCTAssertTrue(done.isEnabled)
+            for identifier in ["askAICopyConversationButton", "askAIShareConversationButton", "askAIClearButton"] {
+                let button = app.buttons[identifier]
+                XCTAssertTrue(button.exists); XCTAssertFalse(button.isEnabled, "An empty conversation action must stay disabled")
+                XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            }
+            let chatShot = XCTAttachment(screenshot: app.screenshot())
+            chatShot.name = "Ask AI contrast - \(mode)"; chatShot.lifetime = .keepAlways; add(chatShot)
+            done.tap()
+        }
+    }
 
     @MainActor func testMarketingChatCaptureAndControls() throws {
         let app = XCUIApplication()

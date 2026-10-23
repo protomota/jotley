@@ -133,7 +133,7 @@ struct MainTabView: View {
             windowBounds = bounds
             if usesExpandedPhoneLayout && becameWide { columnVisibility = .automatic }
         }
-        .preferredColorScheme(onboardingInProgress ? .light : themeManager.effectiveColorScheme)
+        .preferredColorScheme(themeManager.effectiveColorScheme)
         .observeThemeChanges()
         .modifier(JotleyOnboardingPresentation(replay: $showingWelcome, onDismiss: {
             if let action = pendingWidgetAction { pendingWidgetAction = nil; handleWidgetAction(action) }

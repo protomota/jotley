@@ -27,7 +27,7 @@ struct RootView: View {
             .observeThemeChanges()
             .modifier(JotleyOnboardingPresentation(replay: $showingWelcome))
             .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))
-            .preferredColorScheme(onboardingInProgress ? .light : themeManager.effectiveColorScheme)
+            .preferredColorScheme(themeManager.effectiveColorScheme)
             .safeAreaInset(edge: .bottom) {
                 if !onboardingInProgress && !local.message.isEmpty {
                     HStack {
