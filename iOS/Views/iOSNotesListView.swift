@@ -35,12 +35,8 @@ struct NotesListView: View {
         let isSearching = isSearchFocused || !searchText.isEmpty
         ZStack {
             VStack(spacing: 0) {
-                // iPad keeps Settings in the footer, clear of system window controls.
+                // Settings stays in the footer on every mobile layout.
                 HStack(spacing: 12) {
-                    if !isSearching && !usesIPadLayout {
-                        settingsButton.transition(.opacity.combined(with: .scale))
-                    }
-
                     // Search field
                     HStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
@@ -121,7 +117,7 @@ struct NotesListView: View {
                 }
                 .animation(.easeInOut(duration: 0.2), value: isSearching)
                 // Align the custom header with the unfolded iPhone's status row.
-                // Settings stays 44 points; the whole header moves together.
+                // The search, folder and filter controls move together.
                 .padding(.top, !showsNewTranscriptionButton && !usesIPadLayout ? 26 : 8)
                 .padding(.bottom, 12)
                 // The glyph has ten points inside its 44-point touch target.
@@ -129,8 +125,6 @@ struct NotesListView: View {
                 .padding(.leading, usesIPadLayout ? 16 : 8)
                 .padding(.trailing, 16)
                 .background(Color.themeBackground)
-                // Keep the iPhone gear shadow above the list's opaque scroll surface.
-                .zIndex(usesIPadLayout ? 0 : 1)
 
                 // Combined folder + tag scope indicator (single scrollable row,
                 // folder pill first when present, then one pill per selected tag).
@@ -266,7 +260,7 @@ struct NotesListView: View {
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .contentMargins(.bottom, max(bottomContentInset, showsNewTranscriptionButton || usesIPadLayout ? 84 : 0), for: .scrollContent)
+            .contentMargins(.bottom, max(bottomContentInset, 84), for: .scrollContent)
             .background(Color.themeBackground)
             .navigationBarTitleDisplayMode(.inline)
             } // End of VStack
@@ -275,9 +269,7 @@ struct NotesListView: View {
             VStack {
                 Spacer()
                 HStack(alignment: .center) {
-                    if usesIPadLayout {
-                        settingsButton.padding(.leading, 20).padding(.bottom, 8)
-                    }
+                    settingsButton.padding(.leading, 20).padding(.bottom, usesIPadLayout ? 8 : 24)
                     Spacer()
                     if showsNewTranscriptionButton {
                         NotesNewTranscriptionButton(action: handleCreateNewNoteTapped)
@@ -286,6 +278,8 @@ struct NotesListView: View {
                     }
                 }
             }
+            // Match the phone capture control's window-bottom placement.
+            .ignoresSafeArea(.container, edges: usesIPadLayout ? [] : .bottom)
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         // The custom header occupies the status/toolbar row on the inner display.

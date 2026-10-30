@@ -165,6 +165,8 @@
 		A2EB8BED307D4385008E0696 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A2EB8BEC307D4385008E0696 /* Sparkle */; };
 		A2F10001307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10003307E000100AAB201 /* StructuredSummaryView.swift */; };
 		A2F10002307E000100AAB201 /* StructuredSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F10004307E000100AAB201 /* StructuredSummaryView.swift */; };
+		0F59B8F10B8F491AF191720A /* TipJar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE7AED2B176D221659DDE7C; };
+		739330E0F18681C74FA40772 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 84BDA620509D4630D3E1888C; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -410,6 +412,7 @@
 		A2F10004307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		DB11239D313826CEC1D213A0 /* AppIcon.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		F47AD93E2BF5B61E005B75AC /* Jotley.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jotley.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9BE7AED2B176D221659DDE7C /* TipJar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Services/TipJar.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -449,6 +452,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				739330E0F18681C74FA40772 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -789,6 +793,7 @@
 		A2EA91D2307B453D00AAB201 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				9BE7AED2B176D221659DDE7C /* TipJar.swift */,
 				A2EA91CC307B453D00AAB201 /* JotleyDefaults.swift */,
 				A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */,
 				A2EA91CE307B453D00AAB201 /* SharedPersistence.swift */,
@@ -1093,6 +1098,7 @@
 			);
 			name = "Jotley-iOS";
 			packageProductDependencies = (
+				84BDA620509D4630D3E1888C /* RevenueCat */,
 			);
 			productName = "Jotley-iOS";
 			productReference = A2EA9201307B4F2B00AAB201 /* Jotley-iOS.app */;
@@ -1207,6 +1213,7 @@
 			);
 			mainGroup = F47AD9352BF5B61E005B75AC;
 			packageReferences = (
+				615E6C1A018D3D26FF96D0BF /* RevenueCat */,
 				A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = F47AD93F2BF5B61E005B75AC /* Products */;
@@ -1301,6 +1308,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0F59B8F10B8F491AF191720A /* TipJar.swift in Sources */,
 				A2EA924A307B523300AAB201 /* ShareSheet.swift in Sources */,
 				A2EA924B307B523300AAB201 /* MainTabView.swift in Sources */,
 				A2EA924C307B523300AAB201 /* iOSNewNoteMenuView.swift in Sources */,
@@ -1608,6 +1616,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iOS/Info.plist;
+				REVENUECAT_API_KEY = appl_gHHpHBMIdGmdNkbKvtcLaIvqEwT;
 				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
@@ -1653,6 +1662,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iOS/Info.plist;
+				REVENUECAT_API_KEY = appl_gHHpHBMIdGmdNkbKvtcLaIvqEwT;
 				INFOPLIST_KEY_CFBundleDisplayName = Jotley;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Jotley transcribes microphone audio using installed on-device Apple speech models.";
@@ -2069,6 +2079,7 @@
 				version = 2.10.0;
 			};
 		};
+		615E6C1A018D3D26FF96D0BF /* RevenueCat */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/RevenueCat/purchases-ios.git"; requirement = {kind = exactVersion; version = 5.99.0; }; };
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -2077,6 +2088,7 @@
 			package = A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
 		};
+		84BDA620509D4630D3E1888C /* RevenueCat */ = {isa = XCSwiftPackageProductDependency; package = 615E6C1A018D3D26FF96D0BF; productName = RevenueCat; };
 /* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */

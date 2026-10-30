@@ -1,6 +1,15 @@
 {
-  "originHash" : "e721da7f9826abdffcb6185e886155efa2514bd6234475f1afa893e29eb258d6",
+  "originHash" : "164aa0b76012783d81e1fbb15d306f16ae8d6315287ccd8d6fe85ced26aacca0",
   "pins" : [
+    {
+      "identity" : "purchases-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RevenueCat/purchases-ios.git",
+      "state" : {
+        "revision" : "338022faafce4675788e405fbcaa4246aae2c93b",
+        "version" : "5.99.0"
+      }
+    },
     {
       "identity" : "sparkle",
       "kind" : "remoteSourceControl",

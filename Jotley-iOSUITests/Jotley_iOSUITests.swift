@@ -135,6 +135,18 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["structuredSummaryOverview"].firstMatch.waitForExistence(timeout: 5))
     }
 
+    @MainActor private func showNotesLibrary(_ app: XCUIApplication) {
+        let settings = app.buttons["notesListSettingsButton"]
+        if settings.exists && settings.isHittable { return }
+        let back = app.buttons["BackButton"]
+        if back.waitForExistence(timeout: 3) && back.isHittable { back.tap() }
+        else {
+            let sidebar = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).firstMatch
+            if sidebar.exists && sidebar.isHittable { sidebar.tap() }
+        }
+        XCTAssertTrue(settings.waitForExistence(timeout: 10), app.debugDescription)
+    }
+
     @MainActor func testPhoneCornerCaptureStaysClearOfNoteActions() throws {
         guard (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? "").hasPrefix("iPhone") else {
             throw XCTSkip("Requires iPhone")
@@ -147,15 +159,24 @@ final class Jotley_iOSUITests: XCTestCase {
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
             XCUIDevice.shared.orientation = orientation
             app.launch()
+            showNotesLibrary(app)
             let row = app.buttons.containing(.staticText, identifier: "Duo interface checks").firstMatch
             XCTAssertTrue(row.waitForExistence(timeout: 15))
             XCTAssertTrue(app.buttons["notesListNewNoteButton"].isHittable)
             let gear = app.buttons["notesListSettingsButton"]
             let folders = app.buttons["notesListFolderDrawerButton"]
-            XCTAssertEqual(gear.frame.size, folders.frame.size)
+            XCTAssertEqual(gear.frame.width, folders.frame.width, accuracy: 1)
+            XCTAssertEqual(gear.frame.height, folders.frame.height, accuracy: 1)
+            XCTAssertTrue(gear.isHittable)
+            XCTAssertEqual(app.buttons.matching(identifier: "notesListSettingsButton").count, 1)
+            XCTAssertGreaterThan(gear.frame.minY, folders.frame.maxY)
+            XCTAssertEqual(gear.frame.midY, app.buttons["notesListNewNoteButton"].frame.midY, accuracy: 1)
             if orientation == .portrait {
-                XCTAssertEqual(gear.frame.minX - app.frame.minX, 8, accuracy: 1)
+                XCTAssertEqual(gear.frame.minX - app.frame.minX, 20, accuracy: 1)
             }
+            let libraryShot = XCTAttachment(screenshot: app.screenshot())
+            libraryShot.name = "Phone bottom-left Settings - \(orientation.rawValue)"
+            libraryShot.lifetime = .keepAlways; add(libraryShot)
             gear.tap()
             XCTAssertTrue(app.buttons["settingsDoneButton"].waitForExistence(timeout: 5))
             app.buttons["settingsDoneButton"].tap()
@@ -373,7 +394,7 @@ final class Jotley_iOSUITests: XCTestCase {
             "Even the tallest page must remain clear of the footer")
     }
 
-    @MainActor func testOnboardingSupportIsOptionalAndStorefrontAware() throws {
+    @MainActor func testOnboardingNativeTipsStayOptionalAcrossStorefronts() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["-selectedThemeColor", "Purple"]
@@ -392,11 +413,15 @@ final class Jotley_iOSUITests: XCTestCase {
             else { app.buttons["onboardingContinue"].tap() }
             XCTAssertEqual(title.label, "Free software.\nSupported by people.")
             let tip = app.buttons["onboardingTipJotley"]
-            if country == "USA" {
-                XCTAssertTrue(tip.waitForExistence(timeout: 5))
-                if !tip.isHittable { app.scrollViews.firstMatch.swipeUp() }
-                XCTAssertTrue(tip.isHittable)
-            } else { XCTAssertFalse(tip.exists) }
+            XCTAssertTrue(tip.waitForExistence(timeout: 5))
+            if !tip.isHittable { app.scrollViews.firstMatch.swipeUp() }
+            XCTAssertTrue(tip.isHittable)
+            tip.tap()
+            let tipDone = app.buttons["tipJarDone"]
+            XCTAssertTrue(tipDone.waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["Support Jotley"].exists)
+            tipDone.tap()
+            XCTAssertTrue(title.waitForExistence(timeout: 5))
             let review = app.buttons["onboardingReviewJotley"]
             XCTAssertTrue(review.exists)
             if !review.isHittable { app.scrollViews.firstMatch.swipeUp() }
@@ -418,6 +443,7 @@ final class Jotley_iOSUITests: XCTestCase {
             app.terminate()
             app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
             app.launch()
+            showNotesLibrary(app)
             XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 10))
             XCTAssertFalse(title.exists)
             app.terminate()
@@ -1069,8 +1095,9 @@ final class Jotley_iOSUITests: XCTestCase {
                     XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 5))
                     XCTAssertTrue(settings.isHittable)
                 } else {
-                    XCTAssertEqual(settings.frame.midY, search.frame.midY, accuracy: 1)
-                    XCTAssertLessThan(settings.frame.maxX, search.frame.minX)
+                    XCTAssertGreaterThan(settings.frame.minY, search.frame.maxY + 200)
+                    XCTAssertEqual(settings.frame.midY, plus.frame.midY, accuracy: 1)
+                    XCTAssertEqual(settings.frame.minX - app.frame.minX, 20, accuracy: 1)
                 }
                 let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
                 attachment.name = "iPad Settings placement \(orientation == .portrait ? "portrait" : "landscape") \(mode)"
@@ -1822,7 +1849,18 @@ final class Jotley_iOSUITests: XCTestCase {
 
     #if DEBUG
 
+    @MainActor private func revealSettingsAction(_ identifier: String, in app: XCUIApplication) {
+        let action = app.buttons[identifier]
+        let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+        for _ in 0..<12 where !action.isHittable {
+            if action.exists && action.frame.maxY < form.frame.minY { form.swipeDown() }
+            else { form.swipeUp() }
+        }
+        XCTAssertTrue(action.isHittable, app.debugDescription)
+    }
+
     @MainActor private func openInlineSupportSettings(_ app: XCUIApplication) {
+        showNotesLibrary(app)
         let settings = app.buttons["notesListSettingsButton"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10)); settings.tap()
         let feedback = app.buttons["settingsFeedbackJotley"]
@@ -1879,7 +1917,43 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
     }
 
-    @MainActor func testRestrictedStorefrontKeepsInlineSupportWithoutWebTips() throws {
+    @MainActor func testSandboxTipCatalogLoadsThreeConsumables() throws {
+        guard ProcessInfo.processInfo.environment["PROTOMOTA_RUN_SANDBOX_CATALOG_TESTS"] == "1" else {
+            throw XCTSkip("Enable explicitly with the registered bundle ID for Apple's sandbox catalog")
+        }
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Tip catalog review","folder":"Work","tags":[],"transcript":"Local test note.","summary":""}]"#
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launch()
+        openInlineSupportSettings(app)
+        revealSettingsAction("settingsTipJotley", in: app)
+        XCTAssertTrue(app.buttons["settingsTipJotley"].waitForExistence(timeout: 10))
+        app.buttons["settingsTipJotley"].tap()
+        for tier in ["small", "medium", "large"] {
+            XCTAssertTrue(app.buttons["tipJarProduct-com.protomota.jotley.tip." + tier].waitForExistence(timeout: 30),
+                          "The real consumable catalog must load without mocked prices")
+        }
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            shot.name = "Jotley-real-sandbox-tip-catalog-\(orientation.rawValue)"
+            shot.lifetime = .keepAlways; add(shot)
+            XCTAssertTrue(app.buttons["tipJarDone"].isHittable, "Done stays reachable when the tip sheet rotates")
+            for tier in ["small", "medium", "large"] {
+                let choice = app.buttons["tipJarProduct-com.protomota.jotley.tip." + tier]
+                for _ in 0..<3 where !choice.isHittable {
+                    let content = app.scrollViews["tipJarContent"]
+                    XCTAssertTrue(content.exists, "Overflowing choices need a scrollable sheet")
+                    content.swipeUp()
+                }
+                XCTAssertTrue(choice.isHittable, "Each tip remains reachable after rotation")
+            }
+        }
+        app.buttons["tipJarDone"].tap()
+    }
+
+    @MainActor func testNonUSStorefrontOpensNativeTipsAndReturnsToSettings() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Regional support","folder":"Work","tags":[],"transcript":"Local transcript","summary":""}] "#
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "6"
@@ -1887,9 +1961,16 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
         app.launch()
         openInlineSupportSettings(app)
-        XCTAssertTrue(app.buttons["settingsRateJotley"].isHittable)
-        XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
-        XCTAssertFalse(app.buttons["settingsTipJotley"].exists)
+        XCTAssertTrue(app.buttons["settingsRateJotley"].exists)
+        XCTAssertTrue(app.buttons["settingsShareJotley"].exists)
+        revealSettingsAction("settingsTipJotley", in: app)
+        let tip = app.buttons["settingsTipJotley"]
+        XCTAssertTrue(tip.isHittable)
+        tip.tap()
+        XCTAssertTrue(app.buttons["tipJarDone"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Support Jotley"].exists)
+        app.buttons["tipJarDone"].tap()
+        XCTAssertTrue(app.buttons["settingsRateJotley"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["settingsFeedbackJotley"].isHittable)
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }

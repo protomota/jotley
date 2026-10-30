@@ -567,7 +567,9 @@ struct JotleySupportView: View {
     var isAutomatic = false
     let dismiss: () -> Void
     @ObservedObject private var theme = ThemeManager.shared
+    #if os(macOS)
     @State private var allowsWebsiteTips = false
+    #endif
     @State private var contentHeight: CGFloat?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     #if os(macOS)
@@ -623,12 +625,10 @@ struct JotleySupportView: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Rate and review Jotley on the App Store")
                         .accessibilityIdentifier("jotleySupportReview")
-                        if allowsWebsiteTips {
-                            Link(destination: JotleyEngagement.tipURL) {
-                                actionLabel("Tip the Developer", subtitle: "Optional · Buy Me a Coffee", icon: "heart.circle")
-                            }
-                            .buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
+                        JotleyTipButton {
+                            actionLabel("Tip the Developer", subtitle: "Optional · One-time App Store purchase", icon: "heart.circle")
                         }
+                        .buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
                         ShareLink(item: JotleyEngagement.website) {
                             actionLabel("Share Jotley", subtitle: "Help others discover Jotley", icon: "square.and.arrow.up")
                         }
@@ -658,11 +658,6 @@ struct JotleySupportView: View {
         .shadow(color: .black.opacity(0.2), radius: 24, y: 12)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("jotleyStyledSupportPrompt")
-        .task {
-            let permitted = await JotleyWebsiteTipPolicy.currentPermission()
-            guard !Task.isCancelled else { return }
-            allowsWebsiteTips = permitted
-        }
         #endif
     }
     #if os(macOS)
@@ -868,7 +863,6 @@ private struct JotleySupportShareAnchor: NSViewRepresentable {
 struct JotleySupportLinks: View {
     @State private var showingSupport = false
     @Environment(\.openURL) private var openURL
-    @State private var allowsWebsiteTips = false
     var body: some View {
         #if os(iOS)
         mobileRows
@@ -904,12 +898,10 @@ struct JotleySupportLinks: View {
                 supportRow("Rate on the App Store", systemImage: "star")
             }
             .accessibilityIdentifier("settingsRateJotley")
-            if allowsWebsiteTips {
-                Button { visit(.tip, url: JotleyEngagement.tipURL) } label: {
-                    supportRow("Tip the Developer", systemImage: "cup.and.saucer")
-                }
-                .accessibilityIdentifier("settingsTipJotley")
+            JotleyTipButton {
+                supportRow("Tip the Developer", systemImage: "cup.and.saucer")
             }
+            .accessibilityIdentifier("settingsTipJotley")
             ShareLink(item: JotleyEngagement.website) {
                 supportRow("Share Jotley", systemImage: "square.and.arrow.up")
             }
@@ -925,7 +917,6 @@ struct JotleySupportLinks: View {
             .accessibilityIdentifier("settingsJotleyWebsite")
         }
         .buttonStyle(.plain)
-        .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
     }
     private func supportRow(_ title: String, systemImage: String) -> some View {
         MobileActionLabel(title, systemImage: systemImage)
@@ -1022,7 +1013,9 @@ struct JotleyOnboardingView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.colorScheme) private var colorScheme
+    #if os(macOS)
     @State private var allowsWebsiteTips = false
+    #endif
     @State private var showingLanguages = false
     @State private var step = 0
     @State private var languages: [LocalSpeech.Language] = []
@@ -1161,7 +1154,9 @@ struct JotleyOnboardingView: View {
         .preferredColorScheme(theme.effectiveColorScheme)
         .observeThemeChanges()
         .task(id: language) { await refreshModels() }
+        #if os(macOS)
         .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
+        #endif
         .onAppear { refreshMicrophone() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshMicrophone(); summaryReason = intelligenceReadiness() }
@@ -1265,11 +1260,17 @@ struct JotleyOnboardingView: View {
             }
             switch page {
             case let value where value == supportStep:
-                Text(allowsWebsiteTips
-                     ? "Enjoying Jotley? A coffee helps fund development. A rating or review helps more people discover it."
-                     : "A rating or review helps more people discover Jotley. Your feedback helps us make it better.")
+                Text("Enjoying Jotley? An optional tip supports development. A rating or review helps more people discover it.")
                     .font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: 10) {
+                    #if os(iOS)
+                    JotleyTipButton {
+                        Label("Tip the Developer", systemImage: "cup.and.saucer")
+                            .font(.body.weight(.semibold)).foregroundStyle(actionInk).frame(maxWidth: .infinity)
+                    }
+                    .accessibilityIdentifier("onboardingTipJotley")
+                    .accessibilityHint("Choose an optional one-time tip through the App Store")
+                    #else
                     if allowsWebsiteTips {
                         Button {
                             JotleyEngagement.shared.recordClick(.tip)
@@ -1281,6 +1282,7 @@ struct JotleyOnboardingView: View {
                         .accessibilityIdentifier("onboardingTipJotley")
                         .accessibilityHint("Opens Buy Me a Coffee in your browser")
                     }
+                    #endif
                     Button {
                         JotleyEngagement.shared.recordClick(.review)
                         openURL(JotleyEngagement.reviewURL)
