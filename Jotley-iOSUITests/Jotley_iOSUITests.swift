@@ -1936,6 +1936,13 @@ final class Jotley_iOSUITests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
             XCUIDevice.shared.orientation = orientation
+            let landscape = orientation == .landscapeLeft
+            expectation(for: NSPredicate { _, _ in
+                (app.frame.width > app.frame.height) == landscape
+            }, evaluatedWith: app)
+            waitForExpectations(timeout: 10)
+            expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: app.buttons["tipJarDone"])
+            waitForExpectations(timeout: 10)
             let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             shot.name = "Jotley-real-sandbox-tip-catalog-\(orientation.rawValue)"
             shot.lifetime = .keepAlways; add(shot)

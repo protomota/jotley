@@ -104,49 +104,56 @@ struct TipJarView: View {
                     .disabled(store.purchasingID != nil)
                     .accessibilityIdentifier("tipJarDone")
             }
-            Text("Leave an optional, one-time tip to support continued development. Every feature stays available whether or not you tip.")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if store.isLoading {
-                ProgressView("Loading tips…")
-            }
-            ForEach(store.products, id: \.productIdentifier) { product in
-                Button {
-                    Task { await store.purchase(product) }
-                } label: {
-                    HStack(spacing: 16) {
-                        Text(product.localizedTitle)
-                        Spacer()
-                        if store.purchasingID == product.productIdentifier {
-                            ProgressView()
-                        } else {
-                            Text(product.localizedPriceString).fontWeight(.semibold)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Leave an optional, one-time tip to support continued development. Every feature stays available whether or not you tip.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if store.isLoading {
+                        ProgressView("Loading tips…")
+                    }
+                    ForEach(store.products, id: \.productIdentifier) { product in
+                        Button {
+                            Task { await store.purchase(product) }
+                        } label: {
+                            HStack(spacing: 16) {
+                                Text(product.localizedTitle)
+                                Spacer()
+                                if store.purchasingID == product.productIdentifier {
+                                    ProgressView()
+                                } else {
+                                    Text(product.localizedPriceString).fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                            .contentShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(store.purchasingID != nil)
+                        .accessibilityIdentifier("tipJarProduct-" + product.productIdentifier)
+                    }
+                    if let message = store.message {
+                        Text(message)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("tipJarStatus")
+                        if store.products.isEmpty && !store.isLoading {
+                            Button("Try Again") { Task { await store.load(productIDs: productIDs) } }
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
-                    .contentShape(RoundedRectangle(cornerRadius: 14))
+                    Text("Each tip is a separate purchase, with no subscription or feature unlock.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Link("Privacy policy", destination: privacyURL).font(.footnote)
                 }
-                .buttonStyle(.plain)
-                .disabled(store.purchasingID != nil)
-                .accessibilityIdentifier("tipJarProduct-" + product.productIdentifier)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if let message = store.message {
-                Text(message)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("tipJarStatus")
-                if store.products.isEmpty && !store.isLoading {
-                    Button("Try Again") { Task { await store.load(productIDs: productIDs) } }
-                }
-            }
-            Text("Each tip is a separate purchase, with no subscription or feature unlock.")
-                .font(.footnote).foregroundStyle(.secondary)
-            Link("Privacy policy", destination: privacyURL).font(.footnote)
+            .accessibilityIdentifier("tipJarContent")
         }
         .padding(24)
         .frame(idealWidth: 440, maxWidth: 560)
+        .frame(idealHeight: 540, maxHeight: 650)
         .tint(accent)
         .interactiveDismissDisabled(store.purchasingID != nil)
         .task { await store.load(productIDs: productIDs) }
