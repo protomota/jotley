@@ -13,6 +13,28 @@ import UserNotifications
 struct Jotley_iOSTests {
     init() { UserDefaults.standard.set(false, forKey: JotleySummaryNotifications.enabledKey) }
 
+    @Test func purchaseFailuresKeepAppleDiagnosticsWithoutAccountData() {
+        let apple = NSError(domain: "AMSErrorDomain", code: 100,
+                            userInfo: [NSLocalizedDescriptionKey: "private@example.com", "receipt": "secret-receipt"])
+        let store = NSError(domain: "ASDErrorDomain", code: 530, userInfo: [NSUnderlyingErrorKey: apple])
+        let error = NSError(domain: TipPurchaseFailure.purchaseErrorDomain, code: 2,
+                            userInfo: [NSUnderlyingErrorKey: store])
+        let failure = TipPurchaseFailure(error)
+        #expect(failure.message.contains("sign-in"))
+        #expect(failure.diagnostic.contains("ASDErrorDomain:530 → AMSErrorDomain:100"))
+        #expect(!failure.diagnostic.contains("private@example.com"))
+        #expect(!failure.diagnostic.contains("secret-receipt"))
+    }
+
+    @Test func purchaseFailureCodesAreScopedToTheirErrorDomain() {
+        let unrelated = TipPurchaseFailure(NSError(domain: "NSURLErrorDomain", code: 1))
+        #expect(!unrelated.message.contains("cancelled"))
+        let cancelled = TipPurchaseFailure(NSError(domain: TipPurchaseFailure.purchaseErrorDomain, code: 1))
+        #expect(cancelled.message.contains("cancelled"))
+        let pending = TipPurchaseFailure(NSError(domain: TipPurchaseFailure.purchaseErrorDomain, code: 20))
+        #expect(pending.message.contains("waiting for App Store approval"))
+    }
+
     @MainActor @Test func summaryNotificationsRespectConsentPrivacyAndDeduplication() async throws {
         let suite = "JotleyNotificationTests-" + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
