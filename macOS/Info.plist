@@ -47,7 +47,7 @@
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Jotley uses audio from meetings and other apps for live, on-device transcription. Screen images are never captured.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Jotley uses your microphone for live, on-device transcription.</string>
+	<string>Jotley uses your microphone for live, on-device transcription. No audio files are saved.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Jotley transcribes speech using installed on-device models.</string>
 </dict>

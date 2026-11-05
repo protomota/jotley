@@ -174,7 +174,7 @@ private struct MacSupportPreviewRoot: View {
             } else if CommandLine.arguments.contains("--summary-scroll-only") {
                 guard let store = LocalAppModel.shared.store,
                       let note = try store.create(title: "Summary scroll fixture", text: "Maya reviews Friday.") as? Note else { throw LocalError.message("Summary scroll store unavailable") }
-                defer { try? store.deleteNoteAndAudio(note) }
+                defer { try? store.deleteNote(note) }
                 let model = NotesListViewModel(viewContext: store.context, recorder: LocalAppModel.shared.recorder, persistenceController: store)
                 try await verifySummaryFollowAndCancel(note: note, store: store, viewModel: model)
             } else { try await verifyRouting() }
@@ -333,7 +333,7 @@ private struct MacSupportPreviewRoot: View {
         let nextLease = try store.beginRecording(created); store.endRecording(lease: nextLease)
         print("PASS: successful creation selects a fresh note and preserves prior content.")
         try await verifyTranscriptEditing(note: created, store: store, viewModel: viewModel)
-        try verifyRecovery()
+        try verifyLegacyAudioCleanup()
         try await verifySummaryObserverLifetime(note: created)
         try verifyTranscriptRevisions(note: created)
         try await verifySummaryPresentation(note: created)
@@ -373,7 +373,7 @@ private struct MacSupportPreviewRoot: View {
             throw LocalError.message("Repeated + taps created duplicate notes or left capture busy after failure.")
         }
         guard let newNote = created.first else { throw LocalError.message("New transcription note is missing.") }
-        defer { try? store.deleteNoteAndAudio(newNote) }
+        defer { try? store.deleteNote(newNote) }
         // The failure path must release its note lease, allowing a retry.
         let lease = try store.beginRecording(newNote); store.endRecording(lease: lease)
         print("PASS: Mac new-transcription route starts capture on a fresh note immediately, blocks duplicate starts and releases a failed start.")
@@ -398,7 +398,7 @@ private struct MacSupportPreviewRoot: View {
         note.transcription = String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5)
         viewModel.simulatedSummaryGeneration = { _ in "Finished design summary." }
         viewModel.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "AI Tools", "Design"] }
-        defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedTagGeneration = nil; try? store.deleteNoteAndAudio(other) }
+        defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedTagGeneration = nil; try? store.deleteNote(other) }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
         guard note.summary == "Finished design summary.", note.tagNames == ["AI", "Design"], delivered == 1,
               (other.value(forKey: "tags") as? NSSet)?.count == 2 else {
@@ -707,7 +707,7 @@ private struct MacSupportPreviewRoot: View {
         let model = NotesListViewModel(viewContext: store.context, recorder: recorder, persistenceController: store)
         await model.startNewNote()
         guard let note = model.newNoteBeingRecorded else { throw LocalError.message("New transcript fixture did not start.") }
-        defer { recorder.simulatedStart = nil; try? store.deleteNoteAndAudio(note) }
+        defer { recorder.simulatedStart = nil; try? store.deleteNote(note) }
         let host = NSHostingView(rootView: MacTranscriptionPreviewRoot(model: model))
         let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 1000, height: 760), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
@@ -783,7 +783,7 @@ private struct MacSupportPreviewRoot: View {
         }
         let other = try store.create(title: "Browse while transcribing", text: "Keep this note unchanged.") as! Note
         other.summary = "Existing summary"; try store.save()
-        defer { recorder.simulatedStart = nil; try? store.deleteNoteAndAudio(note); try? store.deleteNoteAndAudio(other) }
+        defer { recorder.simulatedStart = nil; try? store.deleteNote(note); try? store.deleteNote(other) }
         model.toggleSelection(for: other)
         var updated = speech
         updated.accept(text: "These words belong only to the active transcription.", start: 10, end: 18, final: true)
@@ -1000,7 +1000,7 @@ private struct MacSupportPreviewRoot: View {
         // Historical metadata must not revive the retired saved-audio action.
         note.sourceURL = "Recordings/legacy-preview.m4a"
         try! store.save()
-        defer { try? store.deleteNoteAndAudio(note) }
+        defer { try? store.deleteNote(note) }
         let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
         model.selectedNoteIDs = [note.objectID]; model.selectedDetailTab = DetailTab.transcript.rawValue
         let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note, selectedTab: Binding(get: { model.selectedDetailTab }, set: { model.selectedDetailTab = $0 }), viewModel: model)
@@ -1245,54 +1245,33 @@ private struct MacSupportPreviewRoot: View {
     }
 
 
-    @MainActor private static func verifyRecovery() throws {
+    @MainActor private static func verifyLegacyAudioCleanup() throws {
         let app = LocalAppModel.shared
         guard Bundle.main.bundleIdentifier == "com.protomota.jotley.mac-routing-tests",
               let store = app.store, store.ready,
               store.root.path.contains("/com.protomota.jotley.mac-routing-tests/") else {
-            throw LocalError.message("Recovery checks require the separate test sandbox.")
+            throw LocalError.message("Audio cleanup checks require the separate test sandbox.")
         }
         guard try store.notes().isEmpty else { throw LocalError.message("Preserve unexpected test sandbox notes.") }
         defer {
             for item in store.container.persistentStoreCoordinator.persistentStores { try? store.container.persistentStoreCoordinator.remove(item) }
             try? FileManager.default.removeItem(at: store.root)
         }
-        for complete in [false, true] {
-            let note = try store.create(title: "Deleted recovery fixture")
-            guard let id = note.localNoteID else { throw LocalError.message("Recovery fixture has no ID.") }
-            let segment = store.root.appendingPathComponent("Recordings/\(id.uuidString)/segment")
-            do {
-                let writer = try DurableAudioWriter(directory: segment, noteID: id, sampleRate: 16000)
-                try writer.append(Data(repeating: 0, count: 64000))
-                if complete { try writer.close() }
-            }
-            try app.reload() // Keep a stale view-model snapshot across deletion.
-            store.context.delete(note); try store.save()
-            try app.recoverRecordings(); try app.recoverRecordings()
-            guard try store.notes().isEmpty, app.notes.isEmpty,
-                  try DurableAudioWriter.frameCount(at: segment) == 16000,
-                  FileManager.default.fileExists(atPath: segment.appendingPathComponent("audio.caf").path) || complete else {
-                throw LocalError.message("Mac recovery recreated a deleted note or lost its raw audio.")
-            }
+        let kept = try store.create(title: "Keep cleanup title", text: "Keep cleanup words.")
+        guard let id = kept.localNoteID else { throw LocalError.message("Cleanup fixture has no ID.") }
+        for name in ["Recordings/\(id.uuidString)/segment", "DeletedRecordings/\(id.uuidString)"] {
+            let directory = store.root.appendingPathComponent(name)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try Data(repeating: 0, count: 64000).write(to: directory.appendingPathComponent("audio.float32"))
         }
-        print("PASS: completed and unfinished local audio never recreate deleted Mac notes.")
-        let kept = try store.create(title: "Keep recovery title", text: "Keep recovery words.")
-        guard let id = kept.localNoteID else { throw LocalError.message("Recovery fixture has no ID.") }
-        let segment = store.root.appendingPathComponent("Recordings/\(id.uuidString)/segment")
-        do {
-            let writer = try DurableAudioWriter(directory: segment, noteID: id, sampleRate: 16000)
-            try writer.append(Data(repeating: 0, count: 64000))
+        try LegacyAudioCleanup.remove(in: store.root); try LegacyAudioCleanup.remove(in: store.root)
+        guard try store.notes().count == 1, kept.text("title") == "Keep cleanup title",
+              kept.text("transcription") == "Keep cleanup words.",
+              !FileManager.default.fileExists(atPath: store.root.appendingPathComponent("Recordings").path),
+              !FileManager.default.fileExists(atPath: store.root.appendingPathComponent("DeletedRecordings").path) else {
+            throw LocalError.message("Legacy Mac audio cleanup kept audio or changed note content.")
         }
-        try app.reload(); try app.recoverRecordings(); try app.recoverRecordings()
-        guard try store.notes().count == 1, kept.text("title") == "Keep recovery title",
-              kept.text("transcription") == "Keep recovery words.",
-              kept.text("sourceURL") == "Recordings/\(id.uuidString)",
-              try DurableAudioWriter.manifest(at: segment).complete,
-              try DurableAudioWriter.frameCount(at: segment) == 16000,
-              FileManager.default.fileExists(atPath: segment.appendingPathComponent("audio.caf").path) else {
-            throw LocalError.message("Existing Mac note recovery lost content or audio.")
-        }
-        print("PASS: interrupted Mac recovery preserves an existing note and its complete raw audio.")
+        print("PASS: audio saved by earlier Mac versions is removed while notes and transcripts are kept.")
     }
 }
 #else

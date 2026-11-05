@@ -16,17 +16,12 @@ public final class ProcessTapRecorder: ObservableObject {
     private let queue = DispatchQueue(label: "jotley.local.capture")
     private var tap: ProcessTap?
     private var engine: AVAudioEngine?
-    private var writer: DurableAudioWriter?
-    private var root: URL?
-    private var noteID: UUID?
     private var systemAudio = false
     private var timer: Timer?
     private var startedAt: Date?
     private var previousElapsed = 0.0
 
     private var liveSpeech: LiveSpeechSession?
-    private var speechWarning: String?
-    public var hasOnlySpeechWarning: Bool { errorMessage != nil && errorMessage == speechWarning }
     @Published public private(set) var transcription = ""
     @Published public private(set) var currentAudioLevel: Float = 0
     public var isRecording: Bool { recording }
@@ -86,21 +81,21 @@ public final class ProcessTapRecorder: ObservableObject {
         }) else {
             throw LocalError.message("Microphone access was denied. Enable it in System Settings → Privacy & Security → Microphone.")
         }
-        self.root = root; self.noteID = noteID; self.systemAudio = systemAudio
-        transcriptTimeOffset = try DurableAudioWriter.recordedDuration(in: root.appendingPathComponent("Recordings/\(noteID.uuidString)"))
+        self.systemAudio = systemAudio
+        transcriptTimeOffset = 0
         #if !SWIFT_PACKAGE
-        // Synced notes may have existing text/timestamps without audio on this Mac.
-        transcriptTimeOffset = max(transcriptTimeOffset, existingUtterances.compactMap(\.end).max() ?? 0)
+        // Continue after the note's existing timestamps.
+        transcriptTimeOffset = existingUtterances.compactMap(\.end).max() ?? 0
         #endif
-        elapsed = 0; previousElapsed = 0; errorMessage = nil; speechWarning = nil
+        elapsed = 0; previousElapsed = 0; errorMessage = nil
         accept(LocalTranscript())
+        // Audio is never saved, so capture without live speech would produce nothing.
         do {
             liveSpeech = try await LiveSpeechSession.start(locale: speechLocale) { [weak self] value in
                 await MainActor.run { self?.accept(value) }
             }
         } catch {
-            speechWarning = "Live transcription unavailable: \(error.localizedDescription) Captured audio remains available locally."
-            errorMessage = speechWarning
+            throw LocalError.message("Live transcription unavailable: \(error.localizedDescription)")
         }
         do { try startSegment() } catch {
             await liveSpeech?.cancel(); liveSpeech = nil; throw error
@@ -125,10 +120,7 @@ public final class ProcessTapRecorder: ObservableObject {
         }
     }
     private func startSegment() throws {
-        guard let root, let noteID else { throw LocalError.message("No transcription session.") }
-        let directory = root.appendingPathComponent("Recordings", isDirectory: true)
-            .appendingPathComponent(noteID.uuidString, isDirectory: true)
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        guard let live = liveSpeech else { throw LocalError.message("No transcription session.") }
         do {
             if systemAudio {
                 let tap = ProcessTap()
@@ -138,14 +130,10 @@ public final class ProcessTapRecorder: ObservableObject {
                       let format = AVAudioFormat(streamDescription: &description) else {
                     throw LocalError.message(tap.errorMessage ?? "System audio capture is unavailable.")
                 }
-                let writer = try DurableAudioWriter(directory: directory, noteID: noteID, sampleRate: format.sampleRate)
-                self.writer = writer
-                let live = liveSpeech
                 try tap.run(on: queue, ioBlock: { [weak self] _, input, _, _, _ in
                     do {
                         let data = try Self.mix(input, format: format)
-                        try writer.append(data)
-                        live?.append(data, sampleRate: format.sampleRate)
+                        live.append(data, sampleRate: format.sampleRate)
                         let peak = data.withUnsafeBytes { bytes in bytes.bindMemory(to: Float.self).reduce(Float(0)) { max($0, abs($1)) } }
                         Task { @MainActor [weak self] in self?.currentAudioLevel = peak }
                     } catch {
@@ -160,14 +148,10 @@ public final class ProcessTapRecorder: ObservableObject {
                 guard format.sampleRate > 0, format.channelCount > 0 else {
                     throw LocalError.message("No microphone input is available.")
                 }
-                let writer = try DurableAudioWriter(directory: directory, noteID: noteID, sampleRate: format.sampleRate)
-                self.writer = writer
-                let live = liveSpeech
                 input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
                     do {
                         let data = try Self.mix(UnsafePointer(buffer.audioBufferList), format: format)
-                        try writer.append(data)
-                        live?.append(data, sampleRate: format.sampleRate)
+                        live.append(data, sampleRate: format.sampleRate)
                         let peak = data.withUnsafeBytes { bytes in bytes.bindMemory(to: Float.self).reduce(Float(0)) { max($0, abs($1)) } }
                         Task { @MainActor [weak self] in self?.currentAudioLevel = peak }
                     } catch {
@@ -183,11 +167,11 @@ public final class ProcessTapRecorder: ObservableObject {
     }
     private func captureFailed(_ error: Error) {
         guard recording else { return }
-        errorMessage = "Capture stopped: \(error.localizedDescription). Captured audio was preserved."
+        errorMessage = "Capture stopped: \(error.localizedDescription). Words already transcribed are saved."
         // Stop input immediately, but retain the active session until its owner
         // finalizes speech and releases recording ownership. Marking it idle here
         // would allow a new recording to replace state before the queued stop runs.
-        _ = stopCapture()
+        stopCapture()
         Task {
             #if !SWIFT_PACKAGE
             if let owner = JotleyAppDelegate.shared?.recordingNotesViewModel { await owner.stopRecording() }
@@ -204,26 +188,16 @@ public final class ProcessTapRecorder: ObservableObject {
         #endif
         if paused { try startSegment(); paused = false }
         else {
-            let captureError = stopCapture()
+            stopCapture()
             previousElapsed = elapsed; paused = true
-            if let captureError { throw captureError }
         }
     }
-    @discardableResult
-    private func stopCapture() -> Error? {
+    private func stopCapture() {
         if let startedAt { elapsed = previousElapsed + Date().timeIntervalSince(startedAt) }
         startedAt = nil
         tap?.invalidate(); tap = nil
         engine?.stop(); engine?.inputNode.removeTap(onBus: 0); engine = nil
-        queue.sync {} // All capture callbacks finish before closing the durable file.
-        var captureError: Error?
-        do { try writer?.close() }
-        catch {
-            captureError = error
-            errorMessage = "Audio could not be finalized: \(error.localizedDescription). Raw capture was retained."
-        }
-        writer = nil
-        return captureError
+        queue.sync {} // All capture callbacks finish before speech input ends.
     }
     public func stopCaptureSession() {
         #if DEBUG && !SWIFT_PACKAGE
@@ -242,7 +216,7 @@ public final class ProcessTapRecorder: ObservableObject {
         if let live = liveSpeech {
             liveSpeech = nil
             do { accept(try await live.finish()) }
-            catch { errorMessage = "Live transcription could not finish: \(error.localizedDescription). Audio is saved for retry." }
+            catch { errorMessage = "Live transcription could not finish: \(error.localizedDescription). Words already transcribed are saved." }
         }
         currentAudioLevel = 0
         return transcription

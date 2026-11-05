@@ -83,7 +83,6 @@ import Combine
             }
             recordingLease = try persistenceController.beginRecording(note)
             let id = note.id ?? UUID(); note.id = id
-            note.sourceURL = "Recordings/\(id.uuidString)"
             note.noteType = "transcription"
             try persistenceController.save()
             baseText = note.transcription ?? ""; baseUtterances = note.transcriptUtterances
@@ -147,7 +146,7 @@ import Combine
             do {
                 try persistenceController.save()
             } catch { report(error) }
-            if let error = recorder.errorMessage, !recorder.hasOnlySpeechWarning { syncErrorMessage = error; showSyncError = true }
+            if let error = recorder.errorMessage { syncErrorMessage = error; showSyncError = true }
         }
         stopTask = task; await task.value
     }
@@ -189,7 +188,7 @@ import Combine
         if generatingSummaryNoteID == note.objectID { inference?.cancel() }
         let objectID = note.objectID
         do {
-            try persistenceController.deleteNoteAndAudio(note)
+            try persistenceController.deleteNote(note)
             selectedNoteIDs.remove(objectID)
             try LocalAppModel.shared.reload()
         } catch { report(error) }

@@ -1340,7 +1340,7 @@ struct JotleyOnboardingView: View {
                 #if os(iOS)
                 feature("Words worth keeping", detail: "Save your transcript without saving an audio file.", icon: "text.alignleft", dense: dense, scale: scale)
                 #else
-                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense, scale: scale)
+                feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps, without saving an audio file. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense, scale: scale)
                 #endif
             default:
                 #if os(macOS)

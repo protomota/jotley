@@ -14,9 +14,9 @@ Meetings, lectures, passing ideas and long conversations: Jotley turns spoken wo
 
 Long transcripts are reviewed in full, using sections sized for Apple's on-device model. Watch preparation progress, then see the summary appear as it is written. You can leave a note while it finishes. On iPhone and iPad, Jotley requests background processing time; if iOS interrupts the job, completed sections are saved locally and generation resumes when you return. Background runtime depends on system conditions.
 
-On iPhone and iPad, tap **+** and start live transcription immediately. Watch timestamped words fill the page from the top, then follow the newest words as the transcript grows. Pause when you need to, then stop or close to save. **Continue Transcription** adds to the same note. Mobile sessions save transcript text, without saving an audio file.
+On iPhone and iPad, tap **+** and start live transcription immediately. Watch timestamped words fill the page from the top, then follow the newest words as the transcript grows. Pause when you need to, then stop or close to save. **Continue Transcription** adds to the same note. Sessions save transcript text, without saving an audio file.
 
-On Mac, capture your microphone and audio from your apps or system. Tap + to start live transcription immediately, then keep your transcript and summary together in one familiar native workspace.
+On Mac, capture your microphone and audio from your apps or system. Tap + to start live transcription immediately, then keep your transcript and summary together in one familiar native workspace. Like iPhone and iPad, Mac saves the transcript text and never saves an audio file.
 
 ![Jotley on Mac: searchable notes and a summarized voice note](docs/readme/mac-summary.webp)
 
@@ -58,7 +58,7 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 
 Once the Apple models are ready, these features work offline. A speech language may require a **one-time Apple model download**, which you explicitly start in Settings.
 
-**iCloud sync is optional and on by default in configured signed builds.** If enabled, note content syncs through your private iCloud database. Raw Mac audio stays on the Mac. Turn sync off in Settings and restart to keep note content local, apart from anything you choose to export or share. Apple model setup, enabled iCloud sync and Mac update checks can use the internet.
+**iCloud sync is optional and on by default in configured signed builds.** If enabled, note content syncs through your private iCloud database. Turn sync off in Settings and restart to keep note content local, apart from anything you choose to export or share. Apple model setup, enabled iCloud sync and Mac update checks can use the internet.
 
 ## Ready for Apple Intelligence
 

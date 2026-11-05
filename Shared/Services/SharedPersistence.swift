@@ -1,7 +1,6 @@
 import Foundation
 import CoreData
 import Combine
-import AVFoundation
 import CloudKit
 
 /// CloudKit uses signed app entitlements and the user's iCloud account, never API keys.
@@ -135,7 +134,6 @@ public final class SharedPersistenceController: ObservableObject {
                 }
                 try save()
             }
-            try resolveRecordingDeletions()
         }
     }
 
@@ -154,9 +152,7 @@ public final class SharedPersistenceController: ObservableObject {
         if activeRecording?.lease == lease { activeRecording = nil }
     }
 
-    /// Move audio out of recovery's namespace before committing deletion. A crash
-    /// before the database commit restores it; after commit, launch purges it.
-    public func deleteNoteAndAudio(_ note: NSManagedObject) throws {
+    public func deleteNote(_ note: NSManagedObject) throws {
         guard note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
         }
@@ -164,55 +160,13 @@ public final class SharedPersistenceController: ObservableObject {
             throw LocalError.message("Stop this transcription before deleting its note.")
         }
         try save() // Rollback below must not discard unrelated pending edits.
-        let id = note.localNoteID
         let chatRequest = NSFetchRequest<NSManagedObject>(entityName: "NoteChatMessage")
-        chatRequest.predicate = NSPredicate(format: "noteId == %@", (id ?? UUID()) as CVarArg)
+        chatRequest.predicate = NSPredicate(format: "noteId == %@", (note.localNoteID ?? UUID()) as CVarArg)
         let chat = container.managedObjectModel.entitiesByName["NoteChatMessage"] == nil ? [] : try context.fetch(chatRequest)
-        let source = id.map { root.appendingPathComponent("Recordings/\($0.uuidString)") }
-        let pending = id.map { root.appendingPathComponent("DeletedRecordings/\($0.uuidString)") }
-        var moved = false
-        if let source, let pending, FileManager.default.fileExists(atPath: source.path) {
-            try FileManager.default.createDirectory(at: pending.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try FileManager.default.moveItem(at: source, to: pending)
-            moved = true
-        }
         for message in chat { context.delete(message) }
         context.delete(note)
         do { try save() }
-        catch {
-            context.rollback()
-            if moved, let source, let pending {
-                do { try FileManager.default.moveItem(at: pending, to: source) }
-                catch {
-                    throw LocalError.message("Note deletion failed. Its audio is preserved in local recovery storage and will be restored on launch: \(error.localizedDescription)")
-                }
-            }
-            throw error
-        }
-        if moved, let pending {
-            do { try FileManager.default.removeItem(at: pending) }
-            catch { throw LocalError.message("The note was deleted. Audio cleanup remains pending locally and will retry on launch: \(error.localizedDescription)") }
-        }
-    }
-    public func resolveRecordingDeletions() throws {
-        let pendingRoot = root.appendingPathComponent("DeletedRecordings")
-        guard FileManager.default.fileExists(atPath: pendingRoot.path) else { return }
-        for pending in try FileManager.default.contentsOfDirectory(at: pendingRoot, includingPropertiesForKeys: nil) {
-            guard let id = UUID(uuidString: pending.lastPathComponent) else { continue }
-            let request = NSFetchRequest<NSManagedObject>(entityName: "Note")
-            request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-            request.fetchLimit = 1
-            if try context.fetch(request).isEmpty {
-                try FileManager.default.removeItem(at: pending)
-            } else {
-                let source = root.appendingPathComponent("Recordings/\(id.uuidString)")
-                guard !FileManager.default.fileExists(atPath: source.path) else {
-                    throw LocalError.message("Transcription recovery found two audio copies for one note. Both were preserved for review.")
-                }
-                try FileManager.default.createDirectory(at: source.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try FileManager.default.moveItem(at: pending, to: source)
-            }
-        }
+        catch { context.rollback(); throw error }
     }
 
     public var context: NSManagedObjectContext { container.viewContext }
@@ -375,122 +329,13 @@ public struct LocalTranscript: Sendable {
     public var displayText: String { [text, tentative].filter { !$0.isEmpty }.joined(separator: " ") }
 }
 
-public struct LocalRecordingManifest: Codable, Sendable {
-    public let noteID: UUID
-    public let createdAt: Date
-    public var sampleRate: Double
-    public var complete: Bool
-    public init(noteID: UUID, sampleRate: Double) {
-        self.noteID = noteID; self.createdAt = Date(); self.sampleRate = sampleRate; self.complete = false
-    }
-}
-
-/// Persist PCM first. Audio reconstruction and inference can fail without destroying capture.
-/// A crash leaves a recoverable raw file; its actual byte count is the authoritative duration.
-public final class DurableAudioWriter: @unchecked Sendable {
-    public let directory: URL
-    private let lock = NSLock()
-    private var handle: FileHandle?
-    private var manifest: LocalRecordingManifest
-    private var lastSync = Date()
-    public init(directory: URL, noteID: UUID, sampleRate: Double) throws {
-        self.directory = directory
-        manifest = LocalRecordingManifest(noteID: noteID, sampleRate: sampleRate)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let raw = directory.appendingPathComponent("audio.float32")
-        // Never truncate an existing recording.
-        guard !FileManager.default.fileExists(atPath: raw.path) else {
-            throw LocalError.message("Transcription audio already exists; it was preserved.")
-        }
-        try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("recording.json"), options: .atomic)
-        guard FileManager.default.createFile(atPath: raw.path, contents: nil) else {
-            throw LocalError.message("Unable to create local audio file.")
-        }
-        handle = try FileHandle(forWritingTo: raw)
-    }
-    public func append(_ data: Data) throws {
-        lock.lock(); defer { lock.unlock() }
-        guard let handle else { throw LocalError.message("Transcription audio capture is closed.") }
-        try handle.write(contentsOf: data)
-        if Date().timeIntervalSince(lastSync) >= 1 { try handle.synchronize(); lastSync = Date() }
-    }
-    public func close() throws {
-        lock.lock(); defer { lock.unlock() }
-        if let handle { try handle.synchronize(); try handle.close(); self.handle = nil }
-        manifest.complete = true
-        try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("recording.json"), options: .atomic)
-    }
-    deinit { try? handle?.close() }
-
-    public static func manifest(at directory: URL) throws -> LocalRecordingManifest {
-        try JSONDecoder().decode(LocalRecordingManifest.self,
-            from: Data(contentsOf: directory.appendingPathComponent("recording.json")))
-    }
-    public static func frameCount(at directory: URL) throws -> Int64 {
-        let attributes = try FileManager.default.attributesOfItem(atPath: directory.appendingPathComponent("audio.float32").path)
-        return ((attributes[.size] as? NSNumber)?.int64Value ?? 0) / 4
-    }
-    /// Includes silence and every saved segment without reconstructing derived audio.
-    public static func recordedDuration(in directory: URL) throws -> TimeInterval {
-        guard FileManager.default.fileExists(atPath: directory.path) else { return 0 }
-        let children = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        return try children.reduce(0) { duration, segment in
-            guard FileManager.default.fileExists(atPath: segment.appendingPathComponent("recording.json").path) else { return duration }
-            let info = try manifest(at: segment)
-            guard info.sampleRate.isFinite, info.sampleRate > 0 else {
-                throw LocalError.message("Transcription audio has an invalid format; the original audio was preserved.")
-            }
-            return duration + Double(try frameCount(at: segment)) / info.sampleRate
-        }
-    }
-    /// A valid derived CAF is reusable. Rebuild only when raw capture has changed
-    /// or the derived file is missing/corrupt, avoiding full copies during playback.
-    public static func audioFile(at directory: URL) throws -> URL {
-        let destination = directory.appendingPathComponent("audio.caf")
-        let info = try manifest(at: directory)
-        if let audio = try? AVAudioFile(forReading: destination),
-           audio.length == (try frameCount(at: directory)),
-           audio.processingFormat.sampleRate == info.sampleRate,
-           audio.processingFormat.channelCount == 1 {
-            return destination
-        }
-        return try recover(at: directory)
-    }
-    /// Rebuild into a temporary CAF and atomically replace only the derived file on success.
-    /// The raw capture and manifest are always retained, including on failure.
-    public static func recover(at directory: URL) throws -> URL {
-        let info = try manifest(at: directory)
-        guard info.sampleRate.isFinite, info.sampleRate > 0,
-              let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                         sampleRate: info.sampleRate, channels: 1, interleaved: false) else {
-            throw LocalError.message("Transcription audio has an invalid format; the original audio was preserved.")
-        }
-        let raw = try FileHandle(forReadingFrom: directory.appendingPathComponent("audio.float32"))
-        defer { try? raw.close() }
-        let temporary = directory.appendingPathComponent("recovered-\(UUID().uuidString).caf")
-        let destination = directory.appendingPathComponent("audio.caf")
-        do {
-            // Closing AVAudioFile before rename flushes the CAF header.
-            do {
-                let output = try AVAudioFile(forWriting: temporary, settings: format.settings)
-                while let data = try raw.read(upToCount: 65536), !data.isEmpty {
-                    let frames = data.count / 4 // Ignore a partial final sample after a crash.
-                    guard frames > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: UInt32(frames)),
-                          let pointer = buffer.floatChannelData?[0] else { continue }
-                    buffer.frameLength = UInt32(frames)
-                    data.withUnsafeBytes { bytes in
-                        if let base = bytes.baseAddress { memcpy(pointer, base, frames * 4) }
-                    }
-                    try output.write(from: buffer)
-                }
-            }
-            if FileManager.default.fileExists(atPath: destination.path) {
-                _ = try FileManager.default.replaceItemAt(destination, withItemAt: temporary)
-            } else { try FileManager.default.moveItem(at: temporary, to: destination) }
-            return destination
-        } catch {
-            try? FileManager.default.removeItem(at: temporary)
-            throw error
+/// Jotley never saves audio. Removes audio left by earlier versions, confined to
+/// the two legacy audio directories. Notes, transcripts and the database stay intact.
+public enum LegacyAudioCleanup {
+    public static func remove(in root: URL, fileManager: FileManager = .default) throws {
+        for directory in ["Recordings", "DeletedRecordings"] {
+            let url = root.appendingPathComponent(directory, isDirectory: true)
+            if fileManager.fileExists(atPath: url.path) { try fileManager.removeItem(at: url) }
         }
     }
 }

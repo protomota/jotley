@@ -129,7 +129,7 @@ final class LocalCoreTests: XCTestCase {
         store.context.reset()
         XCTAssertEqual(try store.chatMessages(noteID: id).map(\.id), [question.id, answer.id])
         let saved = try XCTUnwrap(store.notes().first)
-        try store.deleteNoteAndAudio(saved)
+        try store.deleteNote(saved)
         XCTAssertTrue(try store.chatMessages(noteID: id).isEmpty)
     }
 
@@ -179,57 +179,24 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertFalse(note.objectID.isTemporaryID)
         try store.save()
         let other = try store.create(title: "Other")
-        let directory = root.appendingPathComponent("Recordings/\(id.uuidString)/segment")
-        let writer = try DurableAudioWriter(directory: directory, noteID: id, sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 400))
-        XCTAssertThrowsError(try store.deleteNoteAndAudio(note))
+        XCTAssertThrowsError(try store.deleteNote(note))
         XCTAssertThrowsError(try store.beginRecording(other))
         store.endRecording(lease: UUID())
-        XCTAssertThrowsError(try store.deleteNoteAndAudio(note))
+        XCTAssertThrowsError(try store.deleteNote(note))
         XCTAssertEqual(try store.notes().count, 2)
         XCTAssertFalse(note.isDeleted)
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 100)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("DeletedRecordings/\(id.uuidString)").path))
         // Unrelated notes remain deletable while the recording is protected.
-        try store.deleteNoteAndAudio(other)
-        try writer.append(Data(repeating: 0, count: 400)); try writer.close()
+        try store.deleteNote(other)
         store.endRecording(lease: lease)
         let next = try store.create(title: "Next")
         let nextLease = try store.beginRecording(next)
         store.endRecording(lease: lease) // A stale owner cannot release the next session.
-        XCTAssertThrowsError(try store.deleteNoteAndAudio(next))
-        try store.deleteNoteAndAudio(note)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+        XCTAssertThrowsError(try store.deleteNote(next))
+        try store.deleteNote(note)
         store.endRecording(lease: nextLease)
-        try store.deleteNoteAndAudio(next)
+        try store.deleteNote(next)
         XCTAssertThrowsError(try store.beginRecording(next))
         XCTAssertTrue(try store.notes().isEmpty)
-    }
-    func testRecordedDurationIncludesSilentSegmentsAndRetainsCorruptAudio() throws {
-        let root = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-        XCTAssertEqual(try DurableAudioWriter.recordedDuration(in: root.appendingPathComponent("missing")), 0)
-        let id = UUID()
-        let first = root.appendingPathComponent("first")
-        let second = root.appendingPathComponent("second")
-        for (segment, rate, seconds) in [(first, 16000.0, 10.0), (second, 48000.0, 3.25)] {
-            let writer = try DurableAudioWriter(directory: segment, noteID: id, sampleRate: rate)
-            try writer.append(Data(repeating: 0, count: Int(rate * seconds) * 4))
-            try writer.close()
-        }
-        // A crash's partial final sample cannot lengthen the timeline.
-        let raw = second.appendingPathComponent("audio.float32")
-        let handle = try FileHandle(forWritingTo: raw)
-        try handle.seekToEnd(); try handle.write(contentsOf: Data([1, 2])); try handle.close()
-        try Data([0]).write(to: root.appendingPathComponent("unrelated.txt"))
-        XCTAssertEqual(try DurableAudioWriter.recordedDuration(in: root), 13.25, accuracy: 0.0001)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: first.appendingPathComponent("audio.caf").path))
-        let original = try Data(contentsOf: raw)
-        var manifest = try DurableAudioWriter.manifest(at: second)
-        manifest.sampleRate = 0
-        try JSONEncoder().encode(manifest).write(to: second.appendingPathComponent("recording.json"), options: .atomic)
-        XCTAssertThrowsError(try DurableAudioWriter.recordedDuration(in: root))
-        XCTAssertEqual(try Data(contentsOf: raw), original)
     }
     func testCloudSyncDefaultsOnWithConfiguredIdentifierAndHonorsOptOut() throws {
         let suite = "JotleySyncTests-\(UUID())"
@@ -293,30 +260,6 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(chunks.joined(), text)
         XCTAssertTrue(chunks.allSatisfy { $0.utf8.count <= 2400 })
         XCTAssertGreaterThan(chunks.count, 2)
-    }
-    func testInterruptedCaptureCanBeRecoveredWithoutClosingWriter() throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        let samples = [Float](repeating: 0.25, count: 16000)
-        try writer.append(samples.withUnsafeBufferPointer { Data(buffer: $0) })
-        XCTAssertFalse(try DurableAudioWriter.manifest(at: directory).complete)
-        let url = try DurableAudioWriter.recover(at: directory)
-        let audio = try AVAudioFile(forReading: url)
-        XCTAssertEqual(audio.length, 16000)
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 16000)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("audio.float32").path))
-        try writer.close()
-        XCTAssertTrue(try DurableAudioWriter.manifest(at: directory).complete)
-    }
-    func testExistingCaptureCannotBeOverwritten() throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 400))
-        XCTAssertThrowsError(try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000))
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 100)
-        try writer.close()
     }
     @MainActor
     func testIsolatedStorePersistsAcrossRelaunchAndUsesVersionSixModel() throws {
@@ -463,73 +406,7 @@ extension LocalCoreTests {
         XCTAssertEqual(ready.configuration?.locale, after.locale)
     }
 
-    func testEmptySavedRecordingReturnsWithoutSpeechSetup() async throws {
-        let root = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-        let writer = try DurableAudioWriter(directory: root.appendingPathComponent("empty"), noteID: UUID(), sampleRate: 16000)
-        try writer.close()
-        let file = try DurableAudioWriter.audioFile(at: writer.directory)
-        let before = try Data(contentsOf: file)
-        let result = try await LocalSpeech.transcribe(files: [file], locale: Locale(identifier: "zxx")) { _ in
-            XCTFail("An empty file must not produce a speech snapshot")
-        }
-        XCTAssertTrue(result.text.isEmpty && result.utterances.isEmpty)
-        XCTAssertEqual(try Data(contentsOf: file), before)
-    }
 
-    @MainActor func testInstalledModelTranscribesSavedRecordingAndAppendedSegments() async throws {
-        guard ProcessInfo.processInfo.environment["JOTLEY_RUN_MODEL_TESTS"] == "1" else {
-            throw XCTSkip("Use locally generated speech fixtures and already installed Apple assets.")
-        }
-        let root = try temporaryDirectory()
-        let store = try SharedPersistenceController(root: root)
-        defer {
-            for item in store.container.persistentStoreCoordinator.persistentStores { try? store.container.persistentStoreCoordinator.remove(item) }
-            try? FileManager.default.removeItem(at: root)
-        }
-        let note = try store.create(title: "Saved recording", text: "Previous text", noteType: "voice")
-        let id = try XCTUnwrap(note.localNoteID)
-        let sources: [String?] = [nil, "/tmp/jotley-local-live-speech.aiff", nil,
-                                 "/tmp/jotley-local-appended-speech-48k.aiff", nil]
-        var files: [URL] = [], originalAudio: [Data] = [], firstDuration = 0.0
-        for (index, source) in sources.enumerated() {
-            let directory = root.appendingPathComponent("Recordings/\(id.uuidString)/segment-\(index)")
-            let sampleRate = index == 3 ? 48000.0 : 16000.0
-            let writer = try DurableAudioWriter(directory: directory, noteID: id, sampleRate: sampleRate)
-            if let source {
-                let audio = try AVAudioFile(forReading: URL(fileURLWithPath: source), commonFormat: .pcmFormatFloat32, interleaved: false)
-                XCTAssertEqual(audio.processingFormat.sampleRate, sampleRate)
-                let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: UInt32(audio.length)))
-                try audio.read(into: buffer)
-                let samples = try XCTUnwrap(buffer.floatChannelData?[0])
-                try writer.append(Data(bytes: samples, count: Int(buffer.frameLength) * 4))
-                if index == 1 { firstDuration = Double(audio.length) / 16000 }
-            }
-            try writer.close()
-            let file = try DurableAudioWriter.audioFile(at: directory)
-            files.append(file); originalAudio.append(try Data(contentsOf: file))
-        }
-        let recognition = Task { try await LocalSpeech.transcribe(files: files, locale: Locale(identifier: "en-US")) { _ in } }
-        let timeout = Task {
-            try await Task.sleep(for: .seconds(30))
-            recognition.cancel()
-        }
-        defer { timeout.cancel() }
-        let result = try await recognition.value
-        let text = result.text.lowercased()
-        let first = try XCTUnwrap(text.range(of: "purple bicycle"), text)
-        let last = try XCTUnwrap(text.range(of: "silver mountain"), text)
-        XCTAssertLessThan(first.lowerBound, last.lowerBound, "Append segments must be transcribed in recording order")
-        XCTAssertTrue(result.utterances.contains { $0.start >= firstDuration && $0.text.lowercased().contains("silver mountain") },
-                      "Appended speech timestamps must include the preceding audio duration")
-        try store.saveNoteChanges(note, values: ["transcription": result.text,
-            "transcriptUtterancesJSON": String(decoding: try JSONEncoder().encode(result.utterances), as: UTF8.self)])
-        store.context.refresh(note, mergeChanges: false)
-        XCTAssertEqual(note.text("transcription"), result.text)
-        XCTAssertEqual(try JSONDecoder().decode([LocalUtterance].self,
-            from: Data(note.text("transcriptUtterancesJSON").utf8)), result.utterances)
-        for (file, before) in zip(files, originalAudio) { XCTAssertEqual(try Data(contentsOf: file), before) }
-    }
 
     /// Opt-in integration check against this Mac's installed Apple speech assets.
     /// Feed audio progressively and require visible speech before ending the stream.
@@ -572,7 +449,7 @@ private final class DeletionRefusedNote: NSManagedObject {
 }
 
 extension LocalCoreTests {
-    @MainActor func testDeletedRecordingCannotResurrectAndUnrelatedEditsPersist() throws {
+    @MainActor func testDeletedNoteStaysDeletedAndUnrelatedEditsPersist() throws {
         let root = try temporaryDirectory()
         let store = try SharedPersistenceController(root: root)
         defer {
@@ -581,47 +458,16 @@ extension LocalCoreTests {
         }
         let target = try store.create(title: "Delete")
         let keep = try store.create(title: "Keep", text: "Original")
-        let id = try XCTUnwrap(target.localNoteID)
-        let audio = root.appendingPathComponent("Recordings/\(id.uuidString)/segment")
-        let writer = try DurableAudioWriter(directory: audio, noteID: id, sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 400)); try writer.close()
         keep.setValue("Edited content", forKey: "transcription")
-        try store.deleteNoteAndAudio(target)
-        try store.resolveRecordingDeletions()
+        try store.deleteNote(target)
         XCTAssertEqual(try store.notes().count, 1)
         XCTAssertEqual(keep.text("transcription"), "Edited content")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: audio.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("DeletedRecordings/\(id.uuidString)").path))
+        for item in store.container.persistentStoreCoordinator.persistentStores { try store.container.persistentStoreCoordinator.remove(item) }
+        let reopened = try SharedPersistenceController(root: root)
+        defer { for item in reopened.container.persistentStoreCoordinator.persistentStores { try? reopened.container.persistentStoreCoordinator.remove(item) } }
+        XCTAssertEqual(try reopened.notes().map { $0.text("title") }, ["Keep"])
     }
-    @MainActor func testRecordingDeletionJournalRestoresBeforeCommitAndPurgesAfterCommit() throws {
-        let root = try temporaryDirectory()
-        let first = try SharedPersistenceController(root: root)
-        let note = try first.create(title: "Crash before deletion")
-        let id = try XCTUnwrap(note.localNoteID)
-        let source = root.appendingPathComponent("Recordings/\(id.uuidString)")
-        let pending = root.appendingPathComponent("DeletedRecordings/\(id.uuidString)")
-        let writer = try DurableAudioWriter(directory: source.appendingPathComponent("segment"), noteID: id, sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 400)); try writer.close()
-        try FileManager.default.createDirectory(at: pending.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try FileManager.default.moveItem(at: source, to: pending)
-        for item in first.container.persistentStoreCoordinator.persistentStores { try first.container.persistentStoreCoordinator.remove(item) }
-        let second = try SharedPersistenceController(root: root)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: source.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: pending.path))
-        let restored = try XCTUnwrap(second.notes().first)
-        try FileManager.default.moveItem(at: source, to: pending)
-        second.context.delete(restored); try second.save()
-        for item in second.container.persistentStoreCoordinator.persistentStores { try second.container.persistentStoreCoordinator.remove(item) }
-        let third = try SharedPersistenceController(root: root)
-        defer {
-            for item in third.container.persistentStoreCoordinator.persistentStores { try? third.container.persistentStoreCoordinator.remove(item) }
-            try? FileManager.default.removeItem(at: root)
-        }
-        XCTAssertTrue(try third.notes().isEmpty)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: source.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: pending.path))
-    }
-    @MainActor func testFailedDeletionCommitRestoresNoteAndCapturedAudio() throws {
+    @MainActor func testFailedDeletionCommitRestoresNote() throws {
         let root = try temporaryDirectory()
         let model = NSManagedObjectModel()
         let entity = NSEntityDescription(); entity.name = "Note"
@@ -637,37 +483,12 @@ extension LocalCoreTests {
             try? FileManager.default.removeItem(at: root)
         }
         let note = try store.create(title: "Keep after failure", text: "Final transcript")
-        let id = try XCTUnwrap(note.localNoteID)
-        let audio = root.appendingPathComponent("Recordings/\(id.uuidString)/segment")
-        let writer = try DurableAudioWriter(directory: audio, noteID: id, sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 400)); try writer.close()
-        XCTAssertThrowsError(try store.deleteNoteAndAudio(note))
+        XCTAssertThrowsError(try store.deleteNote(note))
         XCTAssertEqual(try store.notes().count, 1)
         XCTAssertEqual(note.text("transcription"), "Final transcript")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: audio.appendingPathComponent("audio.float32").path))
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: audio), 100)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("DeletedRecordings/\(id.uuidString)").path))
     }
 }
 
-extension LocalCoreTests {
-    func testSavedAudioReusesValidCAFAndRebuildsAfterRawChanges() throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        try writer.append(Data(repeating: 0, count: 64000))
-        let caf = try DurableAudioWriter.audioFile(at: directory)
-        let inode = try FileManager.default.attributesOfItem(atPath: caf.path)[.systemFileNumber] as? NSNumber
-        XCTAssertEqual(try DurableAudioWriter.audioFile(at: directory), caf)
-        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: caf.path)[.systemFileNumber] as? NSNumber, inode,
-                       "Playback should reuse a valid CAF rather than rewrite long recordings")
-        try writer.append(Data(repeating: 0, count: 400))
-        let updated = try AVAudioFile(forReading: DurableAudioWriter.audioFile(at: directory))
-        XCTAssertEqual(updated.length, 16100)
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 16100)
-        try writer.close()
-    }
-}
 
 @objc(JotleyGeneratedContentRefusedNote)
 private final class GeneratedContentRefusedNote: NSManagedObject {
@@ -816,65 +637,32 @@ private actor SummaryProbe {
     }
 }
 
-extension LocalCoreTests {
-    func testTwoHoursOfPCMReconstructsFirstAndFinalSamples() throws {
-        guard ProcessInfo.processInfo.environment["JOTLEY_RUN_AUDIO_STRESS"] == "1" else { throw XCTSkip("Large local audio reconstruction is opt-in") }
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        let framesPerSecond = 16000
-        let firstSecond = [Float](repeating: -0.5, count: framesPerSecond).withUnsafeBytes { Data($0) }
-        let followingSecond = [Float](repeating: 0.25, count: framesPerSecond).withUnsafeBytes { Data($0) }
-        try writer.append(firstSecond)
-        for _ in 1..<7200 { try writer.append(followingSecond) }
-        // Recover incomplete capture without closing/finalizing its manifest.
-        let caf = try DurableAudioWriter.recover(at: directory)
-        let audio = try AVAudioFile(forReading: caf)
-        XCTAssertEqual(audio.length, Int64(7200 * framesPerSecond))
-        XCTAssertFalse(try DurableAudioWriter.manifest(at: directory).complete)
-        let sample = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: 1))
-        try audio.read(into: sample, frameCount: 1)
-        XCTAssertEqual(try XCTUnwrap(sample.floatChannelData?[0][0]), -0.5)
-        audio.framePosition = audio.length - 1
-        try audio.read(into: sample, frameCount: 1)
-        XCTAssertEqual(try XCTUnwrap(sample.floatChannelData?[0][0]), 0.25)
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), audio.length)
-        try writer.close()
-    }
-    func testRecoveryFailurePreservesRawAndExistingCAFAndIgnoresCrashTail() throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        try writer.append([Float](repeating: 0.5, count: 100).withUnsafeBytes { Data($0) }); try writer.close()
-        let raw = directory.appendingPathComponent("audio.float32")
-        let handle = try FileHandle(forWritingTo: raw)
-        try handle.seekToEnd(); try handle.write(contentsOf: Data([1, 2, 3])); try handle.close()
-        let caf = try DurableAudioWriter.recover(at: directory)
-        XCTAssertEqual(try AVAudioFile(forReading: caf).length, 100)
-        let savedRaw = try Data(contentsOf: raw); let savedCAF = try Data(contentsOf: caf)
-        var manifest = try DurableAudioWriter.manifest(at: directory); manifest.sampleRate = 0
-        try JSONEncoder().encode(manifest).write(to: directory.appendingPathComponent("recording.json"), options: .atomic)
-        XCTAssertThrowsError(try DurableAudioWriter.recover(at: directory))
-        XCTAssertEqual(try Data(contentsOf: raw), savedRaw)
-        XCTAssertEqual(try Data(contentsOf: caf), savedCAF)
-    }
-}
 
 
 extension LocalCoreTests {
-    func testMalformedLivePCMReportsFailureAndPreservesDurableCapture() async throws {
+    func testMalformedLivePCMReportsFailure() async throws {
         guard ProcessInfo.processInfo.environment["JOTLEY_RUN_MODEL_TESTS"] == "1" else { throw XCTSkip("Installed-model integration is opt-in") }
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let writer = try DurableAudioWriter(directory: directory, noteID: UUID(), sampleRate: 16000)
-        try writer.append([Float](repeating: 0.25, count: 100).withUnsafeBytes { Data($0) })
         let session = try await LiveSpeechSession.start(locale: Locale(identifier: "en-US"), snapshot: { _ in })
         session.append(Data([1, 2, 3]), sampleRate: 16000)
         do { _ = try await session.finish(); XCTFail("Partial PCM sample must fail safely") }
         catch { XCTAssertTrue(error.localizedDescription.contains("incomplete PCM sample"), error.localizedDescription) }
-        XCTAssertEqual(try DurableAudioWriter.frameCount(at: directory), 100)
-        try writer.close()
-        XCTAssertEqual(try AVAudioFile(forReading: DurableAudioWriter.audioFile(at: directory)).length, 100)
+    }
+
+    func testLegacyAudioCleanupRemovesOnlyAudioDirectories() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for name in ["Recordings/note/segment", "DeletedRecordings/note"] {
+            let directory = root.appendingPathComponent(name)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try Data([0, 1]).write(to: directory.appendingPathComponent("audio.float32"))
+        }
+        let unrelated = root.appendingPathComponent("JotleyNotes.sqlite")
+        try Data("keep".utf8).write(to: unrelated)
+        try LegacyAudioCleanup.remove(in: root)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("Recordings").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("DeletedRecordings").path))
+        XCTAssertEqual(try Data(contentsOf: unrelated), Data("keep".utf8))
+        try LegacyAudioCleanup.remove(in: root) // Repeated launches are harmless.
     }
 }
 

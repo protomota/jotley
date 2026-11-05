@@ -358,7 +358,7 @@ struct Jotley_iOSTests {
         try store.clearChat(noteID: secondID)
         #expect(try store.chatMessages(noteID: firstID).count == 2)
         let note = try #require(store.notes().first { $0.localNoteID == firstID })
-        try store.deleteNoteAndAudio(note)
+        try store.deleteNote(note)
         #expect(try store.chatMessages(noteID: firstID).isEmpty)
         #expect(throws: (any Error).self) { try store.saveChatMessage(answer, noteID: firstID) }
     }
@@ -465,7 +465,7 @@ struct Jotley_iOSTests {
         #expect(reloaded.title == "Keep this note")
         #expect(reloaded.transcription == "Existing spoken words.")
         #expect(reloaded.summary == "Existing summary.")
-        try LegacyMobileAudioCleanup.remove(in: root) // Repeated launches are harmless.
+        try LegacyAudioCleanup.remove(in: root) // Repeated launches are harmless.
     }
     @MainActor @Test func liveCheckpointPersistsVolatileRevisionsAndFinalWordsWithoutAudio() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

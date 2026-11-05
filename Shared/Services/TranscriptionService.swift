@@ -222,68 +222,11 @@ public enum LocalSpeech {
         UserDefaults.standard.removeObject(forKey: lastFailureDefaultsKey)
         await progress(1)
     }
-    /// File transcription also recovers audio from interrupted sessions. No install request here.
-    public static func transcribe(files: [URL], locale: Locale,
-        snapshot: @escaping @Sendable (LocalTranscript) async -> Void) async throws -> LocalTranscript {
-        var transcript = LocalTranscript(), offset = 0.0
-        for url in files {
-            try Task.checkCancellation()
-            let audio = try AVAudioFile(forReading: url)
-            // Pause/resume and interrupted captures can leave valid empty files.
-            // An analyzer with no input may never terminate its result stream.
-            // Keep these segments on disk, but do not submit them for recognition.
-            guard audio.length > 0 else { continue }
-            let config = try await configuration(locale: locale)
-            let analyzer = SpeechAnalyzer(modules: [config.module])
-            let prefix = transcript
-            let segmentOffset = offset
-            let results: Task<LocalTranscript, Error>
-            if let module = config.module as? SpeechTranscriber {
-                results = Task {
-                    var value = prefix
-                    for try await result in module.results {
-                        try Task.checkCancellation()
-                        value.accept(text: String(result.text.characters), start: segmentOffset + result.range.start.seconds,
-                                     end: segmentOffset + CMTimeRangeGetEnd(result.range).seconds, final: result.isFinal)
-                        await snapshot(value)
-                    }
-                    return value
-                }
-            } else if let module = config.module as? DictationTranscriber {
-                results = Task {
-                    var value = prefix
-                    for try await result in module.results {
-                        try Task.checkCancellation()
-                        value.accept(text: String(result.text.characters), start: segmentOffset + result.range.start.seconds,
-                                     end: segmentOffset + CMTimeRangeGetEnd(result.range).seconds, final: result.isFinal)
-                        await snapshot(value)
-                    }
-                    return value
-                }
-            } else { throw LocalError.message("Unsupported speech module.") }
-            do {
-                transcript = try await withTaskCancellationHandler {
-                    try await analyzer.start(inputAudioFile: audio, finishAfterFile: true)
-                    return try await results.value
-                } onCancel: {
-                    results.cancel()
-                    Task { await analyzer.cancelAndFinishNow() }
-                }
-            } catch {
-                results.cancel()
-                await analyzer.cancelAndFinishNow()
-                throw error
-            }
-            offset += Double(audio.length) / audio.processingFormat.sampleRate
-        }
-        try Task.checkCancellation()
-        return transcript
-    }
 }
 
 /// Receives microphone/system audio while it is being captured. Only already-installed
 /// on-device assets are used; explicit setup lives separately in Settings.
-/// The durable writer remains independent of inference.
+/// Audio is only held in memory while it is analyzed; it is never written to disk.
 @available(macOS 26.0, iOS 26.0, *)
 public final class LiveSpeechSession: @unchecked Sendable {
     private let analyzer: SpeechAnalyzer

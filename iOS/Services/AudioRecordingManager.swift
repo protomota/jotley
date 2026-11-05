@@ -177,17 +177,6 @@ actor LocalAudioSession {
     }
 }
 
-/// One-way upgrade cleanup, confined to the two legacy audio directories in
-/// this iOS sandbox. Notes, transcripts, the database and Mac files stay intact.
-enum LegacyMobileAudioCleanup {
-    static func remove(in root: URL, fileManager: FileManager = .default) throws {
-        for directory in ["Recordings", "DeletedRecordings"] {
-            let url = root.appendingPathComponent(directory, isDirectory: true)
-            if fileManager.fileExists(atPath: url.path) { try fileManager.removeItem(at: url) }
-        }
-    }
-}
-
 /// Count microphone buffers independently of UI scheduling. Quiet or zero-valued
 /// samples are not proof of a disconnected microphone; only absent buffers stall.
 final class MicrophoneCaptureProgress: @unchecked Sendable {
@@ -318,7 +307,7 @@ final class LiveTranscriptionManager: ObservableObject {
         self.summaryNotifications = summaryNotifications ?? .shared
         self.store = store; self.notificationCenter = notificationCenter
         guard let store, store.ready else { return }
-        do { try LegacyMobileAudioCleanup.remove(in: store.root) } catch { errorMessage = "Could not remove previous audio: \(error.localizedDescription). Your transcript text is preserved." }
+        do { try LegacyAudioCleanup.remove(in: store.root) } catch { errorMessage = "Could not remove previous audio: \(error.localizedDescription). Your transcript text is preserved." }
         if let url = summaryRecoveryURL, FileManager.default.fileExists(atPath: url.path) {
             do { pendingSummaryJob = try JSONDecoder().decode(MobileSummaryJob.self, from: Data(contentsOf: url)) }
             catch { errorMessage = "Summary recovery could not be read. Your saved transcript and summary are unchanged: \(error.localizedDescription)" }
@@ -640,7 +629,7 @@ final class LiveTranscriptionManager: ObservableObject {
 
     func delete(_ note: Note) throws {
         guard !busy, !isTranscribing, summaryNoteID == nil, let store else { throw LocalError.message("Finish transcribing or processing before deleting a note.") }
-        try store.deleteNoteAndAudio(note)
+        try store.deleteNote(note)
     }
 
     func summarize(_ note: Note, template: LocalSummaryTemplate) {
