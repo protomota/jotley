@@ -255,8 +255,12 @@ extension NoteDetailPlaceholderView {
                                     await viewModel.resumeTranscriptionOnNote(note: note)
                                 }
                             } label: {
-                                Label("Continue Transcription", systemImage: "mic.fill")
-                                    .font(.system(size: 13, weight: .semibold))
+                                Label {
+                                    Text("Continue Transcription").modifier(JotleyNoteFooterTextStyle())
+                                } icon: {
+                                    Image(systemName: "mic.fill")
+                                }
+                                .font(.system(size: 13, weight: .semibold))
                             }
                             .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
                             .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
@@ -290,7 +294,9 @@ extension NoteDetailPlaceholderView {
                             .disabled(isGenerating)
                             .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
                             if isGenerating {
-                                Button("Cancel") { viewModel.cancelInference() }.jotleyDismissButtonStyle()
+                                Button { viewModel.cancelInference() } label: {
+                                    Text("Cancel").modifier(JotleyNoteFooterTextStyle())
+                                }.jotleyDismissButtonStyle()
                             }
                         }
                     }
@@ -310,7 +316,7 @@ struct MacSummaryActionsFooter: View {
     var body: some View {
         Button(action: onAsk) {
             Label {
-                Text("Ask AI")
+                Text("Ask AI").modifier(JotleyNoteFooterTextStyle())
             } icon: {
                 Image(systemName: "bubble.left.and.bubble.right")
             }

@@ -40,7 +40,7 @@ struct TranscriptBubbleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: isLikelyMultiLine ? .infinity : nil, alignment: .leading)
-            .modifier(JotleyTranscriptCard(neutral: true))
+            .modifier(JotleyTranscriptCard())
 
             if !isLikelyMultiLine {
                 Spacer(minLength: 0)

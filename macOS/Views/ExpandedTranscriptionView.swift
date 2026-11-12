@@ -46,7 +46,12 @@ struct MacTranscriptionControls: View {
             }.buttonStyle(JotleyGlassButtonStyle(circular: true)).accessibilityLabel(isPaused ? "Continue Transcription" : "Pause Transcription")
                 .accessibilityIdentifier("macLiveTranscriptionPauseButton")
             Button(action: onStop) {
-                Label("Stop", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
+                Label {
+                    Text("Stop").modifier(JotleyNoteFooterTextStyle())
+                } icon: {
+                    Image(systemName: "stop.fill")
+                }
+                .font(.system(size: 13, weight: .semibold))
             }.buttonStyle(JotleyGlassButtonStyle()).accessibilityLabel("Stop Transcription")
                 .accessibilityIdentifier("macLiveTranscriptionStopButton")
         }.disabled(isBusy).fixedSize(horizontal: true, vertical: false)

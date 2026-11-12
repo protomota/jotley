@@ -34,8 +34,9 @@ struct LocalMacAskNoteView: View {
         LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
+    private var canSubmit: Bool { !showingClear && generation == nil && unavailable == nil }
     private var canSend: Bool {
-        !showingClear && generation == nil && unavailable == nil && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        canSubmit && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     var body: some View {
         VStack(spacing: 0) {
@@ -78,7 +79,7 @@ struct LocalMacAskNoteView: View {
                                     else { MacChatAnswerText(content: preview) }
                                     Button("Stop Answer") { cancel() }.buttonStyle(JotleyGlassButtonStyle())
                                         .accessibilityIdentifier("askAIStopButton")
-                                }.id("answer").padding().modifier(JotleyTranscriptCard(neutral: true))
+                                }.id("answer").padding().modifier(JotleyTranscriptCard())
                             }
                         }.padding()
                     }
@@ -120,7 +121,8 @@ struct LocalMacAskNoteView: View {
                     Button(action: send) {
                         Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
                             .frame(width: 44, height: 44)
-                    }.buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 44)).keyboardShortcut(.return, modifiers: .command)
+                    }.buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 44, keepsDisabledSurfaceVisible: true))
+                        .keyboardShortcut(.return, modifiers: .command)
                         .disabled(!canSend)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
@@ -168,8 +170,8 @@ struct LocalMacAskNoteView: View {
                     .font(.system(size: 13)).foregroundStyle(Color.themeTextSecondary)
             }
             ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
-                Button(suggestion) { input = suggestion; inputFocused = true }
-                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle())
+                Button(suggestion) { submit(suggestion, fromComposer: false) }
+                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle()).disabled(!canSubmit)
             }
         }.padding(.vertical, 16)
     }
@@ -185,21 +187,24 @@ struct LocalMacAskNoteView: View {
                 }.foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { MacChatAnswerText(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-            }.padding().modifier(JotleyTranscriptCard(emphasized: message.role == "user", neutral: message.role == "assistant"))
+            }.padding().modifier(JotleyTranscriptCard(accentOutline: message.role == "user"))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
     }
     private func send() {
-        guard canSend, let id = note.id, !note.isDeleted else { return }
-        let question = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        submit(input, fromComposer: true)
+    }
+    private func submit(_ text: String, fromComposer: Bool) {
+        let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canSubmit, !question.isEmpty, let id = note.id, !note.isDeleted else { return }
         let source = source, history = messages
         do {
-            if let unavailable { throw LocalError.message(unavailable) }
             _ = try LocalNoteChat.prompt(source: source, question: question, history: history)
             let message = LocalChatMessage(role: "user", content: question)
             try store.saveChatMessage(message, noteID: id); messages.append(message)
         } catch { self.error = error.localizedDescription; return }
-        input = ""; inputFocused = false; preview = ""; error = nil
+        if fromComposer { input = "" }
+        inputFocused = false; preview = ""; error = nil
         let token = UUID(); generation = token
         let locale = locale
         JotleyEngagement.shared.beginProcessing()
@@ -215,7 +220,12 @@ struct LocalMacAskNoteView: View {
                 let message = LocalChatMessage(role: "assistant", content: answer)
                 try store.saveChatMessage(message, noteID: id); messages.append(message)
             } catch is CancellationError { }
-            catch { if generation == token { self.error = error.localizedDescription; input = question } }
+            catch {
+                if generation == token {
+                    self.error = error.localizedDescription
+                    if fromComposer { input = question }
+                }
+            }
         }
     }
     private func cancel() {

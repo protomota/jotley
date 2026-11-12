@@ -56,7 +56,7 @@ struct iOSNoteFolderRow: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(note.folder?.displayName ?? "No folder")
-                        .foregroundColor(.themePrimaryAccent)
+                        .foregroundStyle(Color.shouldUseDarkTheme() ? Color.white : Color.black)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption2.weight(.semibold))
                         .foregroundColor(.themePrimaryAccent)

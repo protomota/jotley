@@ -157,7 +157,11 @@ struct MacSummaryProgressFooter: View {
             }
             if let fraction = progress.fraction { ProgressView(value: fraction).tint(.themePrimaryAccent) }
             Button(action: cancel) {
-                Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                Label {
+                    Text("Cancel Generation").modifier(JotleyNoteFooterTextStyle())
+                } icon: {
+                    Image(systemName: "xmark.circle.fill")
+                }
             }.jotleyDismissButtonStyle()
                 .keyboardShortcut(.cancelAction).accessibilityIdentifier("noteDetailCancelGenerationButton")
         }.foregroundStyle(Color.themeTextPrimary)

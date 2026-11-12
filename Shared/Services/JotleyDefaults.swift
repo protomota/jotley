@@ -172,10 +172,9 @@ enum JotleyAppleIntelligenceEligibility {
     }
 }
 
-/// Shared tinted glass for transcript and Ask AI bubbles.
+/// Neutral glass for transcript and Ask AI bubbles.
 struct JotleyTranscriptCard: ViewModifier {
-    var emphasized = false
-    var neutral = false
+    var accentOutline = false
     var cornerRadius: CGFloat = 12
     @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -183,24 +182,29 @@ struct JotleyTranscriptCard: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let accent = theme.currentThemeColor.color(in: colorScheme)
         return content.background {
-            let bubbleColor = neutral ? Color.gray : theme.currentThemeColor.color
-            if reduceTransparency {
+            if accentOutline {
+                shape.fill(Color(white: colorScheme == .dark ? 0.18 : 0.94))
+                    .shadow(color: .black.opacity(reduceTransparency ? 0 : 0.08), radius: 6, y: 3)
+            } else if reduceTransparency {
                 shape.fill(Color.themeContentBackground)
-                    .overlay { shape.fill(bubbleColor.opacity(neutral ? 0.08 : (emphasized ? 0.20 : 0.14))) }
+                    .overlay { shape.fill(Color.gray.opacity(0.08)) }
             } else {
                 Color.clear.glassEffect(.clear, in: shape)
                     .overlay {
                         shape.fill(LinearGradient(
-                            colors: [bubbleColor.opacity(neutral ? 0.06 : (emphasized ? 0.20 : 0.12)),
-                                     bubbleColor.opacity(neutral ? 0.02 : (emphasized ? 0.12 : 0.08))],
+                            colors: [Color.gray.opacity(0.06), Color.gray.opacity(0.02)],
                             startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
                     .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
             }
         }
         .overlay {
-            shape.strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.16), lineWidth: 1)
+            shape.strokeBorder(
+                accentOutline ? accent.opacity(0.58) : Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.16),
+                lineWidth: 1
+            )
                 .allowsHitTesting(false)
         }
     }
@@ -368,7 +372,7 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
         let dark = colorScheme == .dark
         let darkSurface = dark || usesDarkSurface
         let surface = fill ?? Color(white: darkSurface ? 0.18 : 0.96)
-        let surfaceOpacity = usesDarkSurface ? 0.88 : (dark ? 0.72 : 0.64)
+        let surfaceOpacity = usesDarkSurface ? 0.76 : (dark ? 0.58 : 0.46)
         ZStack {
             if reduceTransparency || fill != nil {
                 shape.fill(surface)
@@ -410,6 +414,7 @@ struct JotleyGlassMenuLabel<Outline: InsettableShape>: ViewModifier {
 
 struct JotleyFloatingMenuIcon: View {
     let systemImage: String
+    var verticalIconOffset: CGFloat = 0
 
     var body: some View {
         Image(systemName: systemImage)
@@ -417,6 +422,7 @@ struct JotleyFloatingMenuIcon: View {
             .scaledToFit()
             .frame(width: 16, height: 16)
             .fontWeight(.semibold)
+            .offset(y: verticalIconOffset)
             .frame(width: 32, height: 32)
             .modifier(JotleyGlassMenuLabel(shape: Circle()))
             // Reserve space inside the native toolbar for the shadow and touch target.

@@ -518,9 +518,11 @@ final class Jotley_iOSUITests: XCTestCase {
         let text = (1...20).map { "Paragraph \($0): Review the next steps and keep a clear record of the conversation." }.joined(separator: "\n\n") + "\n\nFinal line above summary controls."
         let fixture: [[String: Any]] = [["title": "First summary footer", "folder": "Work", "tags": [], "transcript": text, "summary": ""]]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
-        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = ProcessInfo.processInfo.environment["JOTLEY_REVIEW_APPEARANCE"] ?? "Dark"
+        app.launchArguments = ["-selectedThemeColor", "Magenta"]
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
         app.launch()
+        showNotesLibrary(app)
         let row = app.buttons.containing(.staticText, identifier: "First summary footer").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         let primary = app.buttons["noteDetailGenerateSummaryButton"]
@@ -1483,7 +1485,8 @@ final class Jotley_iOSUITests: XCTestCase {
         app.buttons["List any action items"].tap()
         let send = app.buttons["askAISendButton"]
         XCTAssertEqual(question.frame.midY, send.frame.midY, accuracy: 2, "Send arrow should be centered beside its input")
-        question.typeText("\n")
+        XCTAssertTrue(app.staticTexts["List any action items"].waitForExistence(timeout: 5))
+        XCTAssertNotEqual(question.value as? String, "List any action items")
         let copy = app.buttons["askAICopyConversationButton"]
         let share = app.buttons["askAIShareConversationButton"]
         let done = app.buttons["askAIDoneButton"]
@@ -1707,10 +1710,15 @@ final class Jotley_iOSUITests: XCTestCase {
     @MainActor func testAskAIRestoredForExistingTranscribedNote() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Ask AI verification","folder":"","tags":[],"transcript":"Mina owns launch. We ship Friday.","summary":""}]"##
+        app.launchEnvironment["JOTLEY_SCREENSHOT_CHAT_READY"] = "1"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = ProcessInfo.processInfo.environment["JOTLEY_REVIEW_APPEARANCE"] ?? "Light"
+        app.launchArguments = ["-selectedThemeColor", "Magenta", "-jotleyWelcomeCompleted.v1", "YES"]
         app.launch()
-        let note = app.staticTexts["Ask AI verification"].firstMatch
-        XCTAssertTrue(note.waitForExistence(timeout: 20)); note.tap()
         let more = app.buttons["noteDetailMoreActionsButton"]
+        if !more.waitForExistence(timeout: 5) {
+            let note = app.staticTexts["Ask AI verification"].firstMatch
+            XCTAssertTrue(note.waitForExistence(timeout: 20)); note.tap()
+        }
         XCTAssertTrue(more.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["noteDetailAskAIShortcut"].exists)
         XCTAssertFalse(app.buttons["noteDetailAskAIButton"].exists)
@@ -1723,11 +1731,14 @@ final class Jotley_iOSUITests: XCTestCase {
         let screenshotImage = app.screenshot()
         let screenshot = XCTAttachment(screenshot: screenshotImage)
         screenshot.name = "Restored on-device Ask AI"; screenshot.lifetime = .keepAlways; add(screenshot)
-        try screenshotImage.pngRepresentation.write(to: FileManager.default.temporaryDirectory.appendingPathComponent("Jotley-Ask-AI.png"))
-        print("JOTLEY_ASK_SCREENSHOT", FileManager.default.temporaryDirectory.appendingPathComponent("Jotley-Ask-AI.png").path)
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "processed on this device")).firstMatch.exists)
         app.buttons["List any action items"].tap()
-        XCTAssertEqual(field.value as? String, "List any action items")
+        XCTAssertTrue(app.staticTexts["List any action items"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["List any action items"].exists)
+        XCTAssertNotEqual(field.value as? String, "List any action items")
+        XCTAssertFalse(app.buttons["askAISendButton"].isEnabled)
+        let sent = XCTAttachment(screenshot: app.screenshot())
+        sent.name = "Suggested question submitted"; sent.lifetime = .keepAlways; add(sent)
         app.buttons["askAIDoneButton"].tap()
         XCTAssertTrue(more.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["noteDetailAskAIShortcut"].exists)
@@ -1898,12 +1909,15 @@ final class Jotley_iOSUITests: XCTestCase {
     @MainActor func testLiveOnlyNoteKeepsTemplatesAndContinueActionWithoutAudioControls() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
-        app.launchArguments = ["-transcriptionLanguage", "zxx"]
+        app.launchArguments = ["-transcriptionLanguage", "zxx", "-selectedThemeColor", "Magenta"]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ##"[{"title":"Live transcript","folder":"","tags":[],"transcript":"Mina ships Friday.","summary":""}]"##
         app.launchEnvironment["JOTLEY_TEST_TRANSCRIPTION_LIFECYCLE"] = "1"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
         app.launch()
-        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'notesListNoteRow-'")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        if !app.buttons["noteDetailTemplatesButton"].waitForExistence(timeout: 5) {
+            let row = app.buttons.containing(.staticText, identifier: "Live transcript").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        }
         XCTAssertTrue(app.staticTexts["Mina ships Friday."].exists)
         XCTAssertTrue(app.buttons["noteDetailTemplatesButton"].exists)
         XCTAssertTrue(app.buttons["noteDetailGenerateSummaryButton"].isEnabled)
@@ -2326,6 +2340,41 @@ final class Jotley_iOSUITests: XCTestCase {
         app.buttons["transcriptEditorCancelButton"].tap()
     }
 
+    @MainActor func testPhoneNoteHeaderActionsScrollWithTheNote() throws {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("iPhone note header") }
+        let app = XCUIApplication()
+        let summary = "# Scroll check\n" + (1...40).map { "- Paragraph \($0) stays in the scroll view." }.joined(separator: "\n")
+        let fixture: [[String: Any]] = [["title": "Scrolling note", "folder": "Work", "tags": [],
+                                         "transcript": "Recorded words.", "summary": summary]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launchArguments = ["-selectedThemeColor", "Magenta", "-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
+
+        let share = app.buttons["noteDetailShareButton"]
+        let more = app.buttons["noteDetailMoreActionsButton"]
+        if !share.waitForExistence(timeout: 5) {
+            let row = app.buttons.containing(.staticText, identifier: "Scrolling note").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10)); row.tap()
+        }
+        XCTAssertTrue(share.waitForExistence(timeout: 15))
+        XCTAssertTrue(share.isHittable && more.isHittable)
+        let scroll = app.scrollViews.containing(.staticText, identifier: "noteDetailTitle").firstMatch
+        XCTAssertTrue(scroll.exists)
+        let top = XCTAttachment(screenshot: app.screenshot())
+        top.name = "iPhone note header and footer"; top.lifetime = .keepAlways; add(top)
+        scroll.swipeUp(velocity: .slow)
+        XCTAssertFalse(share.isHittable)
+        XCTAssertFalse(more.isHittable)
+        XCTAssertTrue(app.buttons["BackButton"].isHittable)
+        let scrolled = XCTAttachment(screenshot: app.screenshot())
+        scrolled.name = "iPhone note footer over scrolled content"; scrolled.lifetime = .keepAlways; add(scrolled)
+        for _ in 0..<3 where !more.isHittable { scroll.swipeDown(velocity: .slow) }
+        XCTAssertTrue(share.isHittable && more.isHittable)
+        more.tap()
+        XCTAssertTrue(app.buttons["noteDetailEditSummaryButton"].waitForExistence(timeout: 5))
+    }
+
     @MainActor func testTemplateChangesKeepLongSummaryVisibleAndResponsive() throws {
         let app = XCUIApplication()
         let summary = "# Long recording summary\n" + (0..<500).map { "- **Point \($0)**: decisions and action items from the recorded meeting." }.joined(separator: "\n")
@@ -2435,6 +2484,13 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launch()
         let row = app.buttons.containing(.staticText, identifier: "Appearance verification").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let sidebarToggle = app.buttons["notesSidebarToggle"]
+        XCTAssertTrue(sidebarToggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(sidebarToggle.label, "Hide Sidebar")
+        sidebarToggle.tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label == %@", "notesSidebarToggle", "Show Sidebar")).firstMatch.waitForExistence(timeout: 5))
+        sidebarToggle.tap()
+        XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 5))
         for mode in ["Light", "Dark", "Light", "Dark"] {
             app.buttons["notesListSettingsButton"].tap()
             let picker = app.descendants(matching: .any)["settingsAppearanceModePicker"].firstMatch
@@ -2448,8 +2504,12 @@ final class Jotley_iOSUITests: XCTestCase {
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
             context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
             let pixels = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
-            for label in ["Neutral Heading", "Body text and a standard bullet:"] {
-                let frame = app.staticTexts[label].frame
+            let labels = [app.staticTexts["Neutral Heading"], app.staticTexts["Body text and a standard bullet:"],
+                          app.buttons["noteDetailFolderPicker"], app.buttons["noteDetailAddTagButton"],
+                          app.buttons["noteDetailSummaryAskAIButton"]]
+            for label in labels {
+                XCTAssertTrue(label.isHittable)
+                let frame = label.frame
                 let scaleX = CGFloat(cgImage.width) / app.frame.width
                 let scaleY = CGFloat(cgImage.height) / app.frame.height
                 var levels: [Double] = []
@@ -2461,8 +2521,8 @@ final class Jotley_iOSUITests: XCTestCase {
                     }
                 }
                 XCTAssertFalse(levels.isEmpty)
-                if mode == "Light" { XCTAssertLessThan(levels.min() ?? 1, 0.35, "\(label) must become dark in an already open note") }
-                else { XCTAssertGreaterThan(levels.max() ?? 0, 0.65, "\(label) must become light in an already open note") }
+                if mode == "Light" { XCTAssertLessThan(levels.min() ?? 1, 0.35, "\(label.identifier) must become dark in an already open note") }
+                else { XCTAssertGreaterThan(levels.max() ?? 0, 0.65, "\(label.identifier) must become light in an already open note") }
             }
             let attachment = XCTAttachment(screenshot: snapshot)
             attachment.name = "Open note live appearance \(mode)"; attachment.lifetime = .keepAlways; add(attachment)

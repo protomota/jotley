@@ -148,7 +148,7 @@ struct AddTagSheetView: View {
                         .submitLabel(.done).onSubmit(addTag)
                         .accessibilityIdentifier("addTagTextField")
                     Button(action: addTag) {
-                        MobileActionLabel("Add Tag", systemImage: "plus")
+                        JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus")
                             .font(.headline).frame(maxWidth: .infinity)
                     }
                     .buttonStyle(JotleyGlassButtonStyle())
@@ -243,7 +243,7 @@ struct TranscriptBubbleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: isLikelyMultiLine ? .infinity : nil, alignment: .leading)
-            .modifier(JotleyTranscriptCard(neutral: true))
+            .modifier(JotleyTranscriptCard())
 
             if !isLikelyMultiLine {
                 Spacer(minLength: 0)
@@ -314,6 +314,7 @@ struct LocalAskNoteView: View {
         return LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
     }
     private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
+    private var canSubmit: Bool { !showingClear && generation == nil && unavailable == nil }
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
@@ -332,7 +333,7 @@ struct LocalAskNoteView: View {
                                     else { JotleyChatAnswerText(content: preview) }
                                     Button("Stop Answer") { cancel() }
                                         .accessibilityIdentifier("askAIStopButton")
-                                }.id("answer").padding().modifier(JotleyTranscriptCard(neutral: true))
+                                }.id("answer").padding().modifier(JotleyTranscriptCard())
                             }
                         }.padding()
                     }
@@ -366,7 +367,8 @@ struct LocalAskNoteView: View {
                     Button(action: send) {
                         Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
                             .frame(width: 44, height: 44)
-                    }.buttonStyle(JotleyGlassButtonStyle(circular: true)).disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
+                    }.buttonStyle(JotleyGlassButtonStyle(circular: true, keepsDisabledSurfaceVisible: true))
+                        .disabled(!canSubmit || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
                 }.padding()
             }
@@ -437,10 +439,10 @@ struct LocalAskNoteView: View {
                     .font(.footnote).foregroundStyle(Color.themeTextSecondary)
             }
             ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
-                Button { input = suggestion; inputFocused = true } label: {
+                Button { submit(suggestion, fromComposer: false) } label: {
                     Text(suggestion)
                 }
-                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle())
+                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle()).disabled(!canSubmit)
             }
         }.padding(.vertical, 16)
     }
@@ -456,23 +458,24 @@ struct LocalAskNoteView: View {
                 }.foregroundStyle(Color.themeTextSecondary)
                 if message.role == "assistant" { JotleyChatAnswerText(content: message.content) }
                 else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
-            }.padding().modifier(JotleyTranscriptCard(emphasized: message.role == "user", neutral: message.role == "assistant"))
+            }.padding().modifier(JotleyTranscriptCard(accentOutline: message.role == "user"))
             if message.role == "assistant" { Spacer(minLength: 32) }
         }
     }
     private func send() {
-        guard !showingClear, generation == nil, unavailable == nil,
-              !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let id = note.id, !note.isDeleted else { return }
-        let question = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        submit(input, fromComposer: true)
+    }
+    private func submit(_ text: String, fromComposer: Bool) {
+        let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canSubmit, !question.isEmpty, let id = note.id, !note.isDeleted else { return }
         let source = source, history = messages
         do {
-            if let unavailable { throw LocalError.message(unavailable) }
             _ = try LocalNoteChat.prompt(source: source, question: question, history: history)
             let message = LocalChatMessage(role: "user", content: question)
             try store.saveChatMessage(message, noteID: id); messages.append(message)
         } catch { self.error = error.localizedDescription; return }
-        input = ""; inputFocused = false; preview = ""; error = nil
+        if fromComposer { input = "" }
+        inputFocused = false; preview = ""; error = nil
         let token = UUID(); generation = token
         let locale = locale
         JotleyEngagement.shared.beginProcessing()
@@ -488,7 +491,12 @@ struct LocalAskNoteView: View {
                 let message = LocalChatMessage(role: "assistant", content: answer)
                 try store.saveChatMessage(message, noteID: id); messages.append(message)
             } catch is CancellationError { }
-            catch { if generation == token { self.error = error.localizedDescription; input = question } }
+            catch {
+                if generation == token {
+                    self.error = error.localizedDescription
+                    if fromComposer { input = question }
+                }
+            }
         }
     }
     private func cancel() {

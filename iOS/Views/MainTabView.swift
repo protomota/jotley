@@ -39,18 +39,6 @@ struct MainTabView: View {
         UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
     }
 
-    private var themedSidebarToggle: some View {
-        let hidden = columnVisibility == .detailOnly
-        return Button {
-            columnVisibility = hidden ? .all : .detailOnly
-        } label: {
-            JotleyFloatingMenuIcon(systemImage: "sidebar.left")
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(hidden ? "Show Sidebar" : "Hide Sidebar")
-        .accessibilityIdentifier("notesSidebarToggle")
-    }
-
     private var usesCornerCaptureButton: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
     }
@@ -83,12 +71,6 @@ struct MainTabView: View {
             notesList
                 .navigationSplitViewColumnWidth(min: minimumSidebarWidth, ideal: 320, max: 420)
                 .toolbar(removing: usesThemedSidebarToggle ? .sidebarToggle : nil)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if usesThemedSidebarToggle && columnVisibility != .detailOnly { themedSidebarToggle }
-                    }
-                    .sharedBackgroundVisibility(.hidden)
-                }
                 .overlay(alignment: .trailing) {
                     if !usesExpandedPhoneLayout {
                         Rectangle()
@@ -116,7 +98,9 @@ struct MainTabView: View {
             .toolbar(removing: usesThemedSidebarToggle ? .sidebarToggle : nil)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if usesThemedSidebarToggle && columnVisibility == .detailOnly { themedSidebarToggle }
+                    if usesThemedSidebarToggle && columnVisibility == .detailOnly {
+                        JotleySidebarToggle(visibility: $columnVisibility)
+                    }
                 }
                 .sharedBackgroundVisibility(.hidden)
             }
@@ -284,6 +268,22 @@ struct MainTabView: View {
         NotesListView(onSelectNote: openNote, showsNewTranscriptionButton: !usesCornerCaptureButton, usesSplitView: horizontalSizeClass == .regular, bottomContentInset: usesWindowFooter ? duoFooterHeight : 0, showingSettings: $showingSettings,
             selectedNoteId: $selectedNoteId,
             showingTranscriptionModal: $showingTranscriptionModal, columnVisibility: $columnVisibility, newTranscriptionNote: $newTranscriptionNote)
+    }
+}
+
+struct JotleySidebarToggle: View {
+    @Binding var visibility: NavigationSplitViewVisibility
+
+    var body: some View {
+        let isHidden = visibility == .detailOnly
+        Button {
+            visibility = isHidden ? .all : .detailOnly
+        } label: {
+            JotleyFloatingMenuIcon(systemImage: "sidebar.left")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isHidden ? "Show Sidebar" : "Hide Sidebar")
+        .accessibilityIdentifier("notesSidebarToggle")
     }
 }
 

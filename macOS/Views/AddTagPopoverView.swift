@@ -49,7 +49,7 @@ internal struct AddTagPopoverView: View {
                 }
 
             HStack(spacing: 12) {
-                Button("Add Tag") {
+                Button {
                     let trimmedTag = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
                     let formattedTag = getFormattedTagForDisplay(trimmedTag) // Format for display/storage
                     let canonicalTag = getCanonicalTag(trimmedTag) // Use canonical for de-duplication
@@ -79,6 +79,8 @@ internal struct AddTagPopoverView: View {
                     newTagText = ""
                     isEditingTags = false
                     showPopover = false
+                } label: {
+                    JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus")
                 }
                 .keyboardShortcut(.defaultAction) // This is now the primary action
                 .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

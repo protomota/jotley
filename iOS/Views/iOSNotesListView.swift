@@ -35,6 +35,15 @@ struct NotesListView: View {
         let isSearching = isSearchFocused || !searchText.isEmpty
         ZStack {
             VStack(spacing: 0) {
+                if usesIPadLayout && usesSplitView && columnVisibility != .detailOnly {
+                    // Keep the control out of the sidebar's system toolbar,
+                    // which adds its own glass treatment to custom buttons.
+                    JotleySidebarToggle(visibility: $columnVisibility)
+                        .frame(height: 54)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 10)
+                        .background(Color.themeBackground)
+                }
                 // Settings stays in the footer on every mobile layout.
                 HStack(spacing: 12) {
                     // Search field
@@ -284,9 +293,8 @@ struct NotesListView: View {
         // The custom header occupies the status/toolbar row on the inner display.
         // Otherwise the portrait drawer reserves that row again above the gear.
         .ignoresSafeArea(.container, edges: usesSplitView && !usesIPadLayout ? .top : [])
-        // Apply to the sidebar root, including its custom header. Hiding only
-        // the List leaves an empty navigation bar above the Duo portrait drawer.
-        .toolbar(usesIPadLayout ? .visible : .hidden, for: .navigationBar)
+        // Apply to the sidebar root, including its custom header.
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingFolderManagement) {
             FolderManagementSheet()
         }

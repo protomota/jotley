@@ -91,14 +91,10 @@ extension NoteDetailPlaceholderView {
             Button {
                 showAddTagPopover = true
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Tag")
-                        .font(.caption)
-                }
-                .foregroundStyle(Color.themeActionText)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle.fill")
+                    .font(.caption)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showAddTagPopover, arrowEdge: .bottom) {

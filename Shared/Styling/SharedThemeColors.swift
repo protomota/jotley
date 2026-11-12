@@ -363,6 +363,34 @@ extension View {
     }
 }
 
+struct JotleyNoteFooterTextStyle: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @ObservedObject private var theme = ThemeManager.shared
+
+    func body(content: Content) -> some View {
+        let darkSurface = colorScheme == .dark || theme.currentThemeColor.usesDarkGlass(in: colorScheme)
+        return content.foregroundStyle((darkSurface ? Color.white : Color.black).opacity(isEnabled ? 1 : 0.55))
+    }
+}
+
+/// Keep action text neutral while the symbol follows the current theme.
+struct JotleyAccentIconLabel: View {
+    @ObservedObject private var theme = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
+    let title: LocalizedStringKey
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            Text(title).foregroundStyle(Color.primary)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(theme.currentThemeColor.color(in: colorScheme))
+        }
+    }
+}
+
 #if os(iOS)
 /// Match compact action text and icons to the selected accent.
 struct MobileActionLabel: View {
