@@ -32,14 +32,12 @@ struct FolderManagementSheet: View {
                     .fontWeight(.semibold)
                     .foregroundColor(Color.themeTextPrimary)
                 Spacer()
-                #if os(iOS)
-                MobileDoneButton { dismiss() }
-                    .accessibilityIdentifier("folderManagementDoneButton")
-                #else
                 Button("Done") { dismiss() }
+                    .jotleyDismissButtonStyle()
+                #if os(macOS)
                     .keyboardShortcut(.defaultAction)
-                    .accessibilityIdentifier("folderManagementDoneButton")
                 #endif
+                    .accessibilityIdentifier("folderManagementDoneButton")
             }
 
             createRow
@@ -161,7 +159,7 @@ struct FolderManagementSheet: View {
                     renamingFolder = nil
                     renameText = ""
                 }
-                .buttonStyle(.borderless)
+                .jotleyDismissButtonStyle()
             } else {
                 Text(folder.displayName)
                     .foregroundColor(Color.themeTextPrimary)

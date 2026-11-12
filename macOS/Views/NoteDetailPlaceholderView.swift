@@ -32,7 +32,11 @@ struct NoteDetailPlaceholderView: View {
     @State var summaryGenerationError: String? = nil
 
     // New state for template selection
-    @State var availableTemplates: [Template] = []
+    @ObservedObject var templateCatalog = SummaryTemplateStore.shared
+    @State var templatePresentation: SummaryTemplatePresentation?
+    var availableTemplates: [Template] {
+        templateCatalog.definitions.map { Template(key: $0.key, title: $0.title, description: $0.prompt, category: $0.isCustom ? "My Templates" : LocalSummaryTemplate.resolve($0.key).category) }
+    }
 
     // New state to hold the template key selected from the popover
     @State var selectedTemplateKeyForAction: String = "default-summary" // Default to auto/default
@@ -41,9 +45,11 @@ struct NoteDetailPlaceholderView: View {
 
     // New state variables for editable summary and transcript
     @State var editableSummary: String = ""
+    @State var savedSummary: String = ""
     @FocusState var isSummaryEditorFocused: Bool
     @State var summaryInlineEditRequestCounter: Int = 0
     @State var editableTranscript: String = ""
+    @State var savedTranscript: String = ""
     @FocusState var isTranscriptEditorFocused: Bool
     // Tracks which note `editableTranscript` currently reflects. Used to tell a
     // genuine note switch apart from a loading placeholder resurfacing over a

@@ -8,6 +8,7 @@ Third-party material retains its own license; it is not relicensed by Jotley.
 | --- | --- |
 | AudioCap-derived capture code | Guilherme Rambo, [AudioCap](https://github.com/insidegui/AudioCap/tree/6f609e8ad1b1e11fa0e8edbe91864cb099f00de3). Source comments in `macOS/ProcessTap/CoreAudioUtils.swift`, `ProcessTap.swift` and `Shared/Views/RecordingIndicator.swift` identify the retained attribution. [BSD-2-Clause notice](Rambo-BSD-2-Clause.txt) is retained in source and app resources. |
 | Sparkle updater | [Sparkle project](https://sparkle-project.org/). Its [license and dependency notices](Sparkle-LICENSE.txt) remain separate; Xcode resolves the pinned package. |
+| Local MCP server | [Official Swift MCP SDK](https://github.com/modelcontextprotocol/swift-sdk) and [SwiftNIO](https://github.com/apple/swift-nio), with their resolved dependencies. [License and dependency notices](MCP-NOTICES.txt) are retained in source and Mac app resources. |
 | Comfortaa Bold | [Open Font License](../Comfortaa-OFL.txt), distributed with the font. |
 | Platform and product marks | Apple and Obsidian names/marks retain their respective owners' rights. They are not included in a claim that Protomota owns all third-party branding. |
 

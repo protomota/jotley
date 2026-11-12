@@ -25,7 +25,11 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
         NotificationCenter.default.post(name: Notification.Name("JotleyForceAllEditorsSave"), object: nil)
         Task { @MainActor in
             await (recordingNotesViewModel ?? activeNotesViewModel)?.stopRecording()
-            do { try LocalAppModel.shared.store?.save(); sender.reply(toApplicationShouldTerminate: true) }
+            do {
+                try LocalAppModel.shared.store?.save()
+                await LocalAppModel.shared.mcp.setEnabled(false, persistPreference: false)
+                sender.reply(toApplicationShouldTerminate: true)
+            }
             catch { sender.reply(toApplicationShouldTerminate: false) }
         }
         return .terminateLater
@@ -125,26 +129,16 @@ let kJotleyObsidianSyncFolderBookmarkDefaultsKey = "jotleyObsidianSyncFolderBook
         primaryRecordingMenuItem?.title = isRecording ? "Stop Transcription" : "Start Transcription"
 
         guard let button = statusItem?.button else { return }
-        // Keep the Jotley brand mark in the menu bar at all times. It used to morph
-        // into a generic "stop" glyph while recording, which read as a bug. Stopping
-        // is still available via the menu's "Stop Transcription" item and the in-app
-        // controls; the menu-bar icon stays consistent.
-        button.image = statusItemImage()
         button.toolTip = isRecording ? "Jotley — Transcribing (open menu to stop)" : "Jotley — Start Transcription"
+        button.setAccessibilityLabel(isRecording ? "Jotley — Transcribing" : "Jotley — Transcription")
     }
 
-    /// The menu-bar icon: the Jotley brand mark, template-rendered so it adapts to
-    /// light/dark menu bars. Falls back to the SF Symbol if the asset is missing.
     private func statusItemImage() -> NSImage? {
-        if let brand = NSImage(named: "jotley-toolbar-icon") {
-            brand.isTemplate = true
-            brand.size = NSSize(width: 18, height: 18)
-            return brand
-        }
-
-        let fallback = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Jotley — Start Transcription")
-        fallback?.isTemplate = true
-        return fallback
+        let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+        let image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Jotley Transcription")?
+            .withSymbolConfiguration(configuration)
+        image?.isTemplate = true
+        return image
     }
 
 }

@@ -3,14 +3,22 @@ import AppKit
 import FoundationModels
 
 enum SettingsSection: String, CaseIterable {
-    case general = "General", obsidian = "Obsidian"
-    var icon: String { self == .general ? "gearshape" : "doc.text" }
+    case general = "General", templates = "Templates", obsidian = "Obsidian", mcp = "MCP"
+    var icon: String {
+        switch self {
+        case .general: return "gearshape"
+        case .templates: return "doc.text"
+        case .obsidian: return "doc.text"
+        case .mcp: return "point.3.connected.trianglepath.dotted"
+        }
+    }
 }
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @ObservedObject var themeManager = ThemeManager.shared
     @ObservedObject var updates = JotleyUpdates.shared
+    @ObservedObject var mcp = LocalAppModel.shared.mcp
     @AppStorage(kJotleyObsidianSyncFolderBookmarkDefaultsKey) var obsidianSyncFolderBookmarkData: Data?
     @AppStorage("syncFolderAutoSyncEnabled") var syncFolderAutoSyncEnabled: Bool = true
     @AppStorage("syncFolderLastSyncTimestamp") var syncFolderLastSyncTimestamp: Double = 0
@@ -18,9 +26,14 @@ struct SettingsView: View {
     @AppStorage("showTags") var showTags: Bool = false
     @AppStorage(RecordingWidgetController.widgetEnabledDefaultsKey) var showRecordingWidget: Bool = true
     @AppStorage("transcriptionLanguage") var transcriptionLanguage: String = "en-US"
+    @AppStorage(CustomSpeechWords.defaultsKey) var customWords = ""
     @AppStorage("recordSystemAudio") var recordSystemAudio = true
+    @AppStorage(SummaryDisplayStyle.preferenceKey) var summaryDisplayStyle: SummaryDisplayStyle = .cards
     @State var selectedSection: SettingsSection = .general
-    @State var showingThemeColorPicker = false
+    @State var mcpClient = "Claude Code app"
+    @State var mcpShowingDetails = false
+    @State var mcpCopiedItem: String?
+    @State var mcpSetupMessage: String?
     var onShowWelcome: () -> Void = {}
     @State var speechStatus = "Checking on-device models…"
     @State var speechNeedsSetup = false
@@ -45,7 +58,7 @@ struct SettingsView: View {
 
 
     func checkModels() async {
-        let speech = await LocalSpeech.readiness(locale: Locale(identifier: transcriptionLanguage))
+        let speech = await LocalSpeech.readiness(locale: Locale(identifier: transcriptionLanguage), checkingCustomWordsSetup: true)
         let languages = await LocalSpeech.languages()
         guard !Task.isCancelled else { return }
         speechLanguages = languages
@@ -58,7 +71,7 @@ struct SettingsView: View {
         let summary = LocalSummary.readiness(locale: Locale(identifier: transcriptionLanguage)) ?? "Built-in on-device summaries ready."
         let message = speech.status == .installed && speechSetupError != nil
             ? "Speech assets are installed, but transcription setup failed. Choose Set Up On-Device Speech to try again."
-            : speech.message
+            : speech.customWordsStatus ?? speech.message
         speechStatus = message + " " + summary
     }
     func setUpSpeech() {
@@ -88,8 +101,45 @@ struct SettingsView: View {
     func openObsidianSyncFolderInFinder() { if let url = obsidianSyncFolderURL { NSWorkspace.shared.open(url) } }
     var body: some View {
         HStack(spacing: 0) { sidebarView; Divider(); contentView.frame(maxWidth: .infinity, maxHeight: .infinity) }
-            .frame(minWidth: 800, idealWidth: 900, maxWidth: 1200, minHeight: 560, idealHeight: 640, maxHeight: 820)
+            .frame(width: min(1160, max(600, (NSScreen.main?.visibleFrame.width ?? 1240) - 80)),
+                   height: min(780, max(480, (NSScreen.main?.visibleFrame.height ?? 880) - 100)))
+            .presentationSizing(.fitted)
             .buttonStyle(JotleyGlassButtonStyle())
+            .toggleStyle(MacSettingsSwitchStyle())
             .observeThemeChanges()
+    }
+}
+
+private struct MacSettingsSwitchStyle: ToggleStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                configuration.label
+                Capsule()
+                    .fill(configuration.isOn ? Color.themePrimaryAccent : Color.secondary.opacity(0.28))
+                    .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+                        Circle()
+                            .fill(.white)
+                            .shadow(color: .black.opacity(0.16), radius: 1, y: 1)
+                            .frame(width: 18, height: 18)
+                            .padding(2)
+                    }
+                    .frame(width: 40, height: 22)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: configuration.isOn)
+            }
+            .foregroundStyle(isEnabled ? Color.primary : .secondary)
+            .opacity(isEnabled ? 1 : 0.55)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
+                .toggleStyle(.switch)
+        }
     }
 }

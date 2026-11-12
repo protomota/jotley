@@ -106,6 +106,7 @@ struct MobileSummaryJob: Codable, Sendable {
     let templateKey: String
     let localeIdentifier: String
     var checkpoint: LocalSummaryCheckpoint
+    var templateDefinition: SummaryTemplateDefinition?
 }
 
 /// Apple Intelligence hardware is required; model setup is checked separately.
@@ -275,7 +276,7 @@ final class LiveTranscriptionManager: ObservableObject {
     var simulatedAudioLevels: [Float] = []
     private var simulatedSegmentStart: TimeInterval?
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
-    var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
+    var simulatedOrganization: (@MainActor (String, [LocalTagCandidate]) async throws -> LocalNoteOrganization)?
     #endif
     private var sessionID: UUID?
     private var endingSession = false
@@ -633,9 +634,12 @@ final class LiveTranscriptionManager: ObservableObject {
     }
 
     func summarize(_ note: Note, template: LocalSummaryTemplate) {
+        summarize(note, template: SummaryTemplateDefinition(template))
+    }
+    func summarize(_ note: Note, template: SummaryTemplateDefinition) {
         guard canStart, store != nil, let id = note.id else { return }
         let job = MobileSummaryJob(noteID: id, templateKey: template.key, localeIdentifier: locale.identifier,
-            checkpoint: LocalSummaryCheckpoint(input: note.transcription ?? "", template: template))
+            checkpoint: LocalSummaryCheckpoint(input: note.transcription ?? "", template: template), templateDefinition: template)
         do { try persistSummaryJob(job) }
         catch { errorMessage = "Could not save summary recovery: \(error.localizedDescription)"; return }
         summaryNotifications.prepareForSummary()
@@ -671,12 +675,17 @@ final class LiveTranscriptionManager: ObservableObject {
     }
     private func startSummary(_ note: Note, job: MobileSummaryJob) {
         guard let store else { return }
-        let id = job.noteID, template = LocalSummaryTemplate.resolve(job.templateKey)
+        let id = job.noteID
+        guard let template = job.templateDefinition ?? (try? SummaryTemplateStore.shared.resolve(job.templateKey)) else {
+            errorMessage = "The summary template is unavailable. Choose a template and generate again. Your saved note is unchanged."
+            return
+        }
         let locale = Locale(identifier: job.localeIdentifier)
         summaryPausedBySystem = false
         summaryNoteID = id; summaryPreview = job.checkpoint.result ?? ""; summaryProgress = .preparing; errorMessage = nil
         let runtime = SummaryBackgroundRuntime { [weak self] in self?.pauseSummaryForSystem() }
         summaryRuntime = runtime; runtime.begin()
+        let canFileNote = note.folder == nil
         summaryTask = Task { [weak self] in
             guard let self else { return }
             var completed = false
@@ -741,24 +750,36 @@ final class LiveTranscriptionManager: ObservableObject {
                     catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }
                 }
-                var generatedTags: [String]?
-                self.summaryProgress = .organizingTags; runtime.update(.organizingTags)
-                let library = try store.tagLibrary()
-                do {
-                    #if DEBUG && targetEnvironment(simulator)
-                    if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
-                    else { generatedTags = try await LocalNoteTags.generate(from: result, transcript: job.checkpoint.input, library: library, locale: locale) }
-                    #else
-                    generatedTags = try await LocalNoteTags.generate(from: result, transcript: job.checkpoint.input, library: library, locale: locale)
-                    #endif
-                } catch is CancellationError { throw CancellationError() }
-                catch { generatedTags = nil }
+                let autoTags = LocalNoteOrganizationSettings.autoTags()
+                let autoFolder = canFileNote && note.folder == nil && LocalNoteOrganizationSettings.autoFolders()
+                let library = autoTags ? try store.tagLibrary() : []
+                var organization: LocalNoteOrganization?
+                if autoTags || autoFolder {
+                    self.summaryProgress = .organizingTags; runtime.update(.organizingTags)
+                    do {
+                        #if DEBUG && targetEnvironment(simulator)
+                        if let simulatedOrganization { organization = try await simulatedOrganization(result, library) }
+                        else {
+                            organization = try await LocalNoteTags.generateOrganization(from: result, transcript: job.checkpoint.input,
+                                library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+                        }
+                        #else
+                        organization = try await LocalNoteTags.generateOrganization(from: result, transcript: job.checkpoint.input,
+                            library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+                        #endif
+                    } catch is CancellationError { throw CancellationError() }
+                    catch { organization = nil }
+                }
                 try Task.checkCancellation()
                 guard !note.isDeleted, note.transcription == job.checkpoint.input else {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
                 }
-                try store.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: LocalNoteTags.completedNames(generatedTags, transcript: job.checkpoint.input, summary: result, library: library))
+                let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
+                    ? LocalNoteTags.completedNames(organization?.tags, transcript: job.checkpoint.input, summary: result, library: library)
+                    : nil
+                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? organization?.folder : nil
+                try store.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
+                                          replacingTags: tags, autoFolder: folder)
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)

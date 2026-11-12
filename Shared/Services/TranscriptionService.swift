@@ -4,6 +4,63 @@ import AVFoundation
 import CoreMedia
 import FoundationModels
 
+enum CustomSpeechWords {
+    static let defaultsKey = "jotley.customSpeechWords.v1"
+    static let limit = 100
+    static let entryLengthLimit = 100
+
+    static func key(for entry: String) -> String {
+        entry.folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    static func entries(in text: String) -> [String] {
+        var seen = Set<String>()
+        return text.components(separatedBy: .newlines)
+            .map { $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+            .filter { !$0.isEmpty && seen.insert(key(for: $0)).inserted }
+    }
+
+    static var saved: [String] { saved(in: .standard) }
+
+    static func saved(in defaults: UserDefaults) -> [String] {
+        Array(entries(in: defaults.string(forKey: defaultsKey) ?? "").prefix(limit))
+    }
+
+    static func importedEntries(in text: String, fileExtension: String) throws -> [String] {
+        let separators: Set<Character>
+        switch fileExtension.lowercased() {
+        case "csv": separators = [","]
+        case "tsv": separators = ["\t"]
+        default: separators = [",", ";", "\t"]
+        }
+        var fields: [String] = []
+        var field = ""
+        var quoted = false
+        var index = text.startIndex
+        if index < text.endIndex, text[index] == "\u{FEFF}" { text.formIndex(after: &index) }
+        while index < text.endIndex {
+            let character = text[index]
+            text.formIndex(after: &index)
+            if quoted {
+                if character == "\"" {
+                    if index < text.endIndex, text[index] == "\"" {
+                        field.append(character)
+                        text.formIndex(after: &index)
+                    } else { quoted = false }
+                } else { field.append(character) }
+            } else if separators.contains(character) || character.isNewline {
+                fields.append(field.split(whereSeparator: \.isWhitespace).joined(separator: " "))
+                field = ""
+            } else if character == "\"", field.allSatisfy(\.isWhitespace) {
+                quoted = true
+            } else { field.append(character) }
+        }
+        guard !quoted else { throw LocalError.message("A quoted entry is missing its closing quote.") }
+        fields.append(field.split(whereSeparator: \.isWhitespace).joined(separator: " "))
+        return entries(in: fields.joined(separator: "\n"))
+    }
+}
+
 @available(macOS 26.0, iOS 26.0, *)
 public enum LocalSpeech {
     public enum Engine: String, Sendable { case speech = "SpeechTranscriber", dictation = "DictationTranscriber" }
@@ -33,6 +90,14 @@ public enum LocalSpeech {
             }
         }
         public var needsSetup: Bool { configuration != nil && status != .installed }
+        var customWordsStatus: String? {
+            guard !CustomSpeechWords.saved.isEmpty else { return nil }
+            if configuration?.engine != .dictation {
+                return "Custom Words are unavailable for this language on this device. Standard transcription can still run."
+            }
+            return status == .installed ? "Custom Words are ready for new transcription sessions."
+                : "Choose Set Up On-Device Speech to enable Custom Words. Existing speech models can still be used while you wait."
+        }
         public var message: String {
             if status == .installed { return "On-device speech is ready. Transcription works offline." }
             if needsSetup {
@@ -87,7 +152,8 @@ public enum LocalSpeech {
         languageKey(for: locale) != nil && SystemLanguageModel.default.supportsLocale(locale)
     }
     /// A local availability check only: never initiates an installation or download.
-    public static func readiness(locale: Locale) async -> Readiness {
+    public static func readiness(locale: Locale, checkingCustomWordsSetup: Bool = false) async -> Readiness {
+        let wantsCustomWords = !CustomSpeechWords.saved.isEmpty
         guard supportsIntelligence(locale: locale) else {
             return .init(configuration: nil, status: .unsupported,
                          details: "Requested language: \(locale.identifier(.bcp47))\nNot supported by Apple Intelligence. Choose a supported language in Settings.")
@@ -133,7 +199,11 @@ public enum LocalSpeech {
                 details.append("\(config.engine.rawValue) assets reported installed, but no usable audio format is exposed; setup is still required.")
             }
         }
-        guard let index = preferredIndex(statuses: candidates.map(\.1)) else {
+        let customIndex = wantsCustomWords ? candidates.firstIndex { config, status in
+            config.engine == .dictation && (status == .installed ||
+                (checkingCustomWordsSetup && (status == .supported || status == .downloading)))
+        } : nil
+        guard let index = customIndex ?? preferredIndex(statuses: candidates.map(\.1)) else {
             return .init(configuration: nil, status: .unsupported, details: details.joined(separator: "\n"))
         }
         return .init(configuration: candidates[index].0, status: candidates[index].1, details: details.joined(separator: "\n"))
@@ -166,12 +236,17 @@ public enum LocalSpeech {
         let failure = error as NSError
         UserDefaults.standard.set("\(Date().formatted(.iso8601)) · \(locale.identifier(.bcp47))\n\(failure.localizedDescription) (\(failure.domain), \(failure.code))\n\(details)", forKey: lastFailureDefaultsKey)
     }
-    static func prepare(configuration: Configuration) async throws -> (SpeechAnalyzer, AVAudioFormat) {
+    static func prepare(configuration: Configuration, customWords: [String] = CustomSpeechWords.saved) async throws -> (SpeechAnalyzer, AVAudioFormat) {
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [configuration.module]) else {
             throw LocalError.message("No compatible on-device speech audio format.")
         }
         let analyzer = SpeechAnalyzer(modules: [configuration.module])
         do {
+            if configuration.engine == .dictation, !customWords.isEmpty {
+                let context = AnalysisContext()
+                context.contextualStrings[.general] = Array(customWords.prefix(CustomSpeechWords.limit))
+                try await analyzer.setContext(context)
+            }
             try await analyzer.prepareToAnalyze(in: format)
             try Task.checkCancellation()
             return (analyzer, format)
@@ -185,7 +260,7 @@ public enum LocalSpeech {
     public static func setUp(locale: Locale,
         progress: @escaping @Sendable (Double) async -> Void) async throws {
         try Task.checkCancellation()
-        let ready = await readiness(locale: locale)
+        let ready = await readiness(locale: locale, checkingCustomWordsSetup: true)
         guard let config = ready.configuration else { throw LocalError.message(ready.message) }
         try Task.checkCancellation()
         // Reserve even preinstalled assets so Apple knows this app uses them.

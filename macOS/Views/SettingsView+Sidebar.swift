@@ -38,7 +38,7 @@ extension SettingsView {
             .padding(.vertical, 8)
             .background(
                 isSelected ?
-                Color.themePrimaryAccent.opacity(0.14) : Color.clear
+                Color.themeSelectionBackground : Color.clear
             )
             .cornerRadius(6)
             .contentShape(Rectangle())
@@ -81,7 +81,7 @@ extension SettingsView {
 
 
         }
-        .frame(width: 280)
+        .frame(width: 210)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(NSColor.controlBackgroundColor))
     }

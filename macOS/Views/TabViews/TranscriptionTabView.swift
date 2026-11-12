@@ -40,7 +40,7 @@ struct TranscriptBubbleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: isLikelyMultiLine ? .infinity : nil, alignment: .leading)
-            .modifier(JotleyTranscriptCard())
+            .modifier(JotleyTranscriptCard(neutral: true))
 
             if !isLikelyMultiLine {
                 Spacer(minLength: 0)
@@ -106,6 +106,7 @@ public struct TranscriptTabView: View {
                     transcript: transcriptToDisplay,
                     utterances: utterancesForDisplay,
                     interimText: viewModel?.recorder.latestTranscriptDelta ?? "",
+                    interimTimestamp: viewModel?.recorder.latestTranscriptTimestamp,
                     isRecordingActive: true,
                     showEllipsis: true
                 )
@@ -155,25 +156,23 @@ struct TranscriptParagraphsView: View {
     let transcript: String
     let utterances: [TranscriptUtterance]
     let interimText: String
+    var interimTimestamp: String? = nil
     let isRecordingActive: Bool
     let showEllipsis: Bool
-    private let liveRecordingTimestampInterval: TimeInterval = 10.0
-    private let minimumDisplayTimestampStart: TimeInterval = 0.0
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 12) {
             let sourceUtterances = utterances.isEmpty
                 ? TranscriptUtterance.fallbackUtterances(from: transcript)
-                : TranscriptUtterance.deduplicated(utterances)
+                : utterances
             let utteranceList = isRecordingActive
                 ? TranscriptUtterance.coalescedForDisplay(sourceUtterances)
-                : sourceUtterances
-            let utterancesForDisplay = visibleTimestampedUtterances(from: utteranceList)
+                : utterances.isEmpty ? TranscriptUtterance.displayParagraphs(sourceUtterances) : sourceUtterances
 
-            ForEach(Array(utterancesForDisplay.enumerated()), id: \.offset) { index, item in
+            ForEach(Array(utteranceList.enumerated()), id: \.offset) { index, utterance in
                 TranscriptBubbleView(
-                    text: item.utterance.text,
-                    timestampLabel: item.timestampLabel,
+                    text: utterance.text,
+                    timestampLabel: utterance.timestampLabel,
                     isInterim: false
                 )
                 .id(index)
@@ -183,7 +182,7 @@ struct TranscriptParagraphsView: View {
             if !interimText.isEmpty {
                 TranscriptBubbleView(
                     text: interimText,
-                    timestampLabel: nil,
+                    timestampLabel: interimTimestamp,
                     isInterim: true
                 )
                 .id("interim")
@@ -204,55 +203,6 @@ struct TranscriptParagraphsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func visibleTimestampedUtterances(from utterances: [TranscriptUtterance]) -> [(utterance: TranscriptUtterance, timestampLabel: String?)] {
-        guard !utterances.isEmpty else { return [] }
-
-        if !isRecordingActive {
-            return utterances.map { utterance in
-                (utterance: utterance, timestampLabel: timestampLabel(for: utterance))
-            }
-        }
-
-        var result: [(utterance: TranscriptUtterance, timestampLabel: String?)] = []
-        var lastDisplayedTimestamp: Double? = nil
-
-        for utterance in utterances {
-            guard let start = utterance.start else {
-                result.append((utterance: utterance, timestampLabel: nil))
-                continue
-            }
-
-            let shouldShowTimestamp: Bool
-            if start < minimumDisplayTimestampStart {
-                shouldShowTimestamp = false
-            } else if let lastTimestamp = lastDisplayedTimestamp {
-                shouldShowTimestamp = (start - lastTimestamp) >= liveRecordingTimestampInterval
-            } else {
-                shouldShowTimestamp = true
-            }
-
-            let label = shouldShowTimestamp ? timestampLabel(for: utterance) : nil
-            if shouldShowTimestamp {
-                lastDisplayedTimestamp = start
-            }
-
-            result.append((utterance: utterance, timestampLabel: label))
-        }
-
-        return result
-    }
-
-    private func timestampLabel(for utterance: TranscriptUtterance) -> String? {
-        guard let start = utterance.start else { return nil }
-        return formatRelativeTime(start)
-    }
-
-    private func formatRelativeTime(_ seconds: Double) -> String {
-        let totalSeconds = max(0, Int(seconds.rounded()))
-        let minutes = totalSeconds / 60
-        let remainingSeconds = totalSeconds % 60
-        return String(format: "%02d:%02d", minutes, remainingSeconds)
-    }
 }
 
 // Animated ellipsis component that shows recording activity

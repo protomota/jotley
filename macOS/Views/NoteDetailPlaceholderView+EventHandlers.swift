@@ -9,6 +9,8 @@ extension NoteDetailPlaceholderView {
         summaryGenerationError = nil
         editableSummary = note.summary ?? ""
         editableTranscript = note.transcription ?? ""
+        savedSummary = editableSummary
+        savedTranscript = editableTranscript
         editableTranscriptNoteID = note.objectID
         currentTags = note.tagNames  // Initialize tags from note
 
@@ -122,16 +124,6 @@ extension NoteDetailPlaceholderView {
     }
 
     func handleNoteChanged(_ oldObjectID: NSManagedObjectID, _ newObjectID: NSManagedObjectID) {
-        // Before switching notes, save any pending changes
-        if isSummaryEditorFocused {
-
-            saveSummaryChanges()
-        }
-        if isTranscriptEditorFocused {
-
-            saveTranscriptChanges()
-        }
-
         // Ensure editors lose focus so their state is updated before saving
         isTranscriptEditorFocused = false
         isSummaryEditorFocused = false
@@ -143,8 +135,10 @@ extension NoteDetailPlaceholderView {
             manualTitle = note.titleOrUntitled // 'note' is the current (and effectively new) note
             summaryGenerationError = nil
             editableSummary = note.summary ?? ""
+            savedSummary = editableSummary
             if !isTranscriptEditorFocused { // Sync transcript if editor not focused
                 editableTranscript = note.transcription ?? ""
+                savedTranscript = editableTranscript
                 editableTranscriptNoteID = note.objectID
             }
             return
@@ -156,37 +150,27 @@ extension NoteDetailPlaceholderView {
         // against the 'oldObjectID'.
 
         let context = viewContext
-        if let actualOldNote = try? context.existingObject(with: oldObjectID) as? Note {
-            var oldNoteMadeChanges = false
-
-            // Save transcript of the old note. 'editableTranscript' currently holds (potentially edited) content from actualOldNote.
-            // 'preferCleanedTranscript' reflects the global setting at the moment of switch.
-            // Saving to raw transcript for the old note
-            if actualOldNote.transcription ?? "" != editableTranscript {
-                actualOldNote.transcription = editableTranscript.isEmpty ? nil : editableTranscript
-                oldNoteMadeChanges = true
-
-            }
-
-            if oldNoteMadeChanges && context.hasChanges {
-                do {
-                    try persistenceController.save()
-
-                } catch {
-
+        if editableTranscriptNoteID == oldObjectID,
+           let actualOldNote = try? context.existingObject(with: oldObjectID) as? Note, !actualOldNote.isDeleted {
+            do {
+                if !isEditingTranscript, editableTranscript != savedTranscript {
+                    try actualOldNote.saveEditedTranscript(editableTranscript, original: savedTranscript, in: persistenceController)
                 }
-            }
-        } else {
-
+                if editableSummary != savedSummary {
+                    try actualOldNote.saveEditedSummary(editableSummary, original: savedSummary, in: persistenceController)
+                }
+            } catch { viewModel.report(error) }
         }
 
         // Now, load content for the NEW note (the 'note' object itself is already the new note)
         manualTitle = note.titleOrUntitled
         summaryGenerationError = nil
         editableSummary = note.summary ?? ""
+        savedSummary = editableSummary
 
         // Load transcript for the new note.
         editableTranscript = note.transcription ?? ""
+        savedTranscript = editableTranscript
         editableTranscriptNoteID = note.objectID
 
 
@@ -229,6 +213,7 @@ extension NoteDetailPlaceholderView {
                 if editableSummary != currentSummaryValue {
 
                     editableSummary = currentSummaryValue
+                    savedSummary = currentSummaryValue
                 }
             }
         } else if newTabRawValue == DetailTab.transcript.rawValue {
@@ -240,6 +225,7 @@ extension NoteDetailPlaceholderView {
 
 
                     editableTranscript = currentTranscriptValue
+                    savedTranscript = currentTranscriptValue
                 }
 
 
@@ -251,8 +237,9 @@ extension NoteDetailPlaceholderView {
     }
 
     func handleSummaryChanged(_ oldValue: String?, _ newSummary: String?) {
-        if !isSummaryEditorFocused {
+        if !isSummaryEditorFocused && editableSummary == savedSummary {
             editableSummary = newSummary ?? ""
+            savedSummary = editableSummary
 
         } else {
 

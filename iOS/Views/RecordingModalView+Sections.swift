@@ -9,12 +9,13 @@ extension LiveTranscriptionView {
                 .font(.headline)
                 .foregroundColor(.themeTextPrimary)
             Spacer()
-            MobileDoneButton { finishAndClose() }
+            Button("Done") { finishAndClose() }
+                .jotleyDismissButtonStyle()
                 .disabled(isFinishing)
                 .accessibilityIdentifier("transcriptionCloseButton")
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.vertical, 10)
     }
 
     // MARK: - Waveform Section
@@ -31,12 +32,22 @@ extension LiveTranscriptionView {
 
     // MARK: - Time Display
 
-    var timeDisplay: some View {
+    var recordingReadout: some View {
         let seconds = max(0, Int(transcriptionManager.transcriptionDuration))
-        return Text("\(seconds / 60)m \(seconds % 60)s")
-            .font(.system(size: 56, weight: .light).monospacedDigit())
-            .foregroundColor(.themeTextPrimary)
-            .accessibilityIdentifier("transcriptionDurationText")
+        let state = transcriptionManager.transcriptionState
+        let showsStatus = state != .idle || hasStartedTranscription
+        return HStack(spacing: 12) {
+            Text(state == .listening ? "Transcribing" : state == .paused ? "Paused" : "Ready")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.themeTextSecondary)
+                .opacity(showsStatus ? 1 : 0)
+                .accessibilityHidden(!showsStatus)
+                .accessibilityIdentifier("transcriptionStatusText")
+            Text("\(seconds / 60)m \(seconds % 60)s")
+                .font(.system(size: 34, weight: .light).monospacedDigit())
+                .foregroundStyle(Color.themeTextPrimary)
+                .accessibilityIdentifier("transcriptionDurationText")
+        }
     }
 
     // MARK: - Transcription Controls
@@ -47,13 +58,8 @@ extension LiveTranscriptionView {
             Button(action: toggleTranscriptionPause) {
                 Image(systemName: transcriptionManager.transcriptionState == .listening ? "pause.fill" : transcriptionManager.transcriptionState == .paused ? "play.fill" : "arrow.clockwise")
                     .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(Color.themeTextOnAccent)
-                    .frame(width: 84, height: 84)
-                    .background(Color.themePrimaryAccent, in: Circle())
-                    .contentShape(Circle())
-                    .shadow(color: Color.themePrimaryAccent.opacity(0.3), radius: 10, y: 3)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 84))
             .disabled(transcriptionManager.busy || isFinishing)
             .accessibilityIdentifier("transcriptionPauseButton")
             .accessibilityLabel(transcriptionManager.transcriptionState == .listening ? "Pause transcription" : transcriptionManager.transcriptionState == .paused ? "Resume transcription" : "Try transcription again")
@@ -61,7 +67,7 @@ extension LiveTranscriptionView {
             if transcriptionManager.transcriptionState != .idle {
                 Button(action: finishAndClose) {
                     Image(systemName: "stop.fill")
-                        .font(.system(size: 22)).foregroundStyle(Color.themePrimaryAccent)
+                        .font(.system(size: 22))
                         .frame(width: 60, height: 60)
                 }
                 .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 60))

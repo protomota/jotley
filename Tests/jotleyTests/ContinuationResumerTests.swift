@@ -7,6 +7,42 @@ import NaturalLanguage
 @testable import jotley
 
 final class LocalCoreTests: XCTestCase {
+    func testAutomaticOrganizationDefaultsOnWithIndependentOptOuts() throws {
+        let suite = "JotleyOrganizationTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertTrue(LocalNoteOrganizationSettings.autoTags(in: defaults))
+        XCTAssertTrue(LocalNoteOrganizationSettings.autoFolders(in: defaults))
+        defaults.set(false, forKey: LocalNoteOrganizationSettings.autoTagsKey)
+        XCTAssertFalse(LocalNoteOrganizationSettings.autoTags(in: defaults))
+        XCTAssertTrue(LocalNoteOrganizationSettings.autoFolders(in: defaults))
+        defaults.set(true, forKey: LocalNoteOrganizationSettings.autoTagsKey)
+        defaults.set(false, forKey: LocalNoteOrganizationSettings.autoFoldersKey)
+        XCTAssertTrue(LocalNoteOrganizationSettings.autoTags(in: defaults))
+        XCTAssertFalse(LocalNoteOrganizationSettings.autoFolders(in: defaults))
+    }
+
+    @MainActor func testAutomaticFilingCreatesOnlyNeededFoldersAndPreservesAssignments() throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let request = NSFetchRequest<NSManagedObject>(entityName: "Folder")
+        let first = try store.create(title: "Team planning")
+        let second = try store.create(title: "Project update")
+        let third = try store.create(title: "Miscellaneous")
+        try store.saveNoteChanges(first, values: ["summary": "Plan the next launch."], replacingTags: ["Planning"], autoFolder: .work)
+        let work = try XCTUnwrap(first.value(forKey: "folder") as? NSManagedObject)
+        XCTAssertEqual(work.text("name"), "Work")
+        XCTAssertEqual(first.text("summary"), "Plan the next launch.")
+        work.setValue("WORK", forKey: "name")
+        try store.saveNoteChanges(second, values: [:], replacingTags: nil, autoFolder: .work)
+        XCTAssertEqual((second.value(forKey: "folder") as? NSManagedObject)?.objectID, work.objectID)
+        try store.saveNoteChanges(second, values: [:], replacingTags: nil, autoFolder: .study)
+        XCTAssertEqual((second.value(forKey: "folder") as? NSManagedObject)?.objectID, work.objectID)
+        try store.saveNoteChanges(third, values: [:], replacingTags: nil, autoFolder: .unfiled)
+        XCTAssertNil(third.value(forKey: "folder"))
+        XCTAssertEqual(try store.context.count(for: request), 1)
+    }
+
     func testCompletedTagsAlwaysReplaceEligibleNotesAndRespectTranscriptLength() {
         let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20)]
         let nine = "one two three four five six seven eight nine"

@@ -2,7 +2,7 @@ import Foundation
 
 struct TranscriptUtterance: Codable, Identifiable, Hashable {
     let id: String
-    let text: String
+    var text: String
     let start: Double?
     let end: Double?
     let speaker: Int?
@@ -31,21 +31,23 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var timestampLabel: String? {
+        guard let start, start.isFinite, start >= 0, start < Double(Int.max) else { return nil }
+        let seconds = Int(start)
+        return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+
+    static func displayParagraphs(_ utterances: [TranscriptUtterance]) -> [TranscriptUtterance] {
+        utterances.flatMap { coalescedForDisplay([$0]) }
+    }
+
     static func fallbackUtterances(from transcript: String) -> [TranscriptUtterance] {
         let paragraphs = transcript
-            .components(separatedBy: "\n\n")
+            .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        if paragraphs.isEmpty {
-            let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty {
-                return []
-            }
-            return [TranscriptUtterance(text: trimmed)]
-        }
-
-        return paragraphs.map { TranscriptUtterance(text: $0) }
+        return paragraphs.enumerated().map { TranscriptUtterance(id: "plain-\($0.offset)", text: $0.element) }
     }
 
     static func deduplicated(_ utterances: [TranscriptUtterance]) -> [TranscriptUtterance] {
@@ -106,53 +108,44 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
         minWordsPerChunk: Int = 8,
         maxWordsPerChunk: Int = 20,
         maxDurationSeconds: Double = 12,
-        maxSentencesPerChunk: Int = 2
+        maxSentencesPerChunk: Int = 2,
+        pauseSeconds: Double = 2
     ) -> [TranscriptUtterance] {
         let cleaned = deduplicated(utterances)
             .filter { !$0.isInterim && !$0.isEmpty }
-
-        guard !cleaned.isEmpty else { return [] }
-
-        let expanded = cleaned.flatMap { utterance in
-            splitOversizedUtterance(
-                utterance,
-                maxWordsPerChunk: maxWordsPerChunk,
-                maxSentencesPerChunk: maxSentencesPerChunk,
-                maxDurationSeconds: maxDurationSeconds
-            )
-        }
-
-        guard expanded.count > 1 else { return expanded }
-
-        // If no timing exists, keep original segmentation (often paragraph-based fallback text).
-        let hasTiming = expanded.contains { $0.start != nil || $0.end != nil }
-        guard hasTiming else { return expanded }
 
         var coalesced: [TranscriptUtterance] = []
         var buffer: [TranscriptUtterance] = []
         var bufferedWordCount = 0
         var bufferedSentenceCount = 0
 
-        for utterance in expanded {
+        func flush() {
+            guard let first = buffer.first else { return }
+            coalesced.append(buffer.count == 1 ? first : mergeUtterancesForDisplay(buffer))
+            buffer.removeAll(keepingCapacity: true)
+            bufferedWordCount = 0
+            bufferedSentenceCount = 0
+        }
+
+        for utterance in cleaned {
+            let chunks = splitOversizedUtterance(utterance, maxWordsPerChunk: maxWordsPerChunk,
+                maxSentencesPerChunk: maxSentencesPerChunk, maxDurationSeconds: maxDurationSeconds)
+            // Already split paragraphs and legacy lines are standalone.
+            guard chunks.count == 1, let start = utterance.start else {
+                flush()
+                coalesced.append(contentsOf: chunks)
+                continue
+            }
+
             let incomingWordCount = wordCount(in: utterance.text)
             let sentenceBoundary = endsSentence(utterance.text)
-
-            if buffer.isEmpty {
-                buffer = [utterance]
-                bufferedWordCount = incomingWordCount
-                bufferedSentenceCount = sentenceBoundary ? 1 : 0
-                continue
+            if let previous = buffer.last {
+                let pause = previous.end.map { start - $0 } ?? 0
+                if pause >= pauseSeconds || didSpeakerChange(current: buffer, incoming: utterance)
+                    || bufferedWordCount + incomingWordCount > maxWordsPerChunk {
+                    flush()
+                }
             }
-
-            let speakerChanged = didSpeakerChange(current: buffer, incoming: utterance)
-            if speakerChanged && bufferedWordCount >= minWordsPerChunk {
-                coalesced.append(mergeUtterancesForDisplay(buffer))
-                buffer = [utterance]
-                bufferedWordCount = incomingWordCount
-                bufferedSentenceCount = sentenceBoundary ? 1 : 0
-                continue
-            }
-
             buffer.append(utterance)
             bufferedWordCount += incomingWordCount
             if sentenceBoundary {
@@ -165,16 +158,11 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
                 duration >= maxDurationSeconds ||
                 (bufferedSentenceCount >= maxSentencesPerChunk && bufferedWordCount >= minWordsPerChunk) ||
                 (bufferedWordCount >= minWordsPerChunk && sentenceBoundary) {
-                coalesced.append(mergeUtterancesForDisplay(buffer))
-                buffer.removeAll(keepingCapacity: true)
-                bufferedWordCount = 0
-                bufferedSentenceCount = 0
+                flush()
             }
         }
 
-        if !buffer.isEmpty {
-            coalesced.append(mergeUtterancesForDisplay(buffer))
-        }
+        flush()
 
         return coalesced
     }
@@ -185,36 +173,19 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
         maxSentencesPerChunk: Int,
         maxDurationSeconds: Double
     ) -> [TranscriptUtterance] {
-        let normalizedText = utterance.text
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !normalizedText.isEmpty else { return [] }
-
-        let sentenceParts = sentenceUnits(from: normalizedText)
-        let totalWords = wordCount(in: normalizedText)
-        let totalSentences = max(sentenceParts.count, 1)
+        let paragraphs = utterance.text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let sentenceParts = paragraphs.map { sentenceUnits(from: $0) }
+        let totalWords = wordCount(in: utterance.text)
+        let totalSentences = sentenceParts.reduce(0) { $0 + $1.count }
         let utteranceDuration = mergedDuration(of: [utterance])
 
-        let shouldSplit = totalWords > maxWordsPerChunk ||
+        let shouldSplit = paragraphs.count > 1 || totalWords > maxWordsPerChunk ||
             totalSentences > maxSentencesPerChunk ||
             utteranceDuration > maxDurationSeconds * 1.15
 
         guard shouldSplit else { return [utterance] }
-
-        var boundedUnits: [String] = []
-        for part in sentenceParts {
-            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
-            if wordCount(in: trimmed) <= maxWordsPerChunk {
-                boundedUnits.append(trimmed)
-            } else {
-                boundedUnits.append(contentsOf: splitByWordCount(trimmed, maxWords: maxWordsPerChunk))
-            }
-        }
-
-        guard !boundedUnits.isEmpty else { return [utterance] }
 
         var chunkTexts: [String] = []
         var chunkWordCounts: [Int] = []
@@ -243,34 +214,27 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
             bufferedSentences = 0
         }
 
-        for unit in boundedUnits {
-            let unitWordCount = max(wordCount(in: unit), 1)
-            let shouldFlushBeforeAppend = !buffer.isEmpty &&
-                (bufferedWords + unitWordCount > maxWordsPerChunk ||
-                    bufferedSentences + 1 > maxSentencesPerChunk)
-
-            if shouldFlushBeforeAppend {
-                flushBuffer()
+        for paragraph in sentenceParts {
+            let units = paragraph.flatMap { part in
+                wordCount(in: part) <= maxWordsPerChunk ? [part] : splitByWordCount(part, maxWords: maxWordsPerChunk)
             }
+            for unit in units {
+                let unitWordCount = wordCount(in: unit)
+                if bufferedWords + unitWordCount > maxWordsPerChunk { flushBuffer() }
+                buffer.append(unit)
+                bufferedWords += unitWordCount
+                bufferedSentences += 1
 
-            buffer.append(unit)
-            bufferedWords += unitWordCount
-            bufferedSentences += 1
-
-            if bufferedWords >= maxWordsPerChunk || bufferedSentences >= maxSentencesPerChunk {
-                flushBuffer()
+                if bufferedWords >= maxWordsPerChunk || bufferedSentences >= maxSentencesPerChunk {
+                    flushBuffer()
+                }
             }
+            flushBuffer()
         }
-
-        flushBuffer()
 
         guard chunkTexts.count > 1 else { return [utterance] }
 
-        let timeBounds = interpolatedTimeBounds(
-            for: utterance,
-            totalWords: max(totalWords, 1),
-            fallbackChunkCount: chunkTexts.count
-        )
+        let timeBounds = interpolatedTimeBounds(for: utterance)
 
         let totalWordWeight = max(chunkWordCounts.reduce(0, +), 1)
         var currentStart = timeBounds?.start ?? 0
@@ -293,8 +257,8 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
                 }
                 currentStart = chunkEnd ?? currentStart
             } else {
-                chunkStart = nil
-                chunkEnd = nil
+                chunkStart = index == chunkTexts.startIndex ? utterance.start : nil
+                chunkEnd = index == chunkTexts.indices.last ? utterance.end : nil
             }
 
             splitChunks.append(
@@ -352,31 +316,12 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
         return chunks
     }
 
-    private static func interpolatedTimeBounds(
-        for utterance: TranscriptUtterance,
-        totalWords: Int,
-        fallbackChunkCount: Int
-    ) -> (start: Double, end: Double, duration: Double)? {
+    private static func interpolatedTimeBounds(for utterance: TranscriptUtterance) -> (start: Double, end: Double, duration: Double)? {
         if let start = utterance.start,
            let end = utterance.end,
-           end > start {
+           start.isFinite, end.isFinite, start >= 0, end > start {
             return (start: start, end: end, duration: end - start)
         }
-
-        let estimatedDuration = max(
-            Double(totalWords) / 2.7,
-            Double(max(fallbackChunkCount, 1)) * 2.0
-        )
-
-        if let start = utterance.start {
-            return (start: start, end: start + estimatedDuration, duration: estimatedDuration)
-        }
-
-        if let end = utterance.end {
-            let start = max(0, end - estimatedDuration)
-            return (start: start, end: end, duration: estimatedDuration)
-        }
-
         return nil
     }
 
@@ -391,7 +336,7 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
         case let (_, _, c?, d?):
             return abs(c - d) <= 0.25
         default:
-            return true
+            return false
         }
     }
 
@@ -455,6 +400,62 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
 
     private static func wordCount(in text: String) -> Int {
         text.split(whereSeparator: \.isWhitespace).count
+    }
+}
+
+/// A text correction keeps each segment's recorded timing and speaker metadata.
+/// Timing is never invented for imported or older plain-text transcripts.
+struct TranscriptEditDraft: Equatable {
+    let originalText: String
+    let originalUtterances: [TranscriptUtterance]
+    private let initialSegments: [TranscriptUtterance]
+    var segments: [TranscriptUtterance]
+
+    init(text: String, utterances: [TranscriptUtterance]) {
+        originalText = text
+        originalUtterances = utterances
+        let paragraphs = utterances.isEmpty
+            ? TranscriptUtterance.coalescedForDisplay(TranscriptUtterance.fallbackUtterances(from: text))
+            : TranscriptUtterance.displayParagraphs(utterances)
+        segments = paragraphs.isEmpty ? [TranscriptUtterance(id: "empty", text: "")] : paragraphs
+        initialSegments = segments
+    }
+
+    var hasChanges: Bool { segments != initialSegments }
+    var text: String { savedUtterances.map(\.text).joined(separator: "\n\n") }
+    func matchCount(for query: TranscriptFindQuery) -> Int {
+        guard let pattern = query.pattern else { return 0 }
+        return segments.reduce(0) { $0 + pattern.numberOfMatches(in: $1.text, range: NSRange($1.text.startIndex..., in: $1.text)) }
+    }
+
+    mutating func replaceAll(_ query: TranscriptFindQuery, with replacement: String) {
+        guard let pattern = query.pattern else { return }
+        let literal = NSRegularExpression.escapedTemplate(for: replacement)
+        for index in segments.indices {
+            let text = segments[index].text
+            segments[index].text = pattern.stringByReplacingMatches(in: text,
+                range: NSRange(text.startIndex..., in: text), withTemplate: literal)
+        }
+    }
+    var savedUtterances: [TranscriptUtterance] {
+        segments.filter { !$0.isEmpty }.map {
+            TranscriptUtterance(id: $0.id, text: $0.text, start: $0.start, end: $0.end,
+                speaker: $0.speaker, confidence: $0.confidence, isInterim: false)
+        }
+    }
+}
+
+struct TranscriptFindQuery {
+    var text = ""
+    var matchCase = false
+    var wholeWords = true
+
+    var pattern: NSRegularExpression? {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let escaped = NSRegularExpression.escapedPattern(for: text)
+        let wordCharacter = #"[\p{L}\p{M}\p{N}_]"#
+        let pattern = wholeWords ? "(?<!\(wordCharacter))\(escaped)(?!\(wordCharacter))" : escaped
+        return try? NSRegularExpression(pattern: pattern, options: matchCase ? [] : .caseInsensitive)
     }
 }
 

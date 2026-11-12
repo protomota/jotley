@@ -69,8 +69,11 @@ extension NoteDetailPlaceholderView {
             }
 
             // If viewing raw transcript or cleaned is not preferred/available, update editableTranscript.
-            editableTranscript = newValue ?? ""
-            editableTranscriptNoteID = note.objectID
+            if editableTranscript == savedTranscript {
+                editableTranscript = newValue ?? ""
+                savedTranscript = editableTranscript
+                editableTranscriptNoteID = note.objectID
+            }
 
         }
         .onChange(of: isSummaryEditorFocused, handleSummaryFocusChanged)
@@ -155,11 +158,13 @@ struct MacSummaryProgressFooter: View {
             if let fraction = progress.fraction { ProgressView(value: fraction).tint(.themePrimaryAccent) }
             Button(action: cancel) {
                 Label("Cancel Generation", systemImage: "xmark.circle.fill")
-                    .font(.system(size: 15, weight: .semibold))
-            }.buttonStyle(JotleyGlassButtonStyle())
+            }.jotleyDismissButtonStyle()
                 .keyboardShortcut(.cancelAction).accessibilityIdentifier("noteDetailCancelGenerationButton")
         }.foregroundStyle(Color.themeTextPrimary)
-            .frame(maxWidth: 480).padding(12).frame(maxWidth: .infinity)
+            .frame(maxWidth: 480)
+            .padding(.top, 12)
+            .padding([.horizontal, .bottom], MacNoteFooterPlacement.edgeInset)
+            .frame(maxWidth: .infinity)
             .background(Color.themeBackground)
     }
 }

@@ -87,9 +87,8 @@ extension NoteDetailPlaceholderView {
     /// Compact clickable tag summary: "🏷 N tags >" or "+ Add Tag"
     @ViewBuilder
     private var collapsedTagHeader: some View {
-        if currentTags.isEmpty && !isEditingTags {
+        if currentTags.isEmpty {
             Button {
-                isEditingTags = true
                 showAddTagPopover = true
             } label: {
                 HStack(spacing: 4) {
@@ -97,7 +96,7 @@ extension NoteDetailPlaceholderView {
                     Text("Add Tag")
                         .font(.caption)
                 }
-                .foregroundColor(Color.themeTextSecondary)
+                .foregroundStyle(Color.themeActionText)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
             }
@@ -131,7 +130,7 @@ extension NoteDetailPlaceholderView {
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(isTagsExpanded ? 90 : 0))
                 }
-                .foregroundColor(Color.themeTextSecondary)
+                .foregroundStyle(Color.themeActionText)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
             }

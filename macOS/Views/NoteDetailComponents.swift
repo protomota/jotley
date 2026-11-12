@@ -59,7 +59,9 @@ struct LocalMacAskNoteView: View {
                     .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
                     .disabled(messages.isEmpty || generation != nil)
                     .accessibilityIdentifier("askAIClearButton")
-                Button("Done") { dismiss() }.accessibilityIdentifier("askAIDoneButton")
+                Button("Done") { dismiss() }
+                    .jotleyDismissButtonStyle()
+                    .accessibilityIdentifier("askAIDoneButton")
             }.buttonStyle(JotleyGlassButtonStyle()).padding(16)
             Divider()
             VStack(spacing: 0) {
@@ -100,12 +102,7 @@ struct LocalMacAskNoteView: View {
                         .tint(Color.themePrimaryAccent)
                         .accentColor(Color.themePrimaryAccent)
                         .lineLimit(1...5).padding(12).frame(minHeight: 44)
-                        .modifier(JotleyTranscriptCard(cornerRadius: 20))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(inputFocused ? Color.themePrimaryAccent : .clear, lineWidth: 2)
-                                .allowsHitTesting(false)
-                        }
+                        .modifier(JotleyAskComposerSurface(isFocused: inputFocused))
                         .focused($inputFocused).disabled(generation != nil)
                         .onKeyPress(keys: [.return, KeyEquivalent("\u{3}")], phases: .down) { press in
                             let editor = NSApp.keyWindow?.firstResponder as? NSTextView
@@ -122,7 +119,6 @@ struct LocalMacAskNoteView: View {
                         .accessibilityIdentifier("askAIQuestionField")
                     Button(action: send) {
                         Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
                     }.buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 44)).keyboardShortcut(.return, modifiers: .command)
                         .disabled(!canSend)
@@ -143,7 +139,6 @@ struct LocalMacAskNoteView: View {
         }.frame(width: 580, height: 650)
             .foregroundStyle(Color.themeTextPrimary)
             .modifier(JotleyGlassPanel())
-            .presentationBackground(.clear)
             .preferredColorScheme(themeManager.effectiveColorScheme)
             .allowsHitTesting(!showingClear)
             .accessibilityHidden(showingClear)

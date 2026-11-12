@@ -30,10 +30,6 @@ struct SummaryTabView: View {
         !isGeneratingSummary && (showRawMarkdown || inlineEditRequested || isSummaryEditorFocused)
     }
 
-    private var doneButtonForegroundColor: Color {
-        .white
-    }
-
     private var summaryTextToRender: String {
         if isGeneratingSummary {
             return streamingSummaryViewModel.displayedText
@@ -126,16 +122,8 @@ struct SummaryTabView: View {
                                     finishInlineEditing()
                                 } label: {
                                     Label("Done", systemImage: "checkmark")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(doneButtonForegroundColor)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(
-                                            Capsule()
-                                                .fill(Color.themePrimaryAccent)
-                                        )
                                 }
-                                .buttonStyle(.plain)
+                                .jotleyDismissButtonStyle()
                                 .accessibilityIdentifier("noteDetailSummaryDoneButton")
                             }
                             .padding(.horizontal, 8)

@@ -1,6 +1,12 @@
 import SwiftUI
 import AppKit
 
+enum MacNoteHeaderLayout {
+    static let topInset: CGFloat = 16
+    static let controlHeight: CGFloat = 36
+    static let menuTopInset = topInset + controlHeight + 8
+}
+
 // MARK: - View Components
 
 extension NoteDetailPlaceholderView {
@@ -59,9 +65,7 @@ extension NoteDetailPlaceholderView {
     var bodyContentView: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Add spacing for the fixed toolbar at top
-                Color.clear
-                    .frame(height: 44)
+                detailHeaderControls
 
                 // Main content wrapped in ScrollView
                 ScrollViewReader { scrollProxy in
@@ -77,7 +81,9 @@ extension NoteDetailPlaceholderView {
                             contentArea
                                 // Follow the actual speech, not a viewport-sized
                                 // empty area that pushes new notes off the top.
-                                .frame(maxWidth: .infinity, minHeight: isRecordingThisNote ? 0 : max(400, geometry.size.height - 150))
+                                .frame(maxWidth: .infinity,
+                                       minHeight: isRecordingThisNote || isEditingTranscript ? 0 : max(400, geometry.size.height - 150),
+                                       alignment: .topLeading)
                                 .padding(.top, 8)
                         }
                         .padding(.bottom, detailBottomPadding)
@@ -88,6 +94,8 @@ extension NoteDetailPlaceholderView {
                             .id(detailScrollBottomAnchorID)
                     }
                     .coordinateSpace(name: "scroll")
+                    .modifier(JotleyTranscriptEdgeFade(background: .themeContentBackground,
+                        showsBottomFade: false, isEnabled: isRecordingThisNote && selectedTab == DetailTab.transcript.rawValue))
                     .onScrollPhaseChange { _, phase in
                         transcriptFollow.scrollPhaseChanged(isUserScrolling: phase != .idle && phase != .animating)
                     }
@@ -118,7 +126,6 @@ extension NoteDetailPlaceholderView {
 
             } // End of VStack
         } // End of GeometryReader
-        .overlay( alignment: .top) { detailOverlay1 }
         .overlay(alignment: .bottom) {
             detailOverlay5.animation(.smooth(duration: 0.25), value: viewModel.recorder.isRecording)
         }
@@ -129,6 +136,26 @@ extension NoteDetailPlaceholderView {
             if availableTemplates.isEmpty {
                 loadTemplates()
             }
+        }
+        .sheet(item: $templatePresentation) { presentation in
+            VStack(alignment: .trailing, spacing: 0) {
+                Button("Done") { templatePresentation = nil }
+                    .jotleyDismissButtonStyle()
+                    .padding()
+                if presentation == .create {
+                    NewSummaryTemplateView(onSaved: { templatePresentation = nil }, onUse: { definition in
+                        templatePresentation = nil
+                        Task { await handleSummarizeAction(templateKey: definition.key) }
+                    })
+                } else {
+                    SummaryTemplatesView(onUse: { definition in
+                        templatePresentation = nil
+                        Task { await handleSummarizeAction(templateKey: definition.key) }
+                    })
+                }
+            }
+            .frame(width: 900, height: 720)
+            .environment(\.managedObjectContext, viewModel.persistenceController.context)
         }
         .onChange(of: note.objectID) { _, _ in
             transcriptFollow = MacTranscriptFollowState()
@@ -149,7 +176,7 @@ extension NoteDetailPlaceholderView {
         }
     }
 
-    @ViewBuilder var detailOverlay1: some View {
+    @ViewBuilder var detailHeaderControls: some View {
 
             // Top toolbar with tab buttons
             HStack(spacing: 0) {
@@ -183,10 +210,11 @@ extension NoteDetailPlaceholderView {
                     // Right side - More menu
                     moreMenuButton
             }
+            .frame(minHeight: MacNoteHeaderLayout.controlHeight)
             .padding(.horizontal, 16)
-            .padding(.vertical, 0)
+            .padding(.top, MacNoteHeaderLayout.topInset)
+            .padding(.bottom, 12)
             .background(Color.themeContentBackground)
-            .zIndex(100) // Ensure toolbar is always on top
 
     }
 
@@ -229,9 +257,8 @@ extension NoteDetailPlaceholderView {
                             } label: {
                                 Label("Continue Transcription", systemImage: "mic.fill")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Color.themePrimaryAccent)
                             }
-                            .buttonStyle(JotleyGlassButtonStyle())
+                            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
                             .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
                             .accessibilityIdentifier("noteDetailTranscriptResumeButton")
                         }
@@ -258,12 +285,13 @@ extension NoteDetailPlaceholderView {
                                     Text(isGenerating ? "Generating..." : "Generate Summary")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                                .foregroundStyle(Color.themePrimaryAccent)
                             }
-                            .buttonStyle(JotleyGlassButtonStyle())
+                            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
                             .disabled(isGenerating)
                             .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
-                            if isGenerating { Button("Cancel") { viewModel.cancelInference() }.buttonStyle(.plain) }
+                            if isGenerating {
+                                Button("Cancel") { viewModel.cancelInference() }.jotleyDismissButtonStyle()
+                            }
                         }
                     }
                     .modifier(MacNoteFooterPlacement())
@@ -289,8 +317,7 @@ struct MacSummaryActionsFooter: View {
             .font(.system(size: 13, weight: .medium))
         }
         .accessibilityIdentifier("noteDetailSummaryAskAIButton")
-        .buttonStyle(JotleyGlassButtonStyle())
-        .modifier(FloatingNoteControlShadow())
+        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
         .disabled(!isEnabled)
     }
 }

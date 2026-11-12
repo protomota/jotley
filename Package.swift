@@ -14,15 +14,20 @@ let package = Package(
             "JotleyUITests-iOS", "Jotley-iOSTests", "Jotley-iOSUITests", "OneSignalNotificationServiceExtension", "Installer", "docs",
             "examples", "fastlane", "scripts", "sparkle-keys", "Gemfile.lock"
         ], sources: [
+            "Shared/Services/ServiceConstants.swift",
             "Shared/Services/SharedPersistence.swift",
+            "Shared/Services/LibraryBackup.swift",
+            "Shared/Services/JotleySupporterStore.swift",
             "Shared/Services/SummarizationService.swift",
+            "Shared/Services/SummaryTemplateStore.swift",
+            "Shared/Services/SupportTickets.swift",
             "Shared/Services/TranscriptionService.swift",
             "macOS/ProcessTap/CoreAudioUtils.swift",
             "macOS/ProcessTap/ProcessTap.swift",
             "macOS/ProcessTap/ProcessTapRecorder.swift"
         ], resources: [.process("Shared/Models/JotleyNotes.xcdatamodeld")]),
         .testTarget(name: "jotleyTests", dependencies: ["jotley"], path: "Tests/jotleyTests",
-                    sources: ["ContinuationResumerTests.swift"])
+                    sources: ["ContinuationResumerTests.swift", "SummaryTemplateTests.swift", "SupportClientTests.swift", "LibraryBackupTests.swift", "SupporterTests.swift", "TranscriptEditingTests.swift"])
     ],
     swiftLanguageModes: [.v5]
 )

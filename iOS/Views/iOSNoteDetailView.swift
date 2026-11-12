@@ -36,9 +36,11 @@ struct NoteDetailView: View {
     @State var showingTranscriptEditor = false
     @State var showingSummaryEditor = false
     @State var showingAskAI = false
-    var selectedTemplate: LocalSummaryTemplate { .resolve(note.summaryType) }
-    func selectTemplate(_ template: LocalSummaryTemplate) {
-        guard selectedTemplate != template, transcriptionManager.canStart else { return }
+    @ObservedObject var templateCatalog = SummaryTemplateStore.shared
+    @State var templatePresentation: SummaryTemplatePresentation?
+    var selectedTemplateTitle: String { templateCatalog.title(for: note.summaryType) }
+    func selectTemplate(_ template: SummaryTemplateDefinition) {
+        guard note.summaryType != template.key, transcriptionManager.canStart else { return }
         if Note.isMeaningfulSummaryText(note.summary) && hasTranscript {
             selectedTab = "Summary"
             transcriptionManager.summarize(note, template: template)
@@ -49,8 +51,12 @@ struct NoteDetailView: View {
     }
 
     func generateSummary() {
+        guard let template = try? templateCatalog.resolve(note.summaryType) else {
+            transcriptionManager.errorMessage = "This template is unavailable. Choose another template to regenerate the summary."
+            return
+        }
         selectedTab = "Summary"
-        transcriptionManager.summarize(note, template: selectedTemplate)
+        transcriptionManager.summarize(note, template: template)
     }
     var summaryIsRunning: Bool { transcriptionManager.summaryNoteID == note.id }
     var noteIsTranscribing: Bool { transcriptionManager.activeNoteID == note.id && transcriptionManager.isTranscribing }
@@ -94,17 +100,40 @@ struct MobileNoteTextEditor: View {
     @EnvironmentObject var store: SharedPersistenceController
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    @State private var transcriptDraft: TranscriptEditDraft
     @State private var error: String?
+    @FocusState private var summaryFocused: Bool
     private let original: String
     init(note: Note, field: Field) {
         self.note = note
         self.field = field
         original = (field == .transcript ? note.transcription : note.summary) ?? ""
         _text = State(initialValue: original)
+        _transcriptDraft = State(initialValue: TranscriptEditDraft(text: note.transcription ?? "", utterances: note.storedTranscriptUtterances))
     }
     var body: some View {
         NavigationStack {
-            TextEditor(text: $text)
+            Group {
+                if field == .transcript {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 16) {
+                            TranscriptFindReplace(draft: $transcriptDraft)
+                            if !transcriptDraft.segments.contains(where: { $0.timestampLabel != nil }) {
+                                Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
+                            }
+                            ForEach($transcriptDraft.segments) { $segment in
+                                MobileTranscriptParagraphEditor(segment: $segment)
+                            }
+                        }
+                    }
+                } else {
+                    TextEditor(text: $text)
+                        .focused($summaryFocused)
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .modifier(JotleyEditorField(isFocused: summaryFocused))
+                }
+            }
                 .font(.body).foregroundStyle(Color.themeTextPrimary)
                 .scrollContentBackground(.hidden).padding()
                 .background(Color.themeBackground)
@@ -114,21 +143,27 @@ struct MobileNoteTextEditor: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.accessibilityIdentifier("\(field.key)EditorCancelButton")
+                        Button("Cancel") { dismiss() }
+                            .jotleyDismissButtonStyle(inToolbar: true)
+                            .accessibilityIdentifier("\(field.key)EditorCancelButton")
                     }
+                    .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") {
                             do {
                                 guard transcriptionManager.canStart else { throw LocalError.message("Finish transcribing or processing before saving edits.") }
                                 switch field {
-                                case .transcript: try note.saveEditedTranscript(text, original: original, in: store)
+                                case .transcript: try note.saveEditedTranscript(transcriptDraft, in: store)
                                 case .summary: try note.saveEditedSummary(text, original: original, in: store)
                                 }
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
-                        }.disabled(!transcriptionManager.canStart || note.isDeleted)
+                        }
+                            .jotleyDismissButtonStyle(inToolbar: true)
+                            .disabled(!transcriptionManager.canStart || note.isDeleted)
                             .accessibilityIdentifier("\(field.key)EditorSaveButton")
                     }
+                    .sharedBackgroundVisibility(.hidden)
                 }
                 .alert("Couldn’t Save \(field.title)", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                     Button("OK", role: .cancel) { error = nil }
@@ -137,6 +172,38 @@ struct MobileNoteTextEditor: View {
         .tint(Color.themeActionText)
         .preferredColorScheme(ThemeManager.shared.effectiveColorScheme)
         .observeThemeChanges()
-        .interactiveDismissDisabled(text != original)
+        .interactiveDismissDisabled(field == .transcript ? transcriptDraft.hasChanges : text != original)
+    }
+}
+
+private struct MobileTranscriptParagraphEditor: View {
+    @Binding var segment: TranscriptUtterance
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let timestamp = segment.timestampLabel {
+                Text(timestamp)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Color.themeTextSecondary)
+            }
+            Text(verbatim: segment.text + "\n ")
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 42, alignment: .topLeading)
+                .hidden()
+                .accessibilityHidden(true)
+                .overlay {
+                    TextEditor(text: $segment.text)
+                        .focused($focused)
+                        .scrollContentBackground(.hidden)
+                        .scrollDisabled(true)
+                        .accessibilityLabel(segment.timestampLabel.map { "Transcript at \($0)" } ?? "Transcript paragraph")
+                        .accessibilityIdentifier("transcriptEditorText")
+                }
+        }
+        .padding(10)
+        .modifier(JotleyEditorField(isFocused: focused))
     }
 }

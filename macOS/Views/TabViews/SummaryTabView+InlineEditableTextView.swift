@@ -7,6 +7,7 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
     let accentColor: NSColor
     let textColor: NSColor
     @Binding var measuredHeight: CGFloat
+    var fontSize = NSFont.systemFontSize
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -35,7 +36,7 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.autoresizingMask = [.width]
-        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.font = NSFont.systemFont(ofSize: fontSize)
         textView.textColor = textColor
         textView.allowsUndo = true
         textView.importsGraphics = false
@@ -143,14 +144,11 @@ private final class SummaryInlineEditableTextView: NSTextView {
     }
 
     func recalculateContentHeight() {
-        guard let layoutManager, let textContainer else { return }
+        guard bounds.width > 1, let layoutManager, let textContainer else { return }
 
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
-        let measured = max(
-            ceil(usedRect.height + (textContainerInset.height * 2)),
-            ContentLayoutConstants.standardMinHeight
-        )
+        let measured = ceil(max(usedRect.maxY, layoutManager.extraLineFragmentRect.maxY) + textContainerInset.height * 2)
 
         if abs(lastReportedHeight - measured) > 0.5 {
             lastReportedHeight = measured

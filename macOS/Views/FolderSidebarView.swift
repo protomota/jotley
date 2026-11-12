@@ -7,6 +7,8 @@ struct FolderSidebarView: View {
     @ObservedObject var filterState: FilterAndSortState
     @Binding var isExpanded: Bool
     @Binding var showingFolderManagement: Bool
+    private let rowHeight: CGFloat = 28
+    private let rowSpacing: CGFloat = 4
 
     @FetchRequest(fetchRequest: {
         // Resolve the entity in the environment's context, including isolated stores.
@@ -20,11 +22,11 @@ struct FolderSidebarView: View {
     private var folders: FetchedResults<Folder>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             header
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: rowSpacing) {
                     row(
                         title: "All Notes",
                         systemImage: "tray.full",
@@ -41,7 +43,7 @@ struct FolderSidebarView: View {
                     if !folders.isEmpty {
                         Divider().padding(.vertical, 2)
                         ScrollView(.vertical, showsIndicators: true) {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: rowSpacing) {
                                 ForEach(folders) { folder in
                                     folderRow(folder)
                                 }
@@ -56,13 +58,14 @@ struct FolderSidebarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "folder.badge.plus")
                                 .font(.system(size: 11))
+                                .foregroundStyle(Color.themePrimaryAccent)
                             Text("Manage Folders…")
                                 .font(.system(size: 12))
                             Spacer()
                         }
                         .foregroundColor(Color.themeTextSecondary)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .frame(minHeight: rowHeight)
                     }
                     .buttonStyle(.plain)
                     .help("Create, rename, or delete folders")
@@ -74,9 +77,8 @@ struct FolderSidebarView: View {
     }
 
     private var foldersMaxHeight: CGFloat {
-        let rowHeight: CGFloat = 24
-        let visibleRowCap = 6
-        return CGFloat(min(folders.count, visibleRowCap)) * rowHeight
+        let visibleRows = min(folders.count, 6)
+        return CGFloat(visibleRows) * rowHeight + CGFloat(max(0, visibleRows - 1)) * rowSpacing
     }
 
     // MARK: - Rows
@@ -87,16 +89,20 @@ struct FolderSidebarView: View {
                 isExpanded.toggle()
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(Color.themeTextSecondary)
+                Image(systemName: isExpanded ? "folder.fill" : "folder")
+                    .font(.system(size: 13, weight: .medium))
+                    .accessibilityHidden(true)
                 Text("FOLDERS")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(Color.themeTextSecondary)
+                    .font(.system(size: 11, weight: .bold))
                     .kerning(0.6)
                 Spacer()
             }
+            .foregroundStyle(Color.themePrimaryAccent)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -115,10 +121,10 @@ struct FolderSidebarView: View {
                 Spacer()
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .frame(minHeight: rowHeight)
             .background(
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(isSelected ? Color.themePrimaryAccent.opacity(0.18) : Color.clear)
+                    .fill(isSelected ? Color.themeSelectionBackground : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -145,7 +151,7 @@ struct FolderSidebarView: View {
                     .frame(width: 14)
                 Text(folder.displayName)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(Color.themeTextPrimary)
+                    .foregroundStyle(Color.themePrimaryAccent)
                     .lineLimit(1)
                 Spacer()
                 Text("\(folder.noteCount)")
@@ -154,10 +160,10 @@ struct FolderSidebarView: View {
                     .foregroundColor(Color.themeTextSecondary)
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .frame(minHeight: rowHeight)
             .background(
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(isSelected ? Color.themePrimaryAccent.opacity(0.18) : Color.clear)
+                    .fill(isSelected ? Color.themeSelectionBackground : Color.clear)
             )
             .contentShape(Rectangle())
         }

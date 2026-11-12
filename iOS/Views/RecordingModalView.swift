@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LiveTranscriptionView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var isPresented: Bool
     var existingNote: Note? = nil
     var isNewTranscription = false
@@ -9,36 +10,47 @@ struct LiveTranscriptionView: View {
     @ObservedObject var transcriptionManager: LiveTranscriptionManager
     @State var isFinishing = false
     @State private var didAttemptStart = false
-    @State private var hasStartedTranscription = false
+    @State private(set) var hasStartedTranscription = false
     var isResuming: Bool { existingNote != nil && !isNewTranscription }
+    private var transcriptFadeHeight: CGFloat {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return 64 }
+        return colorScheme == .light ? 104 : 84
+    }
     var body: some View {
         GeometryReader { geometry in
         let compactControls = geometry.size.height < 740
         VStack(spacing: 0) {
             Capsule().fill(Color(white: 0.4)).frame(width: 36, height: 5).padding(.top,8)
             header
-            VStack(spacing: compactControls ? 12 : 24) {
-                Spacer().frame(height: compactControls ? 4 : 20)
-                waveformSection.frame(height: compactControls ? 64 : 120)
-                Text(transcriptionManager.transcriptionState == .listening ? "Transcribing" : transcriptionManager.transcriptionState == .paused ? "Paused" : "Ready")
-                    .font(.title3).fontWeight(.medium).foregroundColor(.gray)
-                    .opacity(transcriptionManager.transcriptionState == .idle && !hasStartedTranscription ? 0 : 1)
-                    .accessibilityHidden(transcriptionManager.transcriptionState == .idle && !hasStartedTranscription)
-                    .accessibilityIdentifier("transcriptionStatusText")
-                timeDisplay
-                transcriptionControls
-                ProgressView()
-                    .frame(height: 20)
-                    .opacity(transcriptionManager.busy ? 1 : 0)
-                    .accessibilityHidden(!transcriptionManager.busy)
-                    .accessibilityLabel(transcriptionManager.transcriptionState == .idle ? "Preparing on-device speech" : "Saving transcript")
-            }.padding(.horizontal,20).padding(.bottom,16)
+            VStack(spacing: compactControls ? 8 : 12) {
+                waveformSection.frame(height: compactControls ? 44 : 56)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 24) {
+                        recordingReadout.fixedSize(horizontal: true, vertical: false)
+                        transcriptionControls.fixedSize(horizontal: true, vertical: false)
+                    }
+                    VStack(spacing: 8) {
+                        recordingReadout
+                        transcriptionControls
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .overlay(alignment: .bottomTrailing) {
+                if transcriptionManager.busy {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel(transcriptionManager.transcriptionState == .idle ? "Preparing on-device speech" : "Saving transcript")
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(transcriptionManager.liveUtterances) { utterance in
                             TranscriptBubbleView(text: utterance.text,
-                                timestampText: utterance.start.map { String(format: "%02d:%02d", Int($0) / 60, Int($0) % 60) },
+                                timestampText: utterance.timestampLabel,
                                 allowsTextSelection: true)
                                 .accessibilityIdentifier("liveTranscriptCard-\(utterance.id)")
                         }
@@ -50,6 +62,7 @@ struct LiveTranscriptionView: View {
                 // Fill from the top until the cards outgrow the viewport, then
                 // keep the latest words visible at the bottom as before.
                 .defaultScrollAnchor(.topLeading, for: .alignment)
+                .modifier(JotleyTranscriptEdgeFade(background: .themeBackground, topFadeHeight: transcriptFadeHeight))
                 .onChange(of: transcriptionManager.liveUtterances) { _, _ in
                     proxy.scrollTo("liveTranscriptBottom", anchor: .bottom)
                 }

@@ -21,7 +21,16 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>336</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ai.jotley.support-auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array><string>jotley-support-auth</string></array>
+		</dict>
+	</array>
 	<key>JotleyEnableSparkle</key>
 	<false/>
 	<key>SUFeedURL</key>

@@ -27,29 +27,29 @@ struct MacTranscriptionControls: View {
     let onStop: () -> Void
     var body: some View {
         HStack(spacing: 10) {
-            if let recorder {
-                MacCompactTranscriptionIndicator(recorder: recorder, isPaused: isPaused)
-                    .frame(width: 22, height: 24).accessibilityLabel("Live audio waveform")
-            } else {
-                RecordingIndicator(appIcon: nil, isRecording: true, audioLevel: 0.1, size: 22, isPaused: isPaused)
-                    .frame(width: 22, height: 24)
+            HStack(spacing: 8) {
+                if let recorder {
+                    MacCompactTranscriptionIndicator(recorder: recorder, isPaused: isPaused)
+                        .frame(width: 22, height: 24).accessibilityLabel("Live audio waveform")
+                } else {
+                    RecordingIndicator(appIcon: nil, isRecording: true, audioLevel: 0.1, size: 22, isPaused: isPaused)
+                        .frame(width: 22, height: 24)
+                }
+                Text(timerText).font(.system(size: 13, weight: .medium).monospacedDigit())
+                    .foregroundStyle(Color.themeTextPrimary).fixedSize()
             }
-            Rectangle().fill(Color.themeAccent.opacity(0.35)).frame(width: 1, height: 18)
-            Text(timerText).font(.system(size: 13, weight: .medium).monospacedDigit())
-                .foregroundStyle(Color.themeTextPrimary).fixedSize()
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background { JotleyFloatingGlassSurface(shape: Capsule()) }
             Button(action: onPause) {
                 Image(systemName: isPaused ? "play.fill" : "pause.fill")
-                    .foregroundStyle(Color.themePrimaryAccent)
             }.buttonStyle(JotleyGlassButtonStyle(circular: true)).accessibilityLabel(isPaused ? "Continue Transcription" : "Pause Transcription")
                 .accessibilityIdentifier("macLiveTranscriptionPauseButton")
             Button(action: onStop) {
                 Label("Stop", systemImage: "stop.fill").font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.themePrimaryAccent)
             }.buttonStyle(JotleyGlassButtonStyle()).accessibilityLabel("Stop Transcription")
                 .accessibilityIdentifier("macLiveTranscriptionStopButton")
         }.disabled(isBusy).fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .modifier(JotleyTranscriptCard(cornerRadius: 100))
     }
 }
 
@@ -88,11 +88,13 @@ private struct MacCompactTranscriptionIndicator: View {
     }
 }
 
-/// Idle actions and live capture use the same center and bottom inset.
+/// Align the idle and live controls with the sidebar's footer.
 struct MacNoteFooterPlacement: ViewModifier {
+    static let edgeInset: CGFloat = 20
+
     func body(content: Content) -> some View {
-        content.frame(height: 52, alignment: .center)
+        content.frame(minHeight: 52, alignment: .bottom)
             .frame(maxWidth: .infinity, alignment: .center)
-            .padding(12)
+            .padding([.horizontal, .bottom], Self.edgeInset)
     }
 }

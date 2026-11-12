@@ -7,6 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F50000000000000000000042 /* SupportTicketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000042; };
+		14E49C2F2E3A43839FA2E9CE /* LibraryBackupControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACE223E0670475E88103715; };
+		A49A9896C0D540ED9450D2D2 /* JotleySupporterCelebration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6302170B6FE4EB2A2F7C1D0; };
+		F50000000000000000000041 /* SupportTicketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000041; };
+		0119DE95AEA4437EB9D92073 /* LibraryBackupControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9975B635CEA54A318412D221; };
+		AE3598DDB22741F7B39C23D1 /* JotleySupporterCelebration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE1035791134445A1EA3331; };
+		F50000000000000000000032 /* SupportTickets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000032; };
+		CCE29A30DDA24473BA05FD32 /* LibraryBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FFB639A11453E97D28283; };
+		BA846F0B6702444AA7FA1676 /* JotleySupporterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422F6C79F3124F28B8050E7D; };
+		F50000000000000000000031 /* SupportTickets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000031; };
+		61CDD1C79874462FAA31DB31 /* LibraryBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27424F140E343388E4A5E84; };
+		7A803AE665B3462DA2E71524 /* JotleySupporterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37F18DC238A43F2928C9C62; };
+		F10000000000000000000009 = {isa = PBXBuildFile; fileRef = F20000000000000000000009; };
+		F10000000000000000000006 /* JotleyMCPDesktopSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
+		F10000000000000000000007 /* SettingsView+MCPDesktopSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007; };
+		F10000000000000000000008 /* JotleyClaudeMCP in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008; };
+		F8000000000000000000022 /* SummaryTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000022; };
+		F8000000000000000000021 /* SummaryTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000021; };
+		F8000000000000000000012 /* SummaryTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000012; };
+		F8000000000000000000011 /* SummaryTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000011; };
+		F10000000000000000000005 = {isa = PBXBuildFile; fileRef = F20000000000000000000005; };
+		F50000000000000000000004 = {isa = PBXBuildFile; productRef = F40000000000000000000004; };
+		F50000000000000000000003 = {isa = PBXBuildFile; productRef = F40000000000000000000003; };
+		F50000000000000000000002 = {isa = PBXBuildFile; productRef = F40000000000000000000002; };
+		F50000000000000000000001 = {isa = PBXBuildFile; productRef = F40000000000000000000001; };
+		F10000000000000000000004 /* SettingsView+MCPTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000004; };
+		F10000000000000000000003 /* JotleyMCPHTTPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003; };
+		F10000000000000000000002 /* JotleyMCPTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002; };
+		F10000000000000000000001 /* JotleyMCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001; };
 		1FA1E1A17AA00E4B4E11A622 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB11239D313826CEC1D213A0 /* AppIcon.icon */; };
 		A2BBE437307D9B1C009F7720 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BBE436307D9B1C009F7720 /* WidgetKit.framework */; };
 		A2BBE439307D9B1C009F7720 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2BBE438307D9B1C009F7720 /* SwiftUI.framework */; };
@@ -215,6 +244,31 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F60000000000000000000042 /* SupportTicketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTicketsView.swift; sourceTree = "<group>"; };
+		0ACE223E0670475E88103715 /* LibraryBackupControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupControls.swift; sourceTree = "<group>"; };
+		E6302170B6FE4EB2A2F7C1D0 /* JotleySupporterCelebration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleySupporterCelebration.swift; sourceTree = "<group>"; };
+		F60000000000000000000041 /* SupportTicketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTicketsView.swift; sourceTree = "<group>"; };
+		9975B635CEA54A318412D221 /* LibraryBackupControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupControls.swift; sourceTree = "<group>"; };
+		AAE1035791134445A1EA3331 /* JotleySupporterCelebration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleySupporterCelebration.swift; sourceTree = "<group>"; };
+		F60000000000000000000032 /* SupportTickets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTickets.swift; sourceTree = "<group>"; };
+		C84FFB639A11453E97D28283 /* LibraryBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackup.swift; sourceTree = "<group>"; };
+		422F6C79F3124F28B8050E7D /* JotleySupporterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleySupporterStore.swift; sourceTree = "<group>"; };
+		F60000000000000000000031 /* SupportTickets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTickets.swift; sourceTree = "<group>"; };
+		B27424F140E343388E4A5E84 /* LibraryBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackup.swift; sourceTree = "<group>"; };
+		F37F18DC238A43F2928C9C62 /* JotleySupporterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleySupporterStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPStdioBridge.swift"; path = "macOS/Utilities/JotleyMCPStdioBridge.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPDesktopSetup.swift"; path = "macOS/Utilities/JotleyMCPDesktopSetup.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsView+MCPDesktopSetup.swift"; path = "macOS/Views/SettingsView+MCPDesktopSetup.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = folder; name = JotleyClaudeMCP; path = macOS/Resources/JotleyClaudeMCP; sourceTree = SOURCE_ROOT; };
+		F7000000000000000000022 /* SummaryTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplatesView.swift; sourceTree = "<group>"; };
+		F7000000000000000000021 /* SummaryTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplatesView.swift; sourceTree = "<group>"; };
+		F7000000000000000000012 /* SummaryTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplateStore.swift; sourceTree = "<group>"; };
+		F7000000000000000000011 /* SummaryTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplateStore.swift; sourceTree = "<group>"; };
+		F20000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = text; name = "MCP-NOTICES.txt"; path = "docs/MCP-NOTICES.txt"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000004 /* SettingsView+MCPTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsView+MCPTab.swift"; path = "macOS/Views/SettingsView+MCPTab.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000003 /* JotleyMCPHTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPHTTPServer.swift"; path = "macOS/Utilities/JotleyMCPHTTPServer.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000002 /* JotleyMCPTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPTools.swift"; path = "macOS/Utilities/JotleyMCPTools.swift"; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000001 /* JotleyMCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPService.swift"; path = "macOS/Utilities/JotleyMCPService.swift"; sourceTree = SOURCE_ROOT; };
 		A23A1B782DDB6DE50068D823 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 		A25995532F2956C3002C9FDE /* JotleyUITests-macOS.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "JotleyUITests-macOS.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2BBE435307D9B1C009F7720 /* JotleyWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JotleyWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -475,6 +529,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A2EB8BED307D4385008E0696 /* Sparkle in Frameworks */,
+				F50000000000000000000004,
+				F50000000000000000000003,
+				F50000000000000000000002,
+				F50000000000000000000001,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -712,6 +770,14 @@
 				A2EA9159307B452800AAB201 /* SettingsView+ContentRouter.swift */,
 				A2EA915A307B452800AAB201 /* SettingsView+GeneralTab.swift */,
 				A2EA915B307B452800AAB201 /* SettingsView+ObsidianTab.swift */,
+				F20000000000000000000004 /* SettingsView+MCPTab.swift */,
+				F20000000000000000000006,
+				F20000000000000000000009,
+				F20000000000000000000007,
+				F20000000000000000000008,
+				F20000000000000000000003 /* JotleyMCPHTTPServer.swift */,
+				F20000000000000000000002 /* JotleyMCPTools.swift */,
+				F20000000000000000000001 /* JotleyMCPService.swift */,
 				A2EA915C307B452800AAB201 /* SettingsView+Sidebar.swift */,
 				A2EA915D307B452800AAB201 /* SettingsView+ThemeColorDropdown.swift */,
 				A2EA915E307B452800AAB201 /* TagSidebarView.swift */,
@@ -798,6 +864,10 @@
 				A2EA91CD307B453D00AAB201 /* ServiceConstants.swift */,
 				A2EA91CE307B453D00AAB201 /* SharedPersistence.swift */,
 				A2EA91CF307B453D00AAB201 /* SummarizationService.swift */,
+				F60000000000000000000031 /* SupportTickets.swift */,
+				B27424F140E343388E4A5E84 /* LibraryBackup.swift */,
+				F37F18DC238A43F2928C9C62 /* JotleySupporterStore.swift */,
+				F7000000000000000000011 /* SummaryTemplateStore.swift */,
 				A2EA91D0307B453D00AAB201 /* SummaryTitleReplacementPolicy.swift */,
 				A2EA91D1307B453D00AAB201 /* TranscriptionService.swift */,
 			);
@@ -820,6 +890,10 @@
 				A2EA91D7307B453D00AAB201 /* FolderManagementSheet.swift */,
 				A2EA91D8307B453D00AAB201 /* RecordingIndicator.swift */,
 				A2EA91D9307B453D00AAB201 /* SummaryEmptyStateContent.swift */,
+				F60000000000000000000041 /* SupportTicketsView.swift */,
+				9975B635CEA54A318412D221 /* LibraryBackupControls.swift */,
+				AAE1035791134445A1EA3331 /* JotleySupporterCelebration.swift */,
+				F7000000000000000000021 /* SummaryTemplatesView.swift */,
 				A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */,
 				A2F10003307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
@@ -959,6 +1033,10 @@
 				A2EA926F307B532700AAB201 /* ServiceConstants.swift */,
 				A2EA9270307B532700AAB201 /* SharedPersistence.swift */,
 				A2EA9271307B532700AAB201 /* SummarizationService.swift */,
+				F60000000000000000000032 /* SupportTickets.swift */,
+				C84FFB639A11453E97D28283 /* LibraryBackup.swift */,
+				422F6C79F3124F28B8050E7D /* JotleySupporterStore.swift */,
+				F7000000000000000000012 /* SummaryTemplateStore.swift */,
 				A2EA9272307B532700AAB201 /* SummaryTitleReplacementPolicy.swift */,
 				A2EA9273307B532700AAB201 /* TranscriptionService.swift */,
 			);
@@ -983,6 +1061,10 @@
 				A2EA9279307B532700AAB201 /* FolderManagementSheet.swift */,
 				A2EA927A307B532700AAB201 /* RecordingIndicator.swift */,
 				A2EA927B307B532700AAB201 /* SummaryEmptyStateContent.swift */,
+				F60000000000000000000042 /* SupportTicketsView.swift */,
+				0ACE223E0670475E88103715 /* LibraryBackupControls.swift */,
+				E6302170B6FE4EB2A2F7C1D0 /* JotleySupporterCelebration.swift */,
+				F7000000000000000000022 /* SummaryTemplatesView.swift */,
 				A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */,
 				A2F10004307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
@@ -1012,6 +1094,7 @@
 				A2EA9249307B523300AAB201 /* iOS */,
 				A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */,
 				A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */,
+				F20000000000000000000005,
 				A2EA91DC307B453D00AAB201 /* Shared */,
 				A23A1B782DDB6DE50068D823 /* Package.swift */,
 				A2EA9214307B4F2C00AAB201 /* Jotley-iOSTests */,
@@ -1165,6 +1248,10 @@
 			name = Jotley;
 			packageProductDependencies = (
 				A2EB8BEC307D4385008E0696 /* Sparkle */,
+				F40000000000000000000004,
+				F40000000000000000000003,
+				F40000000000000000000002,
+				F40000000000000000000001,
 			);
 			productName = AudioCap;
 			productReference = F47AD93E2BF5B61E005B75AC /* Jotley.app */;
@@ -1213,6 +1300,8 @@
 			);
 			mainGroup = F47AD9352BF5B61E005B75AC;
 			packageReferences = (
+				F30000000000000000000002,
+				F30000000000000000000001,
 				615E6C1A018D3D26FF96D0BF /* RevenueCat */,
 				A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
@@ -1276,8 +1365,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F10000000000000000000008,
 				A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */,
 				A2EA91FA307B486500AAB201 /* Rambo-BSD-2-Clause.txt in Resources */,
+				F10000000000000000000005,
 				A2EA916B307B452800AAB201 /* Preview Assets.xcassets in Resources */,
 				A2EA929D307BB12900AAB201 /* LICENSE in Resources */,
 				A2EA91FC307B487600AAB201 /* Comfortaa-OFL.txt in Resources */,
@@ -1333,6 +1424,10 @@
 				A2EA928D307B532700AAB201 /* TranscriptionService.swift in Sources */,
 				A2EA928E307B532700AAB201 /* Folder+Extensions.swift in Sources */,
 				A2EA928F307B532700AAB201 /* SummaryEmptyStateContent.swift in Sources */,
+				F50000000000000000000042 /* SupportTicketsView.swift in Sources */,
+				14E49C2F2E3A43839FA2E9CE /* LibraryBackupControls.swift in Sources */,
+				A49A9896C0D540ED9450D2D2 /* JotleySupporterCelebration.swift in Sources */,
+				F8000000000000000000022 /* SummaryTemplatesView.swift in Sources */,
 				A2EA9290307B532700AAB201 /* Font+Extensions.swift in Sources */,
 				A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */,
 				A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */,
@@ -1341,6 +1436,10 @@
 				A2EA9294307B532700AAB201 /* SharedPersistence.swift in Sources */,
 				A2EA9295307B532700AAB201 /* JotleyNotes.xcdatamodeld in Sources */,
 				A2EA9296307B532700AAB201 /* SummarizationService.swift in Sources */,
+				F50000000000000000000032 /* SupportTickets.swift in Sources */,
+				CCE29A30DDA24473BA05FD32 /* LibraryBackup.swift in Sources */,
+				BA846F0B6702444AA7FA1676 /* JotleySupporterStore.swift in Sources */,
+				F8000000000000000000012 /* SummaryTemplateStore.swift in Sources */,
 				A2EA9297307B532700AAB201 /* RecordingMarker+Extensions.swift in Sources */,
 				A2EA9298307B532700AAB201 /* Note+Extensions.swift in Sources */,
 				A2EA9257307B523300AAB201 /* iOSNotesListEmptyStateView.swift in Sources */,
@@ -1398,10 +1497,18 @@
 				A2EA91EB307B453D00AAB201 /* Note+Extensions.swift in Sources */,
 				A2EA91EC307B453D00AAB201 /* Folder+Extensions.swift in Sources */,
 				A2EA91ED307B453D00AAB201 /* SummarizationService.swift in Sources */,
+				F50000000000000000000031 /* SupportTickets.swift in Sources */,
+				61CDD1C79874462FAA31DB31 /* LibraryBackup.swift in Sources */,
+				7A803AE665B3462DA2E71524 /* JotleySupporterStore.swift in Sources */,
+				F8000000000000000000011 /* SummaryTemplateStore.swift in Sources */,
 				A2EA91EE307B453D00AAB201 /* Font+Extensions.swift in Sources */,
 				A2EA91EF307B453D00AAB201 /* TranscriptionService.swift in Sources */,
 				A2EA91F0307B453D00AAB201 /* SharedPersistence.swift in Sources */,
 				A2EA91F1307B453D00AAB201 /* SummaryEmptyStateContent.swift in Sources */,
+				F50000000000000000000041 /* SupportTicketsView.swift in Sources */,
+				0119DE95AEA4437EB9D92073 /* LibraryBackupControls.swift in Sources */,
+				AE3598DDB22741F7B39C23D1 /* JotleySupporterCelebration.swift in Sources */,
+				F8000000000000000000021 /* SummaryTemplatesView.swift in Sources */,
 				A2EA91F2307B453D00AAB201 /* JotleyDefaults.swift in Sources */,
 				A2EA91F3307B453D00AAB201 /* SharedThemeColors.swift in Sources */,
 				A2EA91F4307B453D00AAB201 /* String+MarkdownStripping.swift in Sources */,
@@ -1470,6 +1577,13 @@
 				A2EA9104307B41D700AAB201 /* JotleyNotes.xcdatamodeld in Sources */,
 				A2EA9105307B41D700AAB201 /* CoreAudioUtils.swift in Sources */,
 				A2EA9106307B41D700AAB201 /* JotleyApp.swift in Sources */,
+				F10000000000000000000004 /* SettingsView+MCPTab.swift in Sources */,
+				F10000000000000000000006,
+				F10000000000000000000009,
+				F10000000000000000000007,
+				F10000000000000000000003 /* JotleyMCPHTTPServer.swift in Sources */,
+				F10000000000000000000002 /* JotleyMCPTools.swift in Sources */,
+				F10000000000000000000001 /* JotleyMCPService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1557,7 +1671,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1589,7 +1703,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development.JotleyWidgets";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1631,7 +1745,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1677,7 +1791,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.ios.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1949,7 +2063,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1993,7 +2107,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.protomota.jotley.local-development";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -2071,6 +2185,8 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		F30000000000000000000002 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/apple/swift-nio.git"; requirement = {kind = upToNextMajorVersion; minimumVersion = 2.65.0;}; };
+		F30000000000000000000001 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk.git"; requirement = {kind = exactVersion; version = 0.12.1;}; };
 		A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -2083,6 +2199,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		F40000000000000000000004 = {isa = XCSwiftPackageProductDependency; package = F30000000000000000000002; productName = NIOHTTP1; };
+		F40000000000000000000003 = {isa = XCSwiftPackageProductDependency; package = F30000000000000000000002; productName = NIOPosix; };
+		F40000000000000000000002 = {isa = XCSwiftPackageProductDependency; package = F30000000000000000000002; productName = NIOCore; };
+		F40000000000000000000001 = {isa = XCSwiftPackageProductDependency; package = F30000000000000000000001; productName = MCP; };
 		A2EB8BEC307D4385008E0696 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A2EB8BEA307D426D008E0696 /* XCRemoteSwiftPackageReference "Sparkle" */;

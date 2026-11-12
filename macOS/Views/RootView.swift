@@ -24,6 +24,7 @@ struct RootView: View {
                 }).buttonStyle(JotleyGlassButtonStyle())
             }
             .buttonStyle(JotleyGlassButtonStyle())
+            .toolbar(removing: .title)
             .observeThemeChanges()
             .modifier(JotleyOnboardingPresentation(replay: $showingWelcome))
             .modifier(JotleyEngagementPrompts(isIdle: !onboardingInProgress && !showingSettingsSheet && !local.busy && !recorder.isRecording && !recorder.isBusy))

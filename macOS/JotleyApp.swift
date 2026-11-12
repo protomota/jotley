@@ -3,7 +3,17 @@ import AppKit
 import CoreData
 import FoundationModels
 
-@main struct JotleyApp: App {
+@main enum JotleyMain {
+    @MainActor static func main() async {
+        if CommandLine.arguments.contains("--mcp-stdio") {
+            await JotleyMCPStdioBridge.run()
+        } else {
+            JotleyApp.main()
+        }
+    }
+}
+
+struct JotleyApp: App {
     @NSApplicationDelegateAdaptor private var appDelegate: JotleyAppDelegate
     @ObservedObject private var local = LocalAppModel.shared
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -19,6 +29,7 @@ import FoundationModels
             } else { Text(local.message).padding().frame(minWidth: 600, minHeight: 300) }
         }
         .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(after: .appInfo) {
                 if updates.isEnabled {
@@ -34,6 +45,11 @@ import FoundationModels
 
 @MainActor
 final class LocalAppModel: ObservableObject {
+    #if DEBUG
+    /// Native UI harnesses install an isolated library before shared is first used.
+    /// They must never open or clean up the user's development library.
+    static var isolatedStoreForTesting: SharedPersistenceController?
+    #endif
     static let shared = LocalAppModel()
     @Published var notes: [NSManagedObject] = []
     @Published var selected: UUID?
@@ -43,11 +59,19 @@ final class LocalAppModel: ObservableObject {
     @Published var speechStatus = "Checking installed speech models…"
     @Published var summaryStatus = ""
     let recorder = ProcessTapRecorder()
+    let mcp = JotleyMCPService()
     private(set) var store: SharedPersistenceController?
     var current: NSManagedObject? { notes.first { $0.localNoteID == selected } }
     var ready: Bool { store?.ready == true }
 
     init() {
+        #if DEBUG
+        if let isolated = Self.isolatedStoreForTesting {
+            store = isolated
+            do { try reload() } catch { message = error.localizedDescription }
+            return
+        }
+        #endif
         if let reason = JotleyAppleIntelligenceEligibility.unsupportedReason {
             message = reason
             return
@@ -61,7 +85,10 @@ final class LocalAppModel: ObservableObject {
                 catch { message = "Could not remove previous audio: \(error.localizedDescription). Your transcript text is preserved." }
             }
         } catch { message = error.localizedDescription }
-        Task { await refreshReadiness() }
+        Task {
+            if let store, store.ready { await mcp.attach(store: store) }
+            await refreshReadiness()
+        }
     }
     func reload() throws {
         notes = try store?.notes() ?? []

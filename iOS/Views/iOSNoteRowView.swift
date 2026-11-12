@@ -86,14 +86,7 @@ struct NoteRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, isPhone ? 10 : 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.themePrimaryAccent.opacity(0.3) : Color.themeContentBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? Color.themePrimaryAccent : Color.clear, lineWidth: 1.5)
-        )
+        .jotleyNoteSelection(isSelected, unselectedBackground: .themeContentBackground)
         .contentShape(RoundedRectangle(cornerRadius: 8))
     }
 }

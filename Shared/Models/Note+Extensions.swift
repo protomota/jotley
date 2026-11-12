@@ -241,7 +241,7 @@ public extension Note {
         let resolved: [TranscriptUtterance]
 
         if !stored.isEmpty {
-            resolved = TranscriptUtterance.coalescedForDisplay(stored)
+            resolved = TranscriptUtterance.displayParagraphs(stored)
         } else {
             let fallback = TranscriptUtterance.fallbackUtterances(from: transcription ?? "")
             resolved = TranscriptUtterance.coalescedForDisplay(fallback)
@@ -273,9 +273,18 @@ public extension Note {
     }
 }
 
-// Manual edits replace speech timing metadata only when the text changes.
-// Save the text and its display paragraphs together, preserving summaries/audio.
+// Save text and its display paragraphs together, preserving unrelated note fields.
 extension Note {
+    @MainActor func saveEditedTranscript(_ draft: TranscriptEditDraft, in store: SharedPersistenceController) throws {
+        guard (transcription ?? "") == draft.originalText,
+              storedTranscriptUtterances == draft.originalUtterances else {
+            throw LocalError.message("This transcript changed while you were editing. Close the editor and reopen it to edit the latest text.")
+        }
+        guard draft.hasChanges else { return }
+        try store.saveNoteChanges(self, values: ["transcription": draft.text,
+            "transcriptUtterancesJSON": String(decoding: try JSONEncoder().encode(draft.savedUtterances), as: UTF8.self)])
+    }
+
     @MainActor func saveEditedSummary(_ text: String, original: String, in store: SharedPersistenceController) throws {
         guard (summary ?? "") == original else {
             throw LocalError.message("This summary changed while you were editing. Close the editor and reopen it to edit the latest text.")

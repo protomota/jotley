@@ -2,9 +2,10 @@ import SwiftUI
 
 extension NotesListView {
     var navigationView: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $sidebarVisibility) {
             mainContent
                 .frame(minWidth: 280)
+                .toolbar(removing: .sidebarToggle)
                 .background(Color.themeContentBackground.ignoresSafeArea())
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
                 .overlay(alignment: .trailing) {
@@ -17,6 +18,7 @@ extension NotesListView {
                 }
         } detail: {
             detailContent
+                .toolbar(removing: .sidebarToggle)
                 .overlay(alignment: .bottom) {
                     // A selected note owns the shared idle/live footer. Keep
                     // recording controls available if filters hide every note.
@@ -29,8 +31,22 @@ extension NotesListView {
                 .frame(maxWidth: .infinity)
         }
         .navigationSplitViewStyle(.automatic)
-        // Keep the system sidebar toggle in its native toolbar style.
-        .buttonStyle(.automatic)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                let title = sidebarVisibility == .detailOnly ? "Show Sidebar" : "Hide Sidebar"
+                Button {
+                    sidebarVisibility = sidebarVisibility == .detailOnly ? .all : .detailOnly
+                } label: {
+                    Image(systemName: "sidebar.left").font(.system(size: 15, weight: .medium))
+                }
+                .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 30, floatsOverContent: true))
+                .padding(4)
+                .accessibilityLabel(title)
+                .accessibilityIdentifier("notesSidebarToggle")
+                .help(title)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
         .background(Color.themeContentBackground)
     }
 
@@ -45,9 +61,9 @@ extension NotesListView {
                     placeholder: "Search..",
                     font: NSFont.systemFont(ofSize: 14),
                     textColor: NSColor(Color.themeTextPrimary),
-                    minimumHeight: 36
+                    minimumHeight: MacNoteHeaderLayout.controlHeight
                 )
-                .frame(height: 36)
+                .frame(height: MacNoteHeaderLayout.controlHeight)
                 .accessibilityIdentifier("notesListSearchField")
                     .padding(.horizontal, 8)
                     .padding(.leading, 24)
@@ -80,32 +96,28 @@ extension NotesListView {
                 }) {
                     Image(systemName: filterState.hasTagFilter || filterState.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                         .font(.system(size: 18))
-                        .foregroundColor(filterState.isActive ? Color.themePrimaryAccent : Color.themeTextSecondary)
-                        .frame(width: 36, height: 36)
-                        .background(Color.themeAccent.opacity(0.5))
-                        .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Filter & sort")
                 .accessibilityAddTraits(.isButton)
                 .help("Filter & sort")
                 .accessibilityIdentifier("notesListTagFilterButton")
             }
-            .padding(.leading, 12)
+            .padding(.leading, 16)
             // Match the native sidebar toggle's trailing inset.
             .padding(.trailing, 8)
-            .padding(.top, 0)
-            .padding(.bottom, 8)
+            .padding(.top, MacNoteHeaderLayout.topInset)
+            .padding(.bottom, 12)
 
             folderSidebarSection()
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 10)
 
             if let recordingNote = activeRecordingNote {
                 activeRecordingBanner(for: recordingNote)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
             }
 
             switch currentEmptyState {
@@ -128,14 +140,14 @@ extension NotesListView {
             case .noNotesYet:
                 ContentUnavailableView {
                     Label {
-                        Text("No Notes Yet")
+                        Text("No notes yet")
                             .foregroundColor(Color.themeTextPrimary)
                     } icon: {
                         Image(systemName: "note.text")
                             .foregroundColor(Color.themePrimaryAccent)
                     }
                 } description: {
-                    Text("Use Create Your First Note to start your first note.")
+                    Text("New transcripts and summaries will appear here.")
                         .foregroundColor(Color.themeTextSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -197,8 +209,7 @@ extension NotesListView {
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 36, height: 36)
                 }
-                .buttonStyle(JotleyGlassButtonStyle(circular: true))
-                .modifier(FloatingNoteControlShadow())
+                .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
                 .help("Settings")
                 .accessibilityLabel("Settings")
                 .accessibilityIdentifier("notesListSettingsButton")
@@ -207,15 +218,13 @@ extension NotesListView {
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .semibold))
                 }
-                .buttonStyle(JotleyGlassButtonStyle(circular: true))
-                .modifier(FloatingNoteControlShadow())
+                .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
                 .disabled(!canCreateNewNote)
                 .help("New Transcription")
                 .accessibilityLabel("New Transcription")
                 .accessibilityIdentifier("notesListNewNoteButton")
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 12)
+            .padding([.horizontal, .bottom], MacNoteFooterPlacement.edgeInset)
         }
         .overlay {
             ZStack(alignment: .top) {
@@ -233,7 +242,7 @@ extension NotesListView {
                         onDone: { showingTagFilter = false }
                     )
                     .shadow(color: Color.black.opacity(0.25), radius: 16, x: 0, y: 8)
-                    .padding(.top, 36)
+                    .padding(.top, MacNoteHeaderLayout.menuTopInset)
                     .padding(.horizontal, 12)
                     .transition(.opacity)
                 }
@@ -278,7 +287,6 @@ extension NotesListView {
 
                             // Break into simpler expressions to fix compiler type-checking
                             let isRowSelected = viewModel.selectedNoteIDs.contains(currentNote.objectID)
-                            let topPadding = groupIndex == 0 && noteIndex == 0 ? 15.0 : 0.0
                             let globalRowIndex = groupRowOffsets[groupIndex] + noteIndex
                             let isRecordingNote = viewModel.activeRecordingNote?.objectID == currentNote.objectID
 
@@ -289,7 +297,6 @@ extension NotesListView {
                                     viewModel.toggleSelection(for: note, isCommandKeyPressed: isCommandPressed)
                                 },
                                 prepareDelete: viewModel.performContextualDelete,
-                                topPadding: topPadding,
                                 rowIndex: globalRowIndex,
                                 isRecordingNote: isRecordingNote
                             )
@@ -311,9 +318,8 @@ extension NotesListView {
                             Text(headerText)
                                 .font(.headline)
                                 .fontWeight(.bold)
-                                .padding(.vertical, 6)
-                                .padding(.leading, 16)
-                                .padding(.trailing, 8)
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 16)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Color.themeContentBackground)
                                 .foregroundColor(.secondary)
@@ -428,7 +434,7 @@ extension NotesListView {
                     .opacity(isPulsing ? 0.0 : 0.95)
 
                 Circle()
-                    .stroke(Color.themePrimaryAccent.opacity(0.95), lineWidth: 2)
+                    .stroke(Color.themeTextSecondary.opacity(0.75), lineWidth: 2)
                     .frame(width: 24, height: 24)
                     .scaleEffect(isPulsing ? 1.95 : 1.05)
                     .opacity(isPulsing ? 0.0 : 0.55)
@@ -439,7 +445,7 @@ extension NotesListView {
                     .shadow(color: Color.black.opacity(0.35), radius: 1, x: 0, y: 1)
             }
             .id(themeUpdateId)
-            .shadow(color: Color.themePrimaryAccent.opacity(0.75), radius: 8, x: 0, y: 0)
+            .modifier(JotleyControlShadow())
             .onAppear {
                 isPulsing = false
                 withAnimation(.easeOut(duration: 1.1).repeatForever(autoreverses: false)) {

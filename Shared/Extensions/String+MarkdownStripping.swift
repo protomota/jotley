@@ -39,6 +39,7 @@ private final class MarkdownPreviewSnippetCache {
         text = text.replacingOccurrences(of: "^\\s{0,3}#{1,6}\\s*(?i:summary|overview|résumé|resumen|resumo|riassunto|zusammenfassung|概要|要約|摘要|요약)\\s*\n", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s{0,3}#{1,6}\\s*", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s*>\\s*", with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"(?m)^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\](?:[ \t]+|$)"#, with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "(?m)^\\s*(?:[-*+]\\s+|\\d+\\.\\s+)", with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: "\\[([^\\]]+)\\]\\([^\\)]+\\)", with: "$1", options: .regularExpression)
         text = text.replacingOccurrences(of: "`([^`]*)`", with: "$1", options: .regularExpression)

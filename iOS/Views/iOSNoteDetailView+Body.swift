@@ -39,81 +39,105 @@ extension NoteDetailView {
         .navigationBarTitleDisplayMode(.inline)
         .overlay(alignment: .bottom) {
             if newTranscriptionAction == nil {
-                noteActionsFooter.ignoresSafeArea(.container, edges: .bottom)
+                noteActionsFooter
             }
         }
         .preference(key: NoteFooterContentKey.self,
                     value: newTranscriptionAction != nil ? note.id.map { [$0: AnyView(noteActionsFooter)] } ?? [:] : [:])
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = selectedTab == "Summary" ? note.summary : note.transcription }
-                        .accessibilityIdentifier("copyCurrentTabButton")
-                    Button("Share as Text", systemImage: "square.and.arrow.up", action: shareAsText)
-                        .accessibilityIdentifier("shareNoteButton")
-                    if Note.isMeaningfulSummaryText(note.summary) {
-                        Button("Share Summary as PDF", systemImage: "doc.richtext", action: shareSummaryPDF)
-                            .disabled(summaryIsRunning)
-                            .accessibilityIdentifier("shareSummaryPDFButton")
-                    }
-                    Divider()
-                    Menu("More Export Options", systemImage: "ellipsis.circle") {
-                        Button("Full Note (Plain Text)") { export(.plainText) }.accessibilityIdentifier("exportPlainTextButton")
-                        Button("Full Note (Formatted)") { export(.markdown) }.accessibilityIdentifier("exportMarkdownButton")
+                HStack(spacing: 10) {
+                    Menu {
+                        Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = selectedTab == "Summary" ? note.summary : note.transcription }
+                            .accessibilityIdentifier("copyCurrentTabButton")
+                        Button("Share as Text", systemImage: "square.and.arrow.up", action: shareAsText)
+                            .accessibilityIdentifier("shareNoteButton")
                         if Note.isMeaningfulSummaryText(note.summary) {
-                            Button("Summary Only") { export(.summary) }.accessibilityIdentifier("exportSummaryButton")
-                        }
-                        if !transcript.isEmpty {
-                            Button("Transcript Only") { export(.transcript) }.accessibilityIdentifier("exportTranscriptButton")
-                        }
-                    }
-                } label: {
-                    Image(systemName: "square.and.arrow.up").font(.system(size: 19)).foregroundColor(.themePrimaryAccent)
-                }
-                .accessibilityLabel("Share Actions").accessibilityIdentifier("noteDetailShareButton")
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button { showingAskAI = true } label: {
-                    MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
-                }
-                        .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
-                        .accessibilityIdentifier("noteDetailAskAIButton")
-                    Menu("Summary Style", systemImage: "text.alignleft") {
-                        SummaryDisplayStylePicker().pickerStyle(.inline)
-                    }.accessibilityIdentifier("noteDetailSummaryStyleMenu")
-                    if hasTranscript {
-                        Menu("Summary Template", systemImage: "sparkles") {
-                            summaryTemplateChoices
-                        }
-                        .disabled(!transcriptionManager.canStart)
-                        .accessibilityIdentifier("noteDetailSummaryTemplateMenu")
-                        if !hasSummary {
-                            Button("Generate Summary", systemImage: "sparkles") { generateSummary() }
-                                .disabled(!transcriptionManager.canStart || !hasTranscript)
-                                .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
+                            Button("Share Summary as PDF", systemImage: "doc.richtext", action: shareSummaryPDF)
+                                .disabled(summaryIsRunning)
+                                .accessibilityIdentifier("shareSummaryPDFButton")
                         }
                         Divider()
-                        Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
-                            .disabled(!transcriptionManager.canStart)
-                            .accessibilityIdentifier("noteDetailEditTranscriptButton")
+                        Menu("More Export Options", systemImage: "ellipsis.circle") {
+                            Button("Full Note (Plain Text)") { export(.plainText) }.accessibilityIdentifier("exportPlainTextButton")
+                            Button("Full Note (Formatted)") { export(.markdown) }.accessibilityIdentifier("exportMarkdownButton")
+                            if Note.isMeaningfulSummaryText(note.summary) {
+                                Button("Summary Only") { export(.summary) }.accessibilityIdentifier("exportSummaryButton")
+                            }
+                            if !transcript.isEmpty {
+                                Button("Transcript Only") { export(.transcript) }.accessibilityIdentifier("exportTranscriptButton")
+                            }
+                        }
+                    } label: {
+                        JotleyFloatingMenuIcon(systemImage: "square.and.arrow.up")
                     }
-                    if Note.isMeaningfulSummaryText(note.summary) {
-                        Button("Edit Summary", systemImage: "pencil") { showingSummaryEditor = true }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Share Actions").accessibilityIdentifier("noteDetailShareButton")
+                    Menu {
+                        Button { showingAskAI = true } label: {
+                            MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
+                        }
+                            .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
+                            .accessibilityIdentifier("noteDetailAskAIButton")
+                        Menu("Summary Style", systemImage: "text.alignleft") {
+                            SummaryDisplayStylePicker().pickerStyle(.inline)
+                        }.accessibilityIdentifier("noteDetailSummaryStyleMenu")
+                        if hasTranscript {
+                            Menu("Template", systemImage: "sparkles") {
+                                summaryTemplateChoices
+                            }
                             .disabled(!transcriptionManager.canStart)
-                            .accessibilityIdentifier("noteDetailEditSummaryButton")
-                    }
-                    Button("Continue Transcription", systemImage: "mic.fill") { showingTranscription = true }
-                        .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
-                        .accessibilityIdentifier("noteDetailContinueTranscriptionMenuButton")
-                    Divider()
-                    Button("Delete Note", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
-                } label: { Image(systemName: "ellipsis.circle.fill").font(.system(size: 22)).foregroundColor(.themePrimaryAccent) }
-                .accessibilityIdentifier("noteDetailMoreActionsButton")
-            }
+                            .accessibilityIdentifier("noteDetailSummaryTemplateMenu")
+                            if !hasSummary {
+                                Button("Generate Summary", systemImage: "sparkles") { generateSummary() }
+                                    .disabled(!transcriptionManager.canStart || !hasTranscript)
+                                    .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
+                            }
+                            Divider()
+                            Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
+                                .disabled(!transcriptionManager.canStart)
+                                .accessibilityIdentifier("noteDetailEditTranscriptButton")
+                        }
+                        if Note.isMeaningfulSummaryText(note.summary) {
+                            Button("Edit Summary", systemImage: "pencil") { showingSummaryEditor = true }
+                                .disabled(!transcriptionManager.canStart)
+                                .accessibilityIdentifier("noteDetailEditSummaryButton")
+                        }
+                        Button("Continue", systemImage: "mic.fill") { showingTranscription = true }
+                            .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
+                            .accessibilityIdentifier("noteDetailContinueTranscriptionMenuButton")
+                        Divider()
+                        Button("Delete Note", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
+                    } label: { JotleyFloatingMenuIcon(systemImage: "ellipsis") }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More Actions")
+                    .accessibilityIdentifier("noteDetailMoreActionsButton")
+                }
+                .menuIndicator(.hidden)
+            }.sharedBackgroundVisibility(.hidden)
         }
         .sheet(isPresented: $showingTranscriptEditor, onDismiss: { selectedTab = "Transcript" }) { MobileNoteTextEditor(note: note, field: .transcript) }
         .sheet(isPresented: $showingSummaryEditor, onDismiss: { selectedTab = hasSummary ? "Summary" : "Transcript" }) { MobileNoteTextEditor(note: note, field: .summary) }
+        .sheet(item: $templatePresentation) { presentation in
+            NavigationStack {
+                Group {
+                    if presentation == .create {
+                        NewSummaryTemplateView(onSaved: { templatePresentation = nil }, onUse: { definition in
+                            templatePresentation = nil; selectTemplate(definition)
+                        })
+                    } else {
+                        SummaryTemplatesView(onUse: { definition in templatePresentation = nil; selectTemplate(definition) })
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { templatePresentation = nil }
+                            .jotleyDismissButtonStyle(inToolbar: true)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }
+            }
+        }
         .sheet(isPresented: $showingAskAI) { LocalAskNoteView(note: note) }
         .sheet(isPresented: $showingTranscription, onDismiss: { selectedTab = "Transcript" }) { LiveTranscriptionView(isPresented: $showingTranscription, existingNote: note, transcriptionManager: transcriptionManager) }
         .sheet(isPresented: $showingAddTag) {
@@ -163,7 +187,7 @@ extension NoteDetailView {
                     }
                     Button("Add Tag", systemImage: "plus.circle") { showingAddTag = true }
                         .font(.caption.weight(.medium))
-                        .buttonStyle(.plain).foregroundStyle(Color.themeTextSecondary)
+                        .buttonStyle(.plain).foregroundStyle(Color.themeActionText)
                         .frame(minHeight: 44)
                         .accessibilityIdentifier("noteDetailAddTagButton")
                 }.padding(.horizontal)
@@ -180,7 +204,7 @@ extension NoteDetailView {
         if !note.transcriptUtterances.isEmpty {
             LazyVStack(alignment: .leading, spacing: 8) {
                 ForEach(note.transcriptUtterances) { utterance in
-                    TranscriptBubbleView(text: utterance.text, timestampText: utterance.start.map { String(format: "%02d:%02d", Int($0) / 60, Int($0) % 60) }, allowsTextSelection: true)
+                    TranscriptBubbleView(text: utterance.text, timestampText: utterance.timestampLabel, allowsTextSelection: true)
                 }
             }.accessibilityIdentifier("noteDetailTranscriptContent")
         } else {
@@ -212,10 +236,8 @@ extension NoteDetailView {
                     }
                     HStack(spacing: newTranscriptionAction == nil ? 8 : 12) {
                     Button { transcriptionManager.cancelProcessing() } label: {
-                        MobileActionLabel("Cancel Generation", systemImage: "xmark.circle.fill")
-                            .font(.body.weight(.semibold))
-                    }.buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
-                        .modifier(FloatingNoteControlShadow())
+                        Label("Cancel Generation", systemImage: "xmark.circle.fill")
+                    }.jotleyDismissButtonStyle()
                         .accessibilityIdentifier("noteDetailCancelGenerationButton")
                         .frame(maxWidth: .infinity)
                     if let newTranscriptionAction {
@@ -224,7 +246,7 @@ extension NoteDetailView {
                     }
                 }
                     .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-                    .padding(.top, 8).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
+                    .padding(.top, 8).padding(.bottom, footerBottomInset)
                     .frame(maxWidth: .infinity)
     }
 
@@ -239,7 +261,7 @@ extension NoteDetailView {
             contextualActionsRow
         }
         .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
-        .padding(.top, 16).padding(.bottom, newTranscriptionAction == nil ? 16 : 24)
+        .padding(.top, 16).padding(.bottom, footerBottomInset)
         .frame(maxWidth: .infinity)
     }
 
@@ -253,56 +275,78 @@ extension NoteDetailView {
         // on iPhone while the separate + remains tucked into its corner.
         .padding(.horizontal, newTranscriptionAction == nil ? 0 : 56)
         .frame(minHeight: 44)
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: .trailing) {
             if let newTranscriptionAction {
                 NotesNewTranscriptionButton(action: newTranscriptionAction)
             }
         }
     }
 
+    private var footerBottomInset: CGFloat {
+        newTranscriptionAction == nil ? MobileNoteFooterInsets.splitBottom : MobileNoteFooterInsets.phoneBottom
+    }
+
     @ViewBuilder private var contextualNoteAction: some View {
         if selectedTab == "Summary" {
             Button { showingAskAI = true } label: {
-                MobileActionLabel("Ask AI", systemImage: "bubble.left.and.bubble.right")
+                Label("Ask AI", systemImage: "bubble.left.and.bubble.right")
             }
-            .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
-            .modifier(FloatingNoteControlShadow())
+            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
             .disabled((!hasTranscript && !hasSummary) || noteIsTranscribing || summaryIsRunning)
             .accessibilityIdentifier("noteDetailSummaryAskAIButton")
         } else {
             Button { showingTranscription = true } label: {
-                MobileActionLabel("Continue Transcription", systemImage: "waveform")
+                Label("Continue Transcription", systemImage: "waveform")
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
-            .modifier(FloatingNoteControlShadow())
+            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
             .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
             .accessibilityIdentifier("noteDetailContinueTranscriptionButton")
         }
     }
 
     @ViewBuilder private var summaryTemplateChoices: some View {
-        ForEach(LocalSummaryTemplate.allCases) { template in
+        Button("New Template…") { templatePresentation = .create }
+            .accessibilityIdentifier("noteNewTemplateButton")
+        Button("Manage Templates…") { templatePresentation = .manage }
+        Divider()
+        if !templateCatalog.templates.isEmpty {
+            Section("My Templates") {
+                ForEach(templateCatalog.templates) { custom in
+                    Button { selectTemplate(custom.definition) } label: {
+                        if note.summaryType == custom.key { Label(custom.name, systemImage: "checkmark") }
+                        else { Text(custom.name) }
+                    }.accessibilityIdentifier("noteTemplate-\(custom.key)")
+                }
+            }
+        }
+        Section("Built-in Templates") {
+        ForEach(LocalSummaryTemplate.allCases) { builtIn in
+            let template = SummaryTemplateDefinition(builtIn)
             Button { selectTemplate(template) } label: {
-                if selectedTemplate == template { Label(template.title, systemImage: "checkmark") }
+                if note.summaryType == template.key { Label(template.title, systemImage: "checkmark") }
                 else { Text(template.title) }
             }.accessibilityIdentifier("noteTemplate-\(template.key)")
         }
+        }
+
     }
 
     private var summaryTemplateButton: some View {
         Menu {
             summaryTemplateChoices
         } label: {
-            MobileActionLabel(selectedTemplate.title, systemImage: "sparkles")
+            Label(selectedTemplateTitle, systemImage: "sparkles")
                 .font(.system(size: 15, weight: .medium))
                 .lineLimit(1).truncationMode(.tail)
+                .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, minHeight: 44)
+                .modifier(JotleyGlassMenuLabel(shape: Capsule()))
         }
-        .buttonStyle(FloatingNoteSecondaryButtonStyle()).tint(.themePrimaryAccent)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
         .disabled(!transcriptionManager.canStart)
-        .modifier(FloatingNoteControlShadow())
-        .accessibilityLabel("Templates: \(selectedTemplate.title)")
+        .accessibilityLabel("Templates: \(selectedTemplateTitle)")
         .accessibilityIdentifier("noteDetailTemplatesButton")
     }
 
@@ -313,8 +357,7 @@ extension NoteDetailView {
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(JotleyGlassButtonStyle())
-        .modifier(FloatingNoteControlShadow())
+        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
     }

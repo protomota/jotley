@@ -8,9 +8,9 @@ extension NoteDetailPlaceholderView {
             showActionsPopover.toggle()
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 18, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
+                .font(.system(size: 18, weight: .medium))
         }
-        .buttonStyle(JotleyGlassButtonStyle(circular: true))
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
         .floatingTooltip("More Actions")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("More Actions")
@@ -21,8 +21,6 @@ extension NoteDetailPlaceholderView {
 
 
     func loadTemplates() {
-        availableTemplates = LocalSummaryTemplate.allCases.map {
-            Template(key: $0.key, title: $0.title, description: $0.prompt, category: $0.category)
-        }
+        // The observed catalog supplies built-in and user-created templates.
     }
 }

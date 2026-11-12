@@ -92,8 +92,9 @@ struct iOSFolderDrawer: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(Color.themeTextPrimary)
             Spacer()
-            MobileDoneButton(action: onDone)
-            .accessibilityIdentifier("folderDrawerDoneButton")
+            Button("Done", action: onDone)
+                .jotleyDismissButtonStyle()
+                .accessibilityIdentifier("folderDrawerDoneButton")
         }
         .padding(.horizontal, 20)
         .padding(.top, 28)
@@ -146,7 +147,7 @@ struct iOSFolderDrawer: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
-                isSelected ? Color.themePrimaryAccent.opacity(0.12) : Color.clear
+                isSelected ? Color.themeSelectionBackground : Color.clear
             )
             .contentShape(Rectangle())
         }
@@ -189,7 +190,7 @@ struct iOSFolderDrawer: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(
-                isSelected ? Color.themePrimaryAccent.opacity(0.12) : Color.clear
+                    isSelected ? Color.themeSelectionBackground : Color.clear
             )
             .contentShape(Rectangle())
         }

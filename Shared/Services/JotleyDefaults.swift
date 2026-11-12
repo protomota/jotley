@@ -4,6 +4,7 @@ import FoundationModels
 import Combine
 import UserNotifications
 import AVFoundation
+import UniformTypeIdentifiers
 #if os(iOS)
 import UIKit
 #else
@@ -14,6 +15,7 @@ import AppKit
 @MainActor final class JotleySummaryNotifications: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = JotleySummaryNotifications(defaults: .standard, center: .current())
     static let enabledKey = "jotleySummaryNotificationsEnabled"
+    static let enabledByDefault = true
     static let requestPrefix = "jotley.summary."
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
     @Published private(set) var deliveryError: String?
@@ -27,7 +29,7 @@ import AppKit
     private var permissionTask: Task<Void, Never>?
     private var pending = Set<UUID>()
     private var delivered = Set<UUID>()
-    var isEnabled: Bool { defaults.object(forKey: Self.enabledKey) as? Bool ?? true }
+    var isEnabled: Bool { defaults.object(forKey: Self.enabledKey) as? Bool ?? Self.enabledByDefault }
 
     init(defaults: UserDefaults, authorization: @escaping () async -> UNAuthorizationStatus,
          requestAuthorization: @escaping () async throws -> Bool,
@@ -105,8 +107,22 @@ import AppKit
     }
 }
 
+struct JotleyNoteOrganizationSettings: View {
+    @AppStorage(LocalNoteOrganizationSettings.autoTagsKey) private var autoTags = true
+    @AppStorage(LocalNoteOrganizationSettings.autoFoldersKey) private var autoFolders = true
+
+    var body: some View {
+        Toggle("Auto Tags", isOn: $autoTags)
+            .tint(.themePrimaryAccent)
+            .accessibilityIdentifier("settingsAutoTags")
+        Toggle("Auto File Notes", isOn: $autoFolders)
+            .tint(.themePrimaryAccent)
+            .accessibilityIdentifier("settingsAutoFolders")
+    }
+}
+
 struct JotleySummaryNotificationSettings: View {
-    @AppStorage(JotleySummaryNotifications.enabledKey) private var enabled = true
+    @AppStorage(JotleySummaryNotifications.enabledKey) private var enabled = JotleySummaryNotifications.enabledByDefault
     @ObservedObject private var notifications = JotleySummaryNotifications.shared
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
@@ -163,10 +179,11 @@ struct JotleyTranscriptCard: ViewModifier {
     var cornerRadius: CGFloat = 12
     @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
-        content.background {
-            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return content.background {
             let bubbleColor = neutral ? Color.gray : theme.currentThemeColor.color
             if reduceTransparency {
                 shape.fill(Color.themeContentBackground)
@@ -179,75 +196,110 @@ struct JotleyTranscriptCard: ViewModifier {
                                      bubbleColor.opacity(neutral ? 0.02 : (emphasized ? 0.12 : 0.08))],
                             startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
-                    .overlay {
-                        shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.60), .white.opacity(0.08), .white.opacity(0.32)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                    }
                     .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
             }
+        }
+        .overlay {
+            shape.strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.16), lineWidth: 1)
+                .allowsHitTesting(false)
         }
     }
 }
 
-/// A translucent sheet surface; accessibility can request a solid backing.
+/// Feather only the edges with more transcript offscreen. Keep the first and
+/// newest lines fully visible when the scroll view is at either end.
+struct JotleyTranscriptEdgeFade: ViewModifier {
+    private struct Edges: Equatable { var top = false; var bottom = false }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var edges = Edges()
+    var background: Color
+    var topFadeHeight: CGFloat = 64
+    var showsBottomFade = true
+    var isEnabled = true
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: Edges.self) { geometry in
+                let offset = geometry.contentOffset.y
+                return Edges(top: offset + geometry.contentInsets.top > 1,
+                             // A remaining safe-area inset alone shouldn't dim the newest line.
+                             bottom: offset + geometry.containerSize.height <
+                                geometry.contentSize.height - 12)
+            } action: { _, newEdges in
+                edges = newEdges
+            }
+            .overlay(alignment: .top) {
+                GeometryReader { geometry in
+                    fade(toward: .bottom, height: min(topFadeHeight, geometry.size.height / 3),
+                         visible: isEnabled && edges.top)
+                }
+                .allowsHitTesting(false)
+            }
+            .overlay(alignment: .bottom) {
+                if showsBottomFade { fade(toward: .top, height: 18, visible: isEnabled && edges.bottom) }
+            }
+    }
+
+    private func fade(toward endPoint: UnitPoint, height: CGFloat, visible: Bool) -> some View {
+        LinearGradient(
+            stops: [
+                .init(color: background, location: 0),
+                .init(color: background.opacity(0.90), location: 0.20),
+                .init(color: background.opacity(0.65), location: 0.40),
+                .init(color: background.opacity(0.35), location: 0.60),
+                .init(color: background.opacity(0.10), location: 0.80),
+                .init(color: background.opacity(0), location: 1)
+            ],
+            startPoint: endPoint == .bottom ? .top : .bottom,
+            endPoint: endPoint
+        )
+            .frame(height: height)
+            .opacity(visible ? 1 : 0)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: visible)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+struct JotleyAskComposerSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    var isFocused: Bool
+
+    func body(content: Content) -> some View {
+        let outline = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        content.background(Color(white: colorScheme == .dark ? 0.17 : 0.96), in: outline)
+            .overlay {
+                outline.strokeBorder(
+                    isFocused ? Color.themePrimaryAccent : Color.themeTextSecondary.opacity(0.24),
+                    lineWidth: isFocused ? 2 : 1
+                ).allowsHitTesting(false)
+            }
+    }
+}
+
+/// Let the presentation own the corners and shadow so the background follows
+/// the sheet's outline as its size, safe area, and platform change.
 struct JotleyGlassPanel: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
-        content.background {
-            let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-            if reduceTransparency { shape.fill(Color.themeBackground) }
-            else {
-                Color.clear.glassEffect(.clear, in: shape)
-                    .overlay {
-                        if colorScheme == .dark {
-                            shape.fill(Color.themeBackground.opacity(0.92))
-                        }
-                    }
-                    .overlay {
-                        shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.70), .white.opacity(0.08), .white.opacity(0.35)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.16), radius: 18, y: 8)
+        content.presentationBackground {
+            if reduceTransparency {
+                Color.themeBackground
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+                    .overlay { Color.themeBackground.opacity(colorScheme == .dark ? 0.92 : 0.80) }
             }
         }
-        #if os(macOS)
-        .background(JotleyTransparentSheetWindow(isTransparent: !reduceTransparency))
-        #endif
     }
 }
 
-#if os(macOS)
-/// A SwiftUI sheet has its own AppKit window; its opaque backing must not
-/// cover the native glass sampler or the parent note behind the sheet.
-private struct JotleyTransparentSheetWindow: NSViewRepresentable {
-    var isTransparent: Bool
-    final class View: NSView {
-        var isTransparent = true
-        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); updateWindow() }
-        func updateWindow() {
-            guard let window else { return }
-            window.isOpaque = !isTransparent
-            window.backgroundColor = isTransparent ? .clear : .windowBackgroundColor
-        }
-    }
-    func makeNSView(context: Context) -> View { View() }
-    func updateNSView(_ view: View, context: Context) {
-        view.isTransparent = isTransparent
-        view.updateWindow()
-    }
-}
-#endif
-
-/// The floating control halo follows live theme and appearance changes.
-struct FloatingNoteControlShadow: ViewModifier {
-    @ObservedObject private var themeManager = ThemeManager.shared
+/// A neutral drop shadow for brand marks and other standalone artwork.
+struct JotleyControlShadow: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
-        content
-            .shadow(color: themeManager.currentThemeColor.color.opacity(colorScheme == .dark ? 0.30 : 0.18), radius: 10, y: 2)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.14), radius: 6, y: 3)
+        content.shadow(color: .black.opacity(colorScheme == .dark ? 0.40 : 0.17), radius: 4, y: 2)
     }
 }
 
@@ -255,11 +307,19 @@ struct FloatingNoteControlShadow: ViewModifier {
 struct JotleyGlassButtonStyle: ButtonStyle {
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
     var circular = false
     var diameter: CGFloat? = nil
     var prominent = false
     var keepsDisabledSurfaceVisible = false
+    var floatsOverContent = false
+
+    private var theme: ThemeColor { themeManager.currentThemeColor }
+    private var usesAccentFill: Bool { prominent && !theme.usesDarkGlass(in: colorScheme) }
+    private var glassInk: Color {
+        usesAccentFill ? theme.textOnAccent(in: colorScheme) : theme.glassForeground(in: colorScheme)
+    }
+
     private var controlHeight: CGFloat {
         if let diameter { return diameter }
         #if os(macOS)
@@ -278,30 +338,370 @@ struct JotleyGlassButtonStyle: ButtonStyle {
                     .contentShape(Capsule()).background { background(in: Capsule()) }
             }
         }
-        .foregroundStyle((configuration.role == .destructive ? Color.red : prominent ? Color.white : themeManager.currentThemeColor.color)
-            .opacity(!isEnabled && keepsDisabledSurfaceVisible ? 0.82 : 1))
-        .opacity(isEnabled || keepsDisabledSurfaceVisible ? 1 : 0.45)
+        .foregroundStyle((configuration.role == .destructive ? Color.red : glassInk)
+            .opacity(isEnabled ? 1 : keepsDisabledSurfaceVisible ? 0.82 : floatsOverContent ? 0.55 : 1))
+        .opacity(isEnabled || keepsDisabledSurfaceVisible || floatsOverContent ? 1 : 0.45)
         .scaleEffect(configuration.isPressed ? 0.97 : 1)
         .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 
-    @ViewBuilder private func background<S: Shape>(in shape: S) -> some View {
-        if reduceTransparency {
-            shape.fill(prominent ? themeManager.currentThemeColor.color : Color.themeBackground)
-                .overlay { shape.fill(themeManager.currentThemeColor.color.opacity(0.12)) }
-        } else {
-            Color.clear.glassEffect((prominent ? Glass.regular : Glass.clear)
-                .tint(themeManager.currentThemeColor.color.opacity(prominent ? 1 : 0.06)).interactive(), in: shape)
-                .overlay {
-                    if !prominent {
-                        shape.fill(LinearGradient(colors: [themeManager.currentThemeColor.color.opacity(0.06), themeManager.currentThemeColor.color.opacity(0.02)],
-                            startPoint: .top, endPoint: .bottom))
-                        shape.stroke(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.12), .white.opacity(0.38)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-                    }
-                }
-                .shadow(color: .black.opacity(0.10), radius: 5, y: 3)
+    private func background<S: InsettableShape>(in shape: S) -> some View {
+        JotleyFloatingGlassSurface(
+            shape: shape,
+            fill: usesAccentFill ? theme.color(in: colorScheme) : nil,
+            usesDarkSurface: theme.usesDarkGlass(in: colorScheme)
+        )
+    }
+}
+
+/// Draw Auto's soft backdrop from the outline alone. Menus and buttons
+/// composite their labels differently, so neither the label nor the material
+/// should be used as the source of the shadow.
+struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    let shape: Outline
+    var fill: Color? = nil
+    var usesDarkSurface = false
+
+    var body: some View {
+        let dark = colorScheme == .dark
+        let darkSurface = dark || usesDarkSurface
+        let surface = fill ?? Color(white: darkSurface ? 0.18 : 0.96)
+        let surfaceOpacity = usesDarkSurface ? 0.88 : (dark ? 0.72 : 0.64)
+        ZStack {
+            if reduceTransparency || fill != nil {
+                shape.fill(surface)
+            } else {
+                shape.fill(.ultraThinMaterial)
+                    .overlay { shape.fill(surface.opacity(surfaceOpacity)) }
+            }
         }
+        .overlay { shape.strokeBorder(.white.opacity(darkSurface ? 0.16 : 0.70), lineWidth: 1) }
+        .background {
+            ZStack {
+                shape.fill(.black)
+                    .shadow(color: .black.opacity(dark ? 0.28 : 0.14), radius: 4, y: 2)
+                shape.fill(.black).blendMode(.destinationOut)
+            }
+            .compositingGroup()
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+#if os(iOS)
+/// Menus render their own surface so native menu styles can't replace it.
+struct JotleyGlassMenuLabel<Outline: InsettableShape>: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+    @ObservedObject private var theme = ThemeManager.shared
+    let shape: Outline
+
+    func body(content: Content) -> some View {
+        let color = theme.currentThemeColor
+        let ink = color.glassForeground(in: colorScheme)
+        content
+            .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.55))
+            .background { JotleyFloatingGlassSurface(shape: shape, usesDarkSurface: color.usesDarkGlass(in: colorScheme)) }
+    }
+}
+
+struct JotleyFloatingMenuIcon: View {
+    let systemImage: String
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 16, height: 16)
+            .fontWeight(.semibold)
+            .frame(width: 32, height: 32)
+            .modifier(JotleyGlassMenuLabel(shape: Circle()))
+            // Reserve space inside the native toolbar for the shadow and touch target.
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+    }
+}
+#endif
+
+struct JotleyAboutLogo: View {
+    var body: some View {
+        Image("jotley-brand-mark")
+            .resizable().interpolation(.high).scaledToFit()
+            .frame(width: 56, height: 56)
+            .accessibilityLabel("Jotley")
+    }
+}
+
+struct JotleyLibraryWelcome: View {
+    var hasNotes = false
+    var canStart = true
+    let onStart: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: hasNotes ? "doc.text.magnifyingglass" : "note.text")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(Color.themeTextSecondary)
+                .accessibilityHidden(true)
+            VStack(spacing: 10) {
+                Text(hasNotes ? "Select a note" : "Your words. Your device.")
+                    .font(.custom("Comfortaa-Bold", size: 27, relativeTo: .title))
+                    .foregroundStyle(Color.themeTextPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("libraryWelcomeHeading")
+                Text(hasNotes
+                     ? "Choose a note to read or edit the transcript, see the summary, or ask a question."
+                     : "Capture a thought, meeting, or lecture. Edit the transcript and get the key points with Apple Intelligence, right on your device.")
+                    .font(.body)
+                    .foregroundStyle(Color.themeTextSecondary)
+                    .lineSpacing(3)
+            }
+            Button(action: onStart) {
+                Label("Start Transcription", systemImage: "waveform")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+            .disabled(!canStart)
+            .accessibilityIdentifier("libraryWelcomeStartButton")
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 380)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct TranscriptFindReplace: View {
+    private enum Field { case find, replacement }
+    @Binding var draft: TranscriptEditDraft
+    @State private var query = TranscriptFindQuery()
+    @State private var replacement = ""
+    @State private var replacedCount: Int?
+    @State private var isExpanded = false
+    @FocusState private var focus: Field?
+
+    var body: some View {
+        let matches = draft.matchCount(for: query)
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack {
+                    Label("Find and Replace", systemImage: "magnifyingglass")
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down").accessibilityHidden(true)
+                }
+                .font(.body.weight(.semibold))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("transcriptFindReplace")
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 14) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 12) {
+                            findField.frame(minWidth: 200)
+                            replacementField.frame(minWidth: 200)
+                        }
+                        VStack(alignment: .leading, spacing: 12) {
+                            findField
+                            replacementField
+                        }
+                    }
+                    #if os(macOS)
+                    HStack(spacing: 18) { matchOptions }
+                        .toggleStyle(.checkbox)
+                    #else
+                    VStack(alignment: .leading, spacing: 6) { matchOptions }
+                    #endif
+                    HStack(spacing: 12) {
+                        if let replacedCount {
+                            Text("Replaced \(replacedCount) \(replacedCount == 1 ? "match" : "matches").")
+                        } else {
+                            Text("\(matches) \(matches == 1 ? "match" : "matches") in this transcript")
+                        }
+                        Spacer()
+                        Button("Replace All") {
+                            draft.replaceAll(query, with: replacement)
+                            replacedCount = matches
+                            focus = nil
+                        }
+                        .buttonStyle(JotleyGlassButtonStyle())
+                        .disabled(matches == 0)
+                        .accessibilityIdentifier("transcriptReplaceAllButton")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(Color.themeTextSecondary)
+                }
+                .padding(.bottom, 4)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 4)
+        .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12).strokeBorder(Color.themeTextSecondary.opacity(0.22))
+                .allowsHitTesting(false)
+        }
+        .onChange(of: query.text) { replacedCount = nil }
+        .onChange(of: query.matchCase) { replacedCount = nil }
+        .onChange(of: query.wholeWords) { replacedCount = nil }
+        .onChange(of: replacement) { replacedCount = nil }
+    }
+
+    private var findField: some View {
+        field("Find", prompt: "Text to find", text: $query.text, target: .find, id: "transcriptFindField")
+    }
+
+    private var replacementField: some View {
+        field("Replace with", prompt: "Replacement text", text: $replacement, target: .replacement, id: "transcriptReplaceField")
+    }
+
+    private func field(_ title: String, prompt: String, text: Binding<String>, target: Field, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline.weight(.semibold)).accessibilityHidden(true)
+            TextField(title, text: text, prompt: Text(prompt))
+                .font(.body)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .focused($focus, equals: target)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .modifier(JotleyEditorField(isFocused: focus == target))
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded { focus = target })
+                .accessibilityIdentifier(id)
+        }
+    }
+
+    @ViewBuilder private var matchOptions: some View {
+        Toggle("Whole words", isOn: $query.wholeWords)
+        Toggle("Match case", isOn: $query.matchCase)
+    }
+}
+
+struct CustomSpeechWordsButton: View {
+    @AppStorage(CustomSpeechWords.defaultsKey) private var savedWords = ""
+    @State private var showingEditor = false
+
+    var body: some View {
+        Button { showingEditor = true } label: {
+            Label("Custom Words", systemImage: "character.book.closed")
+        }
+        .accessibilityIdentifier("settingsCustomWordsButton")
+        .sheet(isPresented: $showingEditor) {
+            CustomSpeechWordsEditor(words: $savedWords)
+                .preferredColorScheme(ThemeManager.shared.effectiveColorScheme)
+        }
+    }
+}
+
+private struct CustomSpeechWordsEditor: View {
+    @Binding var words: String
+    @State private var draft: String
+    @State private var original: String
+    @State private var showingConflict = false
+    @State private var showingImport = false
+    @State private var importStatus: String?
+    @Environment(\.dismiss) private var dismiss
+
+    init(words: Binding<String>) {
+        _words = words
+        _draft = State(initialValue: words.wrappedValue)
+        _original = State(initialValue: words.wrappedValue)
+    }
+
+    var body: some View {
+        let entries = CustomSpeechWords.entries(in: draft)
+        let hasLongEntry = entries.contains { $0.count > CustomSpeechWords.entryLengthLimit }
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Custom Words").font(.title2.bold()).accessibilityAddTraits(.isHeader)
+            Text("Add names, brands, and short phrases you say often, one per line. For example, add Jason if it keeps coming out as JSON.")
+                .font(.callout)
+            TextEditor(text: $draft)
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 160)
+                .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 12))
+                .accessibilityLabel("Custom words, one per line")
+                .accessibilityIdentifier("customWordsEditor")
+            HStack {
+                Button { showingImport = true } label: {
+                    Label("Import Word List", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(JotleyGlassButtonStyle())
+                .accessibilityIdentifier("customWordsImportButton")
+                Spacer()
+                Text("\(entries.count) of \(CustomSpeechWords.limit) entries")
+                    .font(.caption)
+                    .foregroundStyle(entries.count > CustomSpeechWords.limit ? .red : Color.themeTextSecondary)
+            }
+            if let importStatus { Text(importStatus).font(.caption).foregroundStyle(Color.themeTextSecondary) }
+            if hasLongEntry {
+                Text("Keep each entry to \(CustomSpeechWords.entryLengthLimit) characters or fewer.")
+                    .font(.caption).foregroundStyle(.red)
+            }
+            Text("Saved on this device. Custom words guide new transcriptions and don’t change existing notes.")
+                .font(.caption).foregroundStyle(Color.themeTextSecondary)
+            HStack {
+                Button("Cancel") { dismiss() }
+                    .jotleyDismissButtonStyle()
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("customWordsCancelButton")
+                Spacer()
+                Button("Save") {
+                    guard words == original else { showingConflict = true; return }
+                    words = entries.joined(separator: "\n")
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(entries.count > CustomSpeechWords.limit || hasLongEntry)
+                .accessibilityIdentifier("customWordsSaveButton")
+            }.buttonStyle(JotleyGlassButtonStyle())
+        }
+        .padding(24)
+        #if os(macOS)
+        .frame(width: 490, height: 460)
+        #endif
+        .background(Color.themeBackground)
+        .interactiveDismissDisabled(draft != original)
+        .fileImporter(isPresented: $showingImport, allowedContentTypes: [.plainText, .commaSeparatedText, .tabSeparatedText]) { result in
+            do { try importWords(from: result.get()) }
+            catch { importStatus = "Couldn’t import the list. \(error.localizedDescription)" }
+        }
+        .alert("Custom Words changed", isPresented: $showingConflict) {
+            Button("Reload List") { original = words; draft = words }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("Another edit was saved while this editor was open. Reload the list before saving your changes.")
+        }
+    }
+
+    private func importWords(from url: URL) throws {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let file = try FileHandle(forReadingFrom: url)
+        defer { try? file.close() }
+        let sizeLimit = 64 * 1024
+        let data = try file.read(upToCount: sizeLimit + 1) ?? Data()
+        guard data.count <= sizeLimit else { throw LocalError.message("Choose a word list smaller than 64 KB.") }
+        guard let text = String(data: data, encoding: .utf8), !text.contains("\0") else {
+            throw LocalError.message("Save the list as UTF-8 text, CSV, or TSV and try again.")
+        }
+        let imported = try CustomSpeechWords.importedEntries(in: text, fileExtension: url.pathExtension)
+        guard !imported.isEmpty else { throw LocalError.message("The file has no words or phrases.") }
+        let current = CustomSpeechWords.entries(in: draft)
+        let merged = CustomSpeechWords.entries(in: (current + imported).joined(separator: "\n"))
+        draft = merged.joined(separator: "\n")
+        let added = merged.count - current.count
+        importStatus = added == 0 ? "Those words are already on the list." : "Added \(added) \(added == 1 ? "entry" : "entries"). Review the list, then tap Save."
     }
 }
 
@@ -325,6 +725,7 @@ struct JotleyClearChatConfirmation: View {
                     .fixedSize(horizontal: false, vertical: true).lineSpacing(3)
                 HStack(spacing: 12) {
                     Button(action: onCancel) { Text("Cancel").frame(maxWidth: .infinity) }
+                        .jotleyDismissButtonStyle(expandsHorizontally: true)
                         .keyboardShortcut(.cancelAction)
                         .accessibilityIdentifier("askAIClearCancelButton")
                     Button(role: .destructive, action: onClear) { Text("Clear Chat").frame(maxWidth: .infinity) }
@@ -361,7 +762,7 @@ struct JotleyClearChatConfirmation: View {
     static let tipURL = URL(string: "https://buymeacoffee.com/protomotalab")!
     static let reviewURL = URL(string: "https://apps.apple.com/app/id6746770199?action=write-review")!
     static let feedbackURL = URL(string: "mailto:jotly-support@protomota.com")!
-    enum Action: String, CaseIterable { case review, tip, share, feedback }
+    enum Action: String, CaseIterable { case review, tip, share, feedback, support }
     static let dismissingActions = Set(Action.allCases)
     enum Prompt { case review, support }
     @Published private(set) var completedActions: Int
@@ -590,7 +991,7 @@ struct JotleySupportView: View {
                     .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Jotley").font(cardFont(.headline, macSize: 18, weight: .semibold)).foregroundColor(.themeTextPrimary)
-                    Text("Completely free")
+                    Text("Free note-taking · Optional paid support")
                         .font(cardFont(.caption, macSize: 14)).foregroundColor(.themeTextSecondary)
                 }
                 Spacer(minLength: 0)
@@ -689,7 +1090,7 @@ struct JotleySupportView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Your rating and review make a difference.")
                             .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
-                        Text("Protomota Software believes software should be free. We’re giving our apps away, including Jotley—with every feature included. Your ratings and reviews help more people discover Jotley. Sharing, feedback and optional tips help us keep building. Thank you for your support.")
+                        Text("All Jotley note-taking features are free. Tips and personal technical support are optional paid purchases. Your ratings, reviews, sharing and feedback help more people discover Jotley and help us keep building. Thank you for your support.")
                             .font(.system(size: 16)).foregroundStyle(Color.themeTextSecondary).lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -733,7 +1134,7 @@ struct JotleySupportView: View {
                 }.padding(.trailing, 2)
             }.scrollBounceBehavior(.basedOnSize)
             HStack(spacing: 18) {
-                Text("All features stay free.\nSupport is always optional.")
+                Text("Note-taking features stay free.\nPaid support and tips are optional.")
                     .font(.system(size: 12)).foregroundStyle(Color.themeTextSecondary)
                 Spacer(minLength: 0)
                 Button(isAutomatic ? "Back to Notes" : "Back to Settings", action: dismiss)
@@ -782,7 +1183,7 @@ struct JotleySupportView: View {
         #endif
     }
     private var supportFooter: some View {
-        Text("Support is optional. All features stay free.")
+        Text("All note-taking features are free. Paid support and tips are optional.")
             .font(cardFont(.caption, macSize: 14)).foregroundColor(.themeTextSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -1046,9 +1447,9 @@ struct JotleyOnboardingView: View {
     }
     private var supportStep: Int { steps.count - 1 }
     private var isSupportStep: Bool { step == supportStep }
-    private var accent: Color { theme.currentThemeColor.color }
+    private var accent: Color { theme.currentThemeColor.color(in: colorScheme) }
     private var ink: Color { colorScheme == .dark ? Color(white: 0.94) : Color(red: 0.14, green: 0.11, blue: 0.19) }
-    private var actionInk: Color { colorScheme == .dark ? accent.mix(with: .white, by: 0.45) : accent.mix(with: .black, by: 0.42) }
+    private var actionInk: Color { theme.currentThemeColor.glassForeground(in: colorScheme) }
     private var muted: Color { ink.opacity(colorScheme == .dark ? 0.76 : 0.68) }
     private var onboardingBackground: Color { colorScheme == .dark ? Color(red: 0.065, green: 0.055, blue: 0.085) : Color(red: 0.985, green: 0.98, blue: 0.995) }
     private func title(for page: Int, twoLines: Bool = false) -> String {
@@ -1071,7 +1472,7 @@ struct JotleyOnboardingView: View {
         }
     }
     private func subtitle(for page: Int) -> String {
-        if page == supportStep { return "Jotley is free, with every feature included.\nYour support helps us keep building." }
+        if page == supportStep { return "All note-taking features are free.\nPaid support and tips are optional." }
         return switch page {
         case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
         case 1: "Summaries, useful titles and answers.\nPowered by Apple Intelligence on your device."
@@ -1132,11 +1533,7 @@ struct JotleyOnboardingView: View {
             #endif
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
-                ZStack(alignment: .topLeading) {
-                    onboardingBackground
-                    RadialGradient(colors: [colorScheme == .dark ? accent.opacity(0.13) : Color(red: 0.91, green: 0.86, blue: 0.99).opacity(0.65), .clear],
-                                   center: .topLeading, startRadius: 20, endRadius: wide ? 700 : 560)
-                }.ignoresSafeArea()
+                onboardingBackground.ignoresSafeArea()
             }
         }
         #if os(iOS)
@@ -1222,14 +1619,11 @@ struct JotleyOnboardingView: View {
 
     private func header(scale: CGFloat) -> some View {
         HStack(spacing: 10) {
-            Image("jotley-onboarding-logo").resizable().interpolation(.high).antialiased(true).scaledToFit().frame(width: 34 * scale, height: 34 * scale)
-                .shadow(color: accent.opacity(0.3), radius: 10)
-                .accessibilityHidden(true)
             Text("Jotley").font(.system(size: 23 * scale, weight: .semibold, design: .rounded))
                 .accessibilityIdentifier("onboardingBrand")
             Spacer()
             Button { finish() } label: { Text("Skip setup").foregroundStyle(actionInk) }
-                .font(.subheadline.weight(.medium)).buttonStyle(.glass).buttonBorderShape(.capsule)
+                .font(.subheadline.weight(.medium)).buttonStyle(JotleyGlassButtonStyle(diameter: 36))
                 .controlSize(.small).frame(minHeight: 36 * scale)
                 .disabled(settingUpSpeech || requestingMicrophone)
                 .accessibilityIdentifier("onboardingSkip")
@@ -1298,7 +1692,7 @@ struct JotleyOnboardingView: View {
                     .accessibilityIdentifier("onboardingSupportSettingsHint")
             case 0:
                 feature("Private by design", detail: "Speech and AI run on this device. Optional private iCloud sync is yours to control.", icon: "lock.shield", dense: dense, scale: scale)
-                feature("Free. No account needed.", detail: "Every feature is included, without a subscription.", icon: "heart", dense: dense, scale: scale)
+                feature("Free note-taking. No account needed.", detail: "Paid personal support and tips are optional. No subscription.", icon: "heart", dense: dense, scale: scale)
             case 1:
                 status(summaryReason == nil ? "Apple Intelligence is ready" : "Apple Intelligence needs setup",
                        detail: summaryReason ?? "Your summaries and Ask AI answers are processed on this device.",
@@ -1322,11 +1716,12 @@ struct JotleyOnboardingView: View {
                 }
                 if settingUpSpeech {
                     ProgressView("Setting up Apple speech…", value: setupProgress).tint(accent)
-                    Button("Cancel setup") { setupTask?.cancel() }.buttonStyle(.glass)
+                    Button("Cancel setup") { setupTask?.cancel() }
+                        .jotleyDismissButtonStyle()
                         .accessibilityIdentifier("onboardingCancelSpeechSetup")
                 } else if speechCanSetUp && !speechReady {
                     Button("Set Up On-Device Speech") { setUpSpeech() }
-                        .buttonStyle(.glass).tint(accent).foregroundStyle(actionInk)
+                        .buttonStyle(JotleyGlassButtonStyle()).foregroundStyle(actionInk)
                         .accessibilityIdentifier("onboardingSpeechSetup")
                 }
                 Text(dense ? "Change your language or finish setup later in Settings." : "You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
@@ -1352,7 +1747,8 @@ struct JotleyOnboardingView: View {
                     .accessibilityIdentifier("onboardingSystemAudioStatus")
                 Button("Open Audio Privacy Settings") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                }.buttonStyle(.glass).buttonBorderShape(.capsule).accessibilityIdentifier("onboardingAudioPrivacySettings")
+                }.buttonStyle(JotleyGlassButtonStyle())
+                    .accessibilityIdentifier("onboardingAudioPrivacySettings")
                 #endif
             }
         }
@@ -1488,7 +1884,7 @@ struct JotleyOnboardingView: View {
                     } else { changeStep(step + 1) }
                 } label: {
                     HStack(spacing: 9) {
-                        if requestingMicrophone { ProgressView().controlSize(.small).tint(accent) }
+                        if requestingMicrophone { ProgressView().controlSize(.small).tint(actionInk) }
                         Text(primaryTitle)
                             .font(.body.weight(.semibold))
                     }.frame(maxWidth: .infinity).foregroundStyle(actionInk)
@@ -1522,7 +1918,7 @@ struct JotleyOnboardingView: View {
                 #endif
             }
         }
-        .buttonStyle(.glass).buttonBorderShape(.capsule)
+        .buttonStyle(JotleyGlassButtonStyle(diameter: 36))
         .font(.subheadline.weight(.medium)).controlSize(.small).foregroundStyle(actionInk)
     }
     private var primaryTitle: String {

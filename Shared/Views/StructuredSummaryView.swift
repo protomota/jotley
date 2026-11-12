@@ -8,6 +8,25 @@
 
 import SwiftUI
 
+enum MarkdownTaskState: Equatable {
+    case unchecked, checked
+
+    var systemImage: String { self == .checked ? "checkmark.square.fill" : "square" }
+    var accessibilityLabel: String { self == .checked ? "Completed task" : "Incomplete task" }
+}
+
+private struct SummaryListMarker: View {
+    let marker: String
+    let taskState: MarkdownTaskState?
+
+    var body: some View {
+        Group {
+            if let taskState { Image(systemName: taskState.systemImage) }
+            else { Text(marker) }
+        }.accessibilityHidden(true)
+    }
+}
+
 /// Cache syntax only: appearance and fonts stay reactive in the SwiftUI view.
 /// Template changes must not parse the whole unchanged summary on the main thread.
 @MainActor
@@ -16,6 +35,7 @@ final class ParsedNoteMarkdown: NSObject {
         let id: Int
         let heading: Bool
         let marker: String?
+        let taskState: MarkdownTaskState?
         let indentation: Int
         let text: AttributedString
     }
@@ -27,6 +47,7 @@ final class ParsedNoteMarkdown: NSObject {
         return cache
     }()
     private static let listPattern = try! NSRegularExpression(pattern: #"^([ \t]*)([-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$"#)
+    private static let taskPattern = try! NSRegularExpression(pattern: #"^\[([ xX])\](?:[ \t]+(.*)|$)"#)
     private init(content: String, isStreaming: Bool) {
         var sourceLines = LocalSummary.markdownForDisplay(content).components(separatedBy: "\n")
         // The model streams prefixes, not complete Markdown nodes. Don't turn a
@@ -39,6 +60,7 @@ final class ParsedNoteMarkdown: NSObject {
             let heading = line.hasPrefix("#")
             var text = heading ? String(line.drop(while: { $0 == "#" || $0 == " " })) : line
             var marker: String?
+            var taskState: MarkdownTaskState?
             var indentation = 0
             if let match = Self.listPattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
                let whitespace = Range(match.range(at: 1), in: line),
@@ -48,8 +70,13 @@ final class ParsedNoteMarkdown: NSObject {
                 marker = ["-", "+", "*"].contains(token) ? "•" : String(token.dropLast()) + "."
                 indentation = line[whitespace].reduce(0) { $0 + ($1 == "\t" ? 4 : 1) }
                 text = String(line[body])
+                if let task = Self.taskPattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                   let state = Range(task.range(at: 1), in: text) {
+                    taskState = text[state] == " " ? .unchecked : .checked
+                    text = Range(task.range(at: 2), in: text).map { String(text[$0]) } ?? ""
+                }
             }
-            return Line(id: index, heading: heading, marker: marker, indentation: indentation,
+            return Line(id: index, heading: heading, marker: marker, taskState: taskState, indentation: indentation,
                 text: (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
         }
     }
@@ -58,6 +85,7 @@ final class ParsedNoteMarkdown: NSObject {
         if let match = listPattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
            let range = Range(match.range(at: 3), in: line) {
             let body = line[range].trimmingCharacters(in: .whitespaces).lowercased()
+            if ["[", "[x", "[ ]", "[x]"].contains(body) { return true }
             // Filler such as "No decisions are mentioned" is removed by the
             // finished parser. Hold its prefixes too, rather than building a
             // card for "No decisions are" and then collapsing it on "mentioned".
@@ -90,10 +118,14 @@ struct StructuredSummary {
     struct Item: Identifiable {
         let id: Int
         let marker: String
+        let taskState: MarkdownTaskState?
         let indentation: Int
         let label: AttributedString?
         let body: AttributedString
         let fullText: String
+        var accessibilityText: String {
+            taskState.map { "\($0.accessibilityLabel): \(fullText)" } ?? "\(marker) \(fullText)"
+        }
     }
     struct Section: Identifiable {
         let id: Int
@@ -123,7 +155,7 @@ struct StructuredSummary {
                 guard !plain.isEmpty, !Self.isPlaceholder(plain) else { continue }
                 let (label, splitBody) = Self.split(line.text)
                 let body = label == nil ? Self.sentenceCased(splitBody) : splitBody
-                current.items.append(Item(id: line.id, marker: marker, indentation: line.indentation,
+                current.items.append(Item(id: line.id, marker: marker, taskState: line.taskState, indentation: line.indentation,
                     label: label, body: body, fullText: plain))
             } else if !plain.isEmpty {
                 current.paragraphs.append(line)
@@ -229,18 +261,23 @@ struct StructuredSummary {
 /// Colors for one rendering. The app follows the current theme; a shared PDF
 /// always prints on white.
 struct SummaryPalette {
-    var accent: Color
+    var headingIcon: Color
+    var badge: Color
+    var marker: Color
     var text: Color
     var secondary: Color
     var card: Color
 
     static var current: SummaryPalette {
-        // Supporting text stays close to the primary color so it remains easy to read.
-        SummaryPalette(accent: .themePrimaryAccent, text: .themeTextPrimary,
-                       secondary: Color.themeTextPrimary.opacity(0.78), card: .themeContentBackground)
+        let marker = Color(white: Color.shouldUseDarkTheme() ? 0.72 : 0.36)
+        let accent = Color.themePrimaryAccent
+        let badge = accent.mix(with: marker, by: 0.28)
+        return SummaryPalette(headingIcon: accent, badge: badge, marker: marker, text: .themeTextPrimary,
+                              secondary: Color.themeTextPrimary.opacity(0.78), card: .themeContentBackground)
     }
     static var print: SummaryPalette {
-        SummaryPalette(accent: .themePrimaryAccent, text: .themeLightTextPrimary,
+        let accent = ThemeManager.shared.currentThemeColor.color(in: .light)
+        return SummaryPalette(headingIcon: accent, badge: accent, marker: Color(white: 0.36), text: .themeLightTextPrimary,
                        secondary: Color.themeLightTextPrimary.opacity(0.78), card: .themeLightContentBackground)
     }
 }
@@ -287,7 +324,7 @@ struct StandardSummaryTextView: View {
                 if !line.text.characters.isEmpty {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         if let marker = line.marker {
-                            Text(marker).accessibilityHidden(true)
+                            SummaryListMarker(marker: marker, taskState: line.taskState)
                         }
                         Text(line.text)
                             .font(line.heading ? .title3.weight(.semibold) : bodyFont)
@@ -301,6 +338,7 @@ struct StandardSummaryTextView: View {
                     .padding(.leading, CGFloat(line.indentation) * 8)
                     .padding(.top, line.heading && line.id > 0 ? 12 : 0)
                     .accessibilityElement(children: .combine)
+                    .accessibilityLabel(line.taskState.map { "\($0.accessibilityLabel): \(String(line.text.characters))" } ?? String(line.text.characters))
                     .accessibilityIdentifier(line.marker == nil ? "summaryTextLine-\(line.id)" : "markdownListItem-\(line.id)")
                 } else {
                     Color.clear.frame(height: 4).accessibilityHidden(true)
@@ -373,13 +411,17 @@ struct StructuredSummaryBlockView: View {
         switch block {
         case .overview(let overview):
             VStack(alignment: .leading, spacing: 10) {
-                Label("Summary", systemImage: "sparkles")
-                    .font(.headline).foregroundStyle(palette.accent)
+                Label {
+                    Text("Summary").foregroundStyle(palette.text)
+                } icon: {
+                    Image(systemName: "sparkles").foregroundStyle(palette.headingIcon)
+                }
+                .font(.headline)
                 overviewBody(overview)
             }
             .padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(palette.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(palette.accent.opacity(0.25), lineWidth: 1))
+            .background(palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(palette.text.opacity(0.15), lineWidth: 1))
             .accessibilityIdentifier("structuredSummaryOverview")
         case .section(let section):
             VStack(alignment: .leading, spacing: 12) {
@@ -393,9 +435,9 @@ struct StructuredSummaryBlockView: View {
     func titleRow(_ section: StructuredSummary.Section) -> some View {
                     HStack(spacing: 12) {
                         Image(systemName: section.systemImage)
-                            .font(.headline).foregroundStyle(palette.accent)
+                            .font(.headline).foregroundStyle(palette.headingIcon)
                             .frame(width: iconBox, height: iconBox)
-                            .background(palette.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .background(palette.headingIcon.opacity(0.10), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                             .accessibilityHidden(true)
                         Text(section.title ?? "").font(.title3.weight(.semibold)).foregroundStyle(palette.text)
                             .accessibilityAddTraits(.isHeader)
@@ -427,13 +469,13 @@ struct StructuredSummaryBlockView: View {
         }
         ForEach(section.items) { item in
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(item.marker).foregroundStyle(palette.accent).accessibilityHidden(true)
+                SummaryListMarker(marker: item.marker, taskState: item.taskState).foregroundStyle(palette.marker)
                 itemText(item, color: palette.text)
             }
             .font(.body)
             .padding(.leading, CGFloat(item.indentation) * 8)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(item.marker) \(item.fullText)")
+            .accessibilityLabel(item.accessibilityText)
             .accessibilityIdentifier("markdownListItem-\(item.id)")
         }
     }
@@ -478,11 +520,16 @@ struct StructuredSummaryBlockView: View {
 
     func numberedCard(index: Int, group: [StructuredSummary.Item]) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("\(index + 1)")
-                .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.accent)
+            if let taskState = group.first?.taskState {
+                Image(systemName: taskState.systemImage).font(.callout).foregroundStyle(palette.marker)
+                    .frame(width: numberSize, height: numberSize).accessibilityHidden(true)
+            } else {
+                Text("\(index + 1)")
+                .font(.callout.weight(.semibold).monospacedDigit()).foregroundStyle(palette.marker)
                 .frame(width: numberSize, height: numberSize)
-                .overlay(Circle().strokeBorder(palette.accent.opacity(0.75), lineWidth: 1))
+                .overlay(Circle().strokeBorder(palette.marker.opacity(0.65), lineWidth: 1))
                 .accessibilityHidden(true)
+            }
             groupText(group, emphasizeLabel: true)
         }
         .padding(.horizontal, 14).padding(.vertical, numberedRowVerticalPadding)
@@ -494,8 +541,8 @@ struct StructuredSummaryBlockView: View {
         // Align to the task's first text baseline, including when a padded
         // owner chip makes the text group taller or the task wraps.
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: Self.rowImage(section.style))
-                .font(.body).foregroundStyle(palette.accent)
+            Image(systemName: group.first?.taskState?.systemImage ?? Self.rowImage(section.style))
+                .font(.body).foregroundStyle(palette.marker)
                 .frame(width: 26).accessibilityHidden(true)
             groupText(group, emphasizeLabel: false)
         }.padding(.vertical, 12)
@@ -525,22 +572,22 @@ struct StructuredSummaryBlockView: View {
                                 Text(item.body).font(.body).foregroundStyle(palette.text)
                                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                                 if let label = item.label {
-                                    Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(palette.accent)
+                                    Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(palette.badge)
                                         .lineLimit(1).fixedSize()
                                         .padding(.horizontal, 10).padding(.vertical, 4)
-                                        .background(Capsule().fill(palette.accent.opacity(0.14)))
+                                        .background(Capsule().fill(palette.badge.opacity(0.10)))
                                 }
                             }
                         }
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text("•").foregroundStyle(palette.accent).accessibilityHidden(true)
+                            SummaryListMarker(marker: item.marker, taskState: item.taskState).foregroundStyle(palette.marker)
                             itemText(item, color: palette.secondary)
                         }.font(.body).padding(.leading, 6 + CGFloat(max(0, item.indentation - 2)) * 6)
                     }
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(item.marker) \(item.fullText)")
+                .accessibilityLabel(item.accessibilityText)
                 .accessibilityIdentifier("markdownListItem-\(item.id)")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -653,11 +700,7 @@ struct NoteContentSwitch: View {
     @Namespace private var highlight
     @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
 
-    private var selectedText: Color {
-        Color.themeTextOnAccent
-    }
     private var tabs: [String] {
         (showsSummary ? ["Summary"] : []) + (showsTranscript ? ["Transcript"] : [])
     }
@@ -667,14 +710,15 @@ struct NoteContentSwitch: View {
                 Button { selection = tab } label: {
                     HStack(spacing: 5) {
                         if tab == "Summary" && summaryIsGenerating { ProgressView().controlSize(.mini) }
-                        Text(tab).font(.subheadline.weight(.medium)).lineLimit(1)
+                        Text(tab).font(.subheadline.weight(selection == tab ? .semibold : .medium)).lineLimit(1)
                     }
-                    .foregroundStyle(selection == tab ? selectedText : Color.themeTextPrimary)
+                    .foregroundStyle(Color.themeTextPrimary)
                     .padding(.horizontal, 16).padding(.vertical, 7)
                     .frame(minWidth: 92)
                     .background {
                         if selection == tab {
-                            Capsule().fill(Color.themePrimaryAccent)
+                            Capsule().fill(Color.themeBackground)
+                                .overlay { Capsule().strokeBorder(Color.themePrimaryAccent.opacity(0.60)) }
                                 .matchedGeometryEffect(id: "selectedTab", in: highlight)
                         }
                     }
@@ -686,7 +730,8 @@ struct NoteContentSwitch: View {
             }
         }
         .padding(3)
-        .background(Color.themePrimaryAccent.opacity(colorScheme == .dark ? 0.16 : 0.10), in: Capsule())
+        .background(Color.themeTextPrimary.opacity(0.08), in: Capsule())
+        .modifier(JotleyControlShadow())
         .fixedSize(horizontal: true, vertical: false)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: selection)
         .accessibilityElement(children: .contain)

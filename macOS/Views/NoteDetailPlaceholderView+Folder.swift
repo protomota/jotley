@@ -119,6 +119,7 @@ private struct NewFolderInlineSheet: View {
             HStack {
                 Spacer()
                 Button("Cancel") { onCancel() }
+                    .jotleyDismissButtonStyle()
                     .keyboardShortcut(.cancelAction)
                 Button("Create") { commit() }
                     .keyboardShortcut(.defaultAction)

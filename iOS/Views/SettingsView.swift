@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage("transcriptionLanguage") private var transcriptionLanguage = "en-US"
+    @AppStorage(CustomSpeechWords.defaultsKey) private var customWords = ""
     @State private var modelStatus = "Checking installed Apple models…"
     @State private var speechNeedsSetup = false
     @State private var isSettingUpSpeech = false
@@ -64,10 +65,21 @@ struct SettingsView: View {
 
             Section {
                 SummaryDisplayStylePicker()
+                NavigationLink { SummaryTemplatesView() } label: {
+                    Label("Summary Templates", systemImage: "doc.text")
+                }.accessibilityIdentifier("settingsTemplatesLink")
             } header: {
                 Text("Summaries")
             } footer: {
                 Text("Cards adds visual sections. Standard Text uses clean headings and bullets. Your choice applies to every note and can also be changed from a note’s More menu.")
+            }
+
+            Section {
+                JotleyNoteOrganizationSettings()
+            } header: {
+                Text("Note Organization")
+            } footer: {
+                Text("After a summary is generated, Jotley can add topic tags and file unfiled notes into a broad folder.")
             }
 
             Section {
@@ -79,8 +91,8 @@ struct SettingsView: View {
                         .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Your voice notes. Now on Mac.").font(.headline)
-                        Text("Jotley for Mac is completely free. Transcribe your microphone, meetings, apps and browser audio live, then summarize on-device.")
+                        Text("Your notes, connected on Mac.").font(.headline)
+                        Text("Jotley for Mac now supports MCP. Connect Claude or Codex on your Mac to find, create and edit notes, manage folders and tags, and work with summary templates. You control whether agents can read or change your notes.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
@@ -98,7 +110,7 @@ struct SettingsView: View {
             } header: {
                 Text("Jotley for Mac")
             } footer: {
-                Text("On your Mac, visit jotley.ai/download and drag Jotley into Applications. Requires Apple silicon, macOS 27 or later and Apple Intelligence enabled. Notes sync through iCloud when enabled on both devices; audio captured on Mac stays on that Mac. New iPhone and iPad sessions save transcripts without audio files.")
+                Text("MCP connections run in Jotley for Mac. Connected agents may send retrieved content to their AI provider. On your Mac, visit jotley.ai/download and drag Jotley into Applications. Requires Apple silicon, macOS 27 or later and Apple Intelligence enabled. Notes sync through iCloud when enabled on both devices. New sessions save transcripts without audio files.")
             }
 
             // Transcription Settings
@@ -120,6 +132,7 @@ struct SettingsView: View {
                 .accessibilityLabel("Transcription Language")
                 .accessibilityValue(speechLanguages.first(where: { $0.id == transcriptionLanguage })?.name ?? "Choose a supported language")
                 .disabled(isSettingUpSpeech)
+                CustomSpeechWordsButton().disabled(isSettingUpSpeech)
             } header: {
                 Text("Transcription")
             } footer: {
@@ -132,6 +145,7 @@ struct SettingsView: View {
                     ProgressView("Setting up Apple speech…", value: speechSetupProgress)
                         .accessibilityIdentifier("settingsSpeechSetupProgress")
                     Button("Cancel Setup") { speechSetupTask?.cancel() }
+                        .jotleyDismissButtonStyle()
                 } else if speechNeedsSetup {
                     Button("Set Up On-Device Speech") { setUpSpeech() }
                         .accessibilityIdentifier("settingsSpeechSetupButton")
@@ -160,13 +174,18 @@ struct SettingsView: View {
                      : (persistenceController.syncMode.isEnabled ? "iCloud sync is enabled for this session. Apple schedules synchronization when available." : "iCloud sync is off for this session."))
                     .font(.caption).foregroundColor(.secondary)
             }
+            Section("Backup & Restore") { LibraryBackupControls() }
             Section("Notifications") { JotleySummaryNotificationSettings() }
+            Section("Personal support") { JotleyTechnicalSupportButton() }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
+                JotleyAboutLogo()
+                JotleySupporterBadge()
                 Button { onShowWelcome() } label: {
                     MobileActionLabel("Welcome to Jotley", systemImage: "sparkles")
                 }.accessibilityIdentifier("settingsWelcomeJotley")
-                Text("Jotley · Free · Offline")
+                Text("Free note-taking · On-device AI")
+                Text("Tips and personal technical support are optional paid purchases. No subscription.").font(.caption).foregroundStyle(.secondary)
                 Text(versionLine).lineLimit(1).accessibilityIdentifier("settingsAppVersion")
                 Text("Requires iOS or iPadOS 27 and Apple Intelligence-capable hardware: iPhone 15 Pro/Pro Max, iPhone 16 or newer, iPhone Air, iPad with M1 or later, or iPad mini with A17 Pro.").font(.caption)
             }
@@ -175,11 +194,14 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden).background(Color.themeBackground)
         .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .toggleStyle(.switch)
         .tint(Color.themeActionText)
         .toolbar { ToolbarItem(placement: .topBarTrailing) {
-            MobileDoneButton { dismiss() }.accessibilityIdentifier("settingsDoneButton")
+            Button("Done") { dismiss() }
+                .jotleyDismissButtonStyle(inToolbar: true)
+                .accessibilityIdentifier("settingsDoneButton")
         }.sharedBackgroundVisibility(.hidden) }
-        .task(id: transcriptionLanguage) { await checkModels() }
+        .task(id: [transcriptionLanguage, customWords]) { await checkModels() }
         .onDisappear { speechSetupTask?.cancel() }
         .preferredColorScheme(themeManager.effectiveColorScheme).observeThemeChanges()
     }
@@ -198,7 +220,7 @@ struct SettingsView: View {
 
     private func checkModels() async {
         let locale = Locale(identifier: transcriptionLanguage)
-        let speech = await LocalSpeech.readiness(locale: locale)
+        let speech = await LocalSpeech.readiness(locale: locale, checkingCustomWordsSetup: true)
         let languages = await LocalSpeech.languages()
         guard !Task.isCancelled else { return }
         speechLanguages = languages
@@ -216,7 +238,7 @@ struct SettingsView: View {
         speechNeedsSetup = speech.needsSetup || speechSetupError != nil
         var statuses = [speech.status == .installed && speechSetupError != nil
             ? "Speech assets are installed, but transcription setup failed. Choose Set Up On-Device Speech to try again."
-            : speech.message]
+            : speech.customWordsStatus ?? speech.message]
         // Model variant metadata is absent from some iOS 27 framework builds.
         // Readiness uses the stable availability API without requiring that symbol.
         statuses.append(LocalSummary.readiness(locale: locale) ?? "On-device summaries ready.")

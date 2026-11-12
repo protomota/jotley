@@ -35,6 +35,22 @@ struct MainTabView: View {
         horizontalSizeClass == .regular && UIDevice.current.userInterfaceIdiom == .phone
     }
 
+    private var usesThemedSidebarToggle: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
+    }
+
+    private var themedSidebarToggle: some View {
+        let hidden = columnVisibility == .detailOnly
+        return Button {
+            columnVisibility = hidden ? .all : .detailOnly
+        } label: {
+            JotleyFloatingMenuIcon(systemImage: "sidebar.left")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(hidden ? "Show Sidebar" : "Hide Sidebar")
+        .accessibilityIdentifier("notesSidebarToggle")
+    }
+
     private var usesCornerCaptureButton: Bool {
         UIDevice.current.userInterfaceIdiom == .phone
     }
@@ -66,6 +82,13 @@ struct MainTabView: View {
         NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
             notesList
                 .navigationSplitViewColumnWidth(min: minimumSidebarWidth, ideal: 320, max: 420)
+                .toolbar(removing: usesThemedSidebarToggle ? .sidebarToggle : nil)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if usesThemedSidebarToggle && columnVisibility != .detailOnly { themedSidebarToggle }
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }
                 .overlay(alignment: .trailing) {
                     if !usesExpandedPhoneLayout {
                         Rectangle()
@@ -81,10 +104,22 @@ struct MainTabView: View {
                 if let selectedNoteId {
                     NoteDetailByIdView(noteId: selectedNoteId, newTranscriptionAction: usesCornerCaptureButton ? { handleWidgetAction(.start) } : nil).id(selectedNoteId).id(summaryNavigationID)
                 } else {
-                    ContentUnavailableView("No Notes Yet", systemImage: "note.text", description: Text("Tap + to transcribe your first note."))
+                    JotleyLibraryWelcome(hasNotes: !notes.isEmpty,
+                                         canStart: transcriptionManager.canStart || transcriptionManager.isTranscribing) {
+                        handleWidgetAction(.start)
+                    }
+                    .frame(maxHeight: .infinity)
+                    .background(Color.themeBackground)
                 }
             }
             .toolbar(.visible, for: .navigationBar)
+            .toolbar(removing: usesThemedSidebarToggle ? .sidebarToggle : nil)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if usesThemedSidebarToggle && columnVisibility == .detailOnly { themedSidebarToggle }
+                }
+                .sharedBackgroundVisibility(.hidden)
+            }
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { detailBounds = $0 }
             // Keep the footer inside the native detail presentation. The Notes
             // drawer and its dimming layer must cover all detail controls.
@@ -106,6 +141,7 @@ struct MainTabView: View {
             .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
         }
         .navigationSplitViewStyle(.balanced)
+        .tint(Color.themePrimaryAccent)
         .overlayPreferenceValue(NoteFooterContentKey.self, alignment: .bottom) { footers in
             if usesWindowFooter {
                 Group {
@@ -241,7 +277,7 @@ struct MainTabView: View {
             Spacer()
             NotesNewTranscriptionButton { handleWidgetAction(.start) }
         }
-        .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 24)
+        .padding(.horizontal, 24).padding(.top, 8).padding(.bottom, MobileNoteFooterInsets.phoneBottom)
     }
 
     private var notesList: some View {

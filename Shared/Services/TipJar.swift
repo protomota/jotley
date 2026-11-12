@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import RevenueCat
 import SwiftUI
+import StoreKit
 
 /// Explain failures without exposing receipts, account identifiers or error userInfo.
 struct TipPurchaseFailure {
@@ -88,7 +89,7 @@ final class TipJarStore: ObservableObject {
             Purchases.logLevel = .error
             Purchases.configure(with: Configuration.Builder(withAPIKey: key)
                 .with(userDefaults: tipPreferences)
-                .with(storeKitVersion: .storeKit2)
+                .with(purchasesAreCompletedBy: .myApp, storeKitVersion: .storeKit2)
                 .with(automaticDeviceIdentifierCollectionEnabled: false)
                 .with(diagnosticsEnabled: false))
             Self.configuredKey = key
@@ -107,6 +108,20 @@ final class TipJarStore: ObservableObject {
         if products.isEmpty {
             message = "Tips aren’t available right now. Please try again later."
         }
+        // Recover an interrupted optional tip, without touching support purchases.
+        for await verification in StoreKit.Transaction.unfinished {
+            guard case .verified(let transaction) = verification,
+                  productIDs.contains(transaction.productID) else { continue }
+            do {
+                guard try await Purchases.shared.recordPurchase(.success(verification)) != nil else { continue }
+                await transaction.finish()
+                JotleySupporterStore.shared.recordVerifiedPurchase(id: String(transaction.id), kind: .tip)
+                hasTipped = true; hasSupportedDevelopment = true
+                preferences.set(true, forKey: Self.supportKey)
+            } catch {
+                message = "A previous tip is waiting for confirmation. Please try again later."
+            }
+        }
     }
 
     func purchase(_ product: StoreProduct) async {
@@ -116,15 +131,37 @@ final class TipJarStore: ObservableObject {
         purchaseDiagnostic = nil
         defer { purchasingID = nil }
         do {
-            let result = try await Purchases.shared.purchase(product: product)
-            guard !result.userCancelled else {
+            guard let nativeProduct = try await StoreKit.Product.products(for: [product.productIdentifier]).first,
+                  nativeProduct.type == .consumable else {
+                message = "This tip is unavailable right now. Please try again later."
+                return
+            }
+            let result = try await nativeProduct.purchase()
+            switch result {
+            case .userCancelled:
                 let cancelled = TipPurchaseFailure(ErrorCode.purchaseCancelledError)
                 message = cancelled.message
                 purchaseDiagnostic = cancelled.diagnostic
                 return
-            }
-            guard result.transaction != nil else {
-                message = "Your tip is still being confirmed by the App Store."
+            case .pending:
+                message = "Your tip is waiting for App Store approval."
+                return
+            case .success(let verification):
+                guard case .verified(let transaction) = verification,
+                      transaction.productID == product.productIdentifier else {
+                    message = "Apple could not verify this tip. Please try again later."
+                    return
+                }
+                // RevenueCat records only this optional tip. The app owns finishing
+                // so it cannot prematurely finish a separate paid support ticket.
+                guard try await Purchases.shared.recordPurchase(result) != nil else {
+                    message = "Your tip is waiting for confirmation. Please try again later."
+                    return
+                }
+                await transaction.finish()
+                JotleySupporterStore.shared.recordVerifiedPurchase(id: String(transaction.id), kind: .tip)
+            @unknown default:
+                message = "Apple could not confirm this tip. Please try again later."
                 return
             }
             hasTipped = true
@@ -188,19 +225,21 @@ struct TipJarView: View {
                     .font(.title2.bold())
                 Spacer(minLength: 16)
                 Button("Done") { dismiss() }
+                    .jotleyDismissButtonStyle()
                     .disabled(store.purchasingID != nil)
                     .accessibilityIdentifier("tipJarDone")
             }
             if store.hasSupportedDevelopment {
                 successConfirmation
             }
+            JotleySupporterBadge()
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if store.hasSupportedDevelopment {
                         Text("Leave another tip (optional)")
                             .font(.headline)
                     } else {
-                        Text("Leave an optional, one-time tip to support continued development. Every feature stays available whether or not you tip.")
+                        Text("Leave an optional, one-time tip to support continued development. All note-taking features are free. Personal technical support is a separate optional paid purchase.")
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -247,7 +286,7 @@ struct TipJarView: View {
                             Button("Try Again") { Task { await store.load(productIDs: productIDs) } }
                         }
                     }
-                    Text("Each tip is a separate purchase, with no subscription or feature unlock.")
+                    Text("Each tip is a separate purchase, with no subscription or paid note-taking upgrade.")
                         .font(.footnote).foregroundStyle(.secondary)
                     Link("Privacy policy", destination: privacyURL).font(.footnote)
                 }
@@ -259,6 +298,7 @@ struct TipJarView: View {
         .frame(idealWidth: 440, maxWidth: 560)
         .frame(idealHeight: 540, maxHeight: 650)
         .tint(accent)
+        .jotleySupporterCelebration(.tip)
         .interactiveDismissDisabled(store.purchasingID != nil)
         .task { await store.load(productIDs: productIDs) }
         .onDisappear { if store.hasTipped { onTipCompleted() } }

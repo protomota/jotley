@@ -10,7 +10,7 @@
 
 Meetings, lectures, passing ideas and long conversations: Jotley turns spoken words into searchable transcripts, helpful summaries and answers grounded in your notes.
 
-**No account. No subscription. No remote AI service. Every feature is free.**
+**All note-taking features are free and need no account. Built-in AI runs on-device. Tips and personal technical support are optional paid purchases; there is no subscription.**
 
 Long transcripts are reviewed in full, using sections sized for Apple's on-device model. Watch preparation progress, then see the summary appear as it is written. You can leave a note while it finishes. On iPhone and iPad, Jotley requests background processing time; if iOS interrupts the job, completed sections are saved locally and generation resumes when you return. Background runtime depends on system conditions.
 
@@ -50,11 +50,15 @@ Browse your notes beside the note you're working on. Organize a meeting, revisit
 | **Make it yours** | Edit transcripts and summaries, organize with folders and tags, search and filter, and choose light or dark appearance. |
 | **Keep moving** | iPhone widgets and the Lock Screen/Dynamic Island show the active transcription session. |
 | **Share your work** | Export text or Markdown, share natively, and send notes to Obsidian on Mac. |
+| **Custom summary templates** | Create, edit, duplicate and delete templates in Settings → Templates (Mac) or Settings → Summary Templates (iPhone/iPad). Preview a template on a note without changing its saved summary. Custom templates use the same on-device model and sync with iCloud in configured builds. |
+| **Connect your agents** | On Mac, connect Claude Code, Codex and Claude chat directly from their desktop apps to search and read notes, or enable Read & write to edit notes, manage tags, folders and custom templates, regenerate summaries, duplicate and delete notes. Set access in Settings → Integrations → MCP. [Connection guide](docs/MCP.md). |
 | **Optional iCloud sync** | Pick up your notes on another device using your private iCloud database. |
 
 ## Local processing. Clear privacy.
 
-**Transcription happens on your device using Apple's speech models. Summaries and Ask AI happen on your device using Apple Intelligence.** Jotley does not send your audio, notes, transcripts or summaries to a Jotley server or remote AI provider.
+**Transcription happens on your device using Apple's speech models. Summaries and Ask AI happen on your device using Apple Intelligence.** These features do not send your audio, notes, transcripts or summaries to a Jotley server or remote AI provider.
+
+**Optional MCP access on Mac lets agents read your notes, with Read & write available for note changes and deletion.** It is off by default and limited to authenticated connections on your Mac. A connected agent may send retrieved content to its AI provider. Manage permissions, disable access or rotate the token in Settings → Integrations → MCP. [MCP access and privacy](docs/MCP.md).
 
 Once the Apple models are ready, these features work offline. A speech language may require a **one-time Apple model download**, which you explicitly start in Settings.
 
@@ -70,7 +74,7 @@ Once the Apple models are ready, these features work offline. A speech language 
 
 Apple Intelligence must be enabled and its model ready. Language choices are limited to Apple Intelligence’s 16 supported languages, intersected with the on-device speech languages available on your device. Regional variants are grouped; Simplified and Traditional Chinese remain separate. Transcription also needs the selected language’s separate Apple speech model installed. Hardware compatibility alone does not complete model setup.
 
-**Jotley 2.2 is live on Mac, iPhone and iPad.** Get it free on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) for iPhone and iPad, or at [jotley.ai/download](https://jotley.ai/download) for Mac. [Watch the onboarding walkthrough](https://media.jotley.ai/clips/jotley-onboarding-main-window-20261020.mp4). You can build both apps from this source.
+**Jotley is available on Mac, iPhone and iPad.** Get it free on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) for iPhone and iPad, or at [jotley.ai/download](https://jotley.ai/download) for Mac. [Watch the onboarding walkthrough](https://media.jotley.ai/clips/jotley-onboarding-main-window-20261020.mp4). You can build both apps from this source.
 
 ## Build it yourself
 
@@ -94,6 +98,6 @@ The original code and artwork are © 2026 Protomota, LLC and use the [Jotley Sou
 
 ## Made by Protomota. Supported by people.
 
-If Jotley helps you, a **rating and review** on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) helps other people find it. Sharing the app and sending feedback help us improve it. [Optional tips](https://jotley.ai/tips) support development; every feature stays free.
+If Jotley helps you, a **rating and review** on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) helps other people find it. Sharing the app and sending feedback help us improve it. [Optional tips](https://jotley.ai/tips) support development. All note-taking features stay free; personal technical support is a separate optional paid service.
 
 [Website](https://jotley.ai) · [Support](mailto:jotly-support@protomota.com) · [Licensing](mailto:jotly-legal@protomota.com)

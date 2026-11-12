@@ -278,7 +278,6 @@ struct RecordingIndicator: View {
                     RoundedRectangle(cornerRadius: constrainedHeight * 0.1)
                         .fill(accent)
                         .frame(width: barWidth, height: snappedActiveBarHeight)
-                        .shadow(color: accent.opacity(0.55), radius: 3, x: 0, y: 0)
                 } else if alwaysShowBars {
                     // When alwaysShowBars is true: keep bars animated at moderate height.
                     let staticHeight = constrainedHeight * min(max(smoothedHeightFactor * 0.72, 0.22), 0.72)
@@ -286,14 +285,12 @@ struct RecordingIndicator: View {
                     RoundedRectangle(cornerRadius: constrainedHeight * 0.1)
                         .fill(accent.opacity(0.8))
                         .frame(width: barWidth, height: staticHeight)
-                        .shadow(color: accent.opacity(0.3), radius: 1, x: 0, y: 0)
                 } else {
                     // When inactive: Display a small dot
                     let accent = Color.themePrimaryAccent
                     Circle()
                         .fill(accent.opacity(0.85))
                         .frame(width: barWidth, height: barWidth)
-                        .shadow(color: accent.opacity(0.25), radius: 1, x: 0, y: 0)
                 }
             }
             .frame(height: constrainedHeight, alignment: growFromCenter ? .center : .bottom)

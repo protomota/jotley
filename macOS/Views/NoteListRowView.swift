@@ -99,17 +99,11 @@ struct NoteListRowView: View {
                     }
                 }
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Color.themePrimaryAccent.opacity(0.3) : (isHovering ? Color.themeAccent.opacity(0.1) : Color.themeContentBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.themePrimaryAccent : Color.clear, lineWidth: 1.5)
-            )
+            .jotleyNoteSelection(isSelected,
+                unselectedBackground: isHovering ? Color.themeAccent.opacity(0.1) : Color.themeContentBackground)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
             .background(

@@ -72,7 +72,8 @@ struct FilterAndSortPopoverView: View {
             .disabled(!state.isActive)
             .accessibilityHidden(!state.isActive)
             #if os(iOS)
-            MobileDoneButton(action: onDone)
+            Button("Done", action: onDone)
+                .jotleyDismissButtonStyle()
                 .accessibilityIdentifier("filterSortDoneButton")
             #endif
         }
@@ -213,21 +214,10 @@ struct FilterAndSortPopoverView: View {
     private var footer: some View {
         HStack {
             Spacer()
-            Button {
-                onDone()
-            } label: {
-                Text("Done")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Color.themeTextOnAccent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(Color.themePrimaryAccent)
-                    )
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.defaultAction)
+            Button("Done", action: onDone)
+                .jotleyDismissButtonStyle()
+                .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier("filterSortDoneButton")
         }
     }
 }

@@ -31,6 +31,7 @@ fastlane/.env
 fastlane/README.md
 
 # Build artifacts
+*.profraw
 *.ipa
 *.dSYM.zip
 *.app.dSYM.zip

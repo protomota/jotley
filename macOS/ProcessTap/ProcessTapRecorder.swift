@@ -226,6 +226,10 @@ public final class ProcessTapRecorder: ObservableObject {
     var transcriptUtterances: [TranscriptUtterance] {
         return existingUtterances + transcriptValue.utterances.map { TranscriptUtterance(text: $0.text, start: transcriptTimeOffset + $0.start, end: transcriptTimeOffset + $0.end) }
     }
+    var latestTranscriptTimestamp: String? {
+        guard let start = transcriptValue.tentativeStart else { return nil }
+        return TranscriptUtterance(text: transcriptValue.tentative, start: transcriptTimeOffset + start).timestampLabel
+    }
     private var transcriptValue = LocalTranscript()
     #endif
 

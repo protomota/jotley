@@ -26,26 +26,61 @@ enum ThemeColor: String, CaseIterable, Codable {
         return self.rawValue
     }
 
+    private static let purpleLightMode = Color(red: 0.576, green: 0.2, blue: 0.918)
+    private static let purpleDarkMode = purpleLightMode.mix(with: .white, by: 0.45)
+
     var color: Color {
+        color(in: Color.shouldUseDarkTheme() ? .dark : .light)
+    }
+
+    func color(in scheme: ColorScheme) -> Color {
         switch self {
         case .purple:
-            return Color(red: 0.576, green: 0.2, blue: 0.918) // #9333EA - Current default
+            return scheme == .dark ? Self.purpleDarkMode : Self.purpleLightMode
         case .orange:
-            return Color.orange
+            return scheme == .dark
+                ? Color(red: 1, green: 181.0 / 255, blue: 111.0 / 255)
+                : Color(red: 181.0 / 255, green: 75.0 / 255, blue: 0)
         case .magenta:
-            return Color(red: 1.0, green: 0.0, blue: 0.5) // Magenta
+            return scheme == .dark
+                ? Color(red: 1, green: 139.0 / 255, blue: 200.0 / 255)
+                : Color(red: 188.0 / 255, green: 0, blue: 101.0 / 255)
         case .yellow:
-            return Color.yellow
+            return scheme == .dark
+                ? Color(red: 248.0 / 255, green: 214.0 / 255, blue: 80.0 / 255)
+                : Color(red: 118.0 / 255, green: 109.0 / 255, blue: 0)
         case .lightBlue:
-            return Color(red: 0.3, green: 0.7, blue: 1.0) // Light blue
+            return scheme == .dark
+                ? Color(red: 136.0 / 255, green: 203.0 / 255, blue: 1)
+                : Color(red: 0, green: 107.0 / 255, blue: 161.0 / 255)
         case .neutral:
             // Gray glass stays subtle while its icons and labels remain readable.
-            return Color(white: Color.shouldUseDarkTheme() ? 0.75 : 0.38)
+            return Color(white: scheme == .dark ? 0.75 : 0.38)
         }
     }
 
+    func textOnAccent(in scheme: ColorScheme) -> Color {
+        scheme == .dark ? .black : .white
+    }
+
+    /// Bright yellow needs a dark surface for small controls to remain readable.
+    func usesDarkGlass(in scheme: ColorScheme) -> Bool {
+        self == .yellow && scheme == .light
+    }
+
+    func glassForeground(in scheme: ColorScheme) -> Color {
+        usesDarkGlass(in: scheme) ? Color(red: 1, green: 0.89, blue: 0.12) : color(in: scheme)
+    }
+
     var previewColor: Color {
-        self == .neutral ? Color(white: 0.72) : color
+        switch self {
+        case .orange: return .orange
+        case .magenta: return Color(red: 1, green: 0, blue: 0.5)
+        case .yellow: return .yellow
+        case .lightBlue: return Color(red: 0.3, green: 0.7, blue: 1)
+        case .neutral: return Color(white: 0.72)
+        case .purple: return color
+        }
     }
 
 }
@@ -183,6 +218,10 @@ extension Color {
         return isDark ? themeDarkAccent : themeLightAccent
     }
 
+    static var themeSelectionBackground: Color {
+        shouldUseDarkTheme() ? Color(white: 0.20) : Color(white: 0.91)
+    }
+
     // Cache for shouldUseDarkTheme()'s appearance computation. SwiftUI body
     // re-evaluations hit each theme color getter constantly (the playback
     // waveform resolves them on every 10 Hz progress tick; the live recording
@@ -273,18 +312,12 @@ extension Color {
 
     /// Contrast for labels drawn directly on a solid accent fill.
     static var themeTextOnAccent: Color {
-        let theme = ThemeManager.shared.currentThemeColor
-        return theme == .yellow || theme == .lightBlue || (theme == .neutral && shouldUseDarkTheme()) ? .black : .white
+        ThemeManager.shared.currentThemeColor.textOnAccent(in: shouldUseDarkTheme() ? .dark : .light)
     }
 
-    /// Text actions must remain readable against dark sheets and tinted cards.
-    /// Icons and filled controls continue to use the user's accent color.
+    /// Use the same readable accent for action labels, icons, and controls.
     static var themeActionText: Color {
-        #if os(iOS)
-        return shouldUseDarkTheme() ? themeTextPrimary : themePrimaryAccent
-        #else
-        return themePrimaryAccent
-        #endif
+        themePrimaryAccent
     }
 
     // iOS specific colors that adapt to light/dark mode
@@ -312,33 +345,40 @@ struct ThemeObserver: ViewModifier {
 }
 
 extension View {
+    func jotleyNoteSelection(_ selected: Bool, unselectedBackground: Color) -> some View {
+        let outline = RoundedRectangle(cornerRadius: 8)
+        return background(selected ? Color.themeSelectionBackground : unselectedBackground, in: outline)
+            .overlay(alignment: .leading) {
+                if selected {
+                    Capsule().fill(Color.themePrimaryAccent)
+                        .frame(width: 3, height: 20)
+                        .padding(.leading, 3)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+    }
+
     func observeThemeChanges() -> some View {
         modifier(ThemeObserver())
     }
 }
 
-#if os(iOS)
-/// The same neutral Liquid Glass dismissal control in toolbars and custom sheets.
-struct MobileDoneButton: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-    let action: () -> Void
-
-    var body: some View {
-        doneButton.buttonStyle(.glass).buttonBorderShape(.capsule)
-            .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var doneButton: some View {
-        Button("Done", action: action)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Color.themeTextPrimary)
-            .frame(minHeight: 44)
+extension View {
+    /// Use the same accent and glass surface for Done and Cancel across platforms.
+    func jotleyDismissButtonStyle(expandsHorizontally: Bool = false, inToolbar: Bool = false) -> some View {
+        font(.subheadline.weight(.semibold))
+            .buttonStyle(JotleyGlassButtonStyle(diameter: inToolbar ? 32 : nil, floatsOverContent: true))
+            .fixedSize(horizontal: !expandsHorizontally, vertical: false)
+            .frame(minHeight: inToolbar ? 44 : nil)
     }
 }
 
+#if os(iOS)
 /// Match compact action text and icons to the selected accent.
 struct MobileActionLabel: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let systemImage: String
 
@@ -348,15 +388,33 @@ struct MobileActionLabel: View {
     }
 
     var body: some View {
-        Label {
-            Text(title).foregroundStyle(Color.themePrimaryAccent)
-        } icon: {
-            Image(systemName: systemImage).foregroundStyle(Color.themePrimaryAccent)
-        }
+        Label(title, systemImage: systemImage)
+            .foregroundStyle(themeManager.currentThemeColor.color(in: colorScheme))
     }
 }
 #endif
 
+
+/// Neutral editing surface with a visible boundary and an accent focus ring.
+struct JotleyEditorField: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var theme = ThemeManager.shared
+    var isFocused = false
+
+    func body(content: Content) -> some View {
+        let outline = RoundedRectangle(cornerRadius: 10)
+        let accent = theme.currentThemeColor.color(in: colorScheme)
+        content
+            .foregroundStyle(Color.themeTextPrimary)
+            .tint(accent)
+            .background(colorScheme == .dark ? Color.themeDarkContentBackground : .white, in: outline)
+            .overlay {
+                outline.strokeBorder(isFocused ? accent : Color.themeTextSecondary.opacity(0.34),
+                                     lineWidth: isFocused ? 2 : 1)
+                    .allowsHitTesting(false)
+            }
+    }
+}
 
 /// Use an app-colored outline instead of the platform's fixed focus-ring color.
 struct JotleyFormInputStyle: ViewModifier {

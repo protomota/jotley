@@ -66,7 +66,7 @@ struct NotesListView: View {
                                 isSearchFocused = false
                             }
                         }
-                        .foregroundColor(Color.themeActionText)
+                        .jotleyDismissButtonStyle()
                         .accessibilityIdentifier("cancelSearchButton")
                         .transition(.opacity.combined(with: .scale))
                     }
@@ -75,14 +75,10 @@ struct NotesListView: View {
                     if !isSearching {
                         Button(action: { showingFolderDrawer = true }) {
                             Image(systemName: filterState.selectedFolder == .all ? "folder" : "folder.fill")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(Color.themePrimaryAccent)
-                                .frame(width: 44, height: 44)
-                                .background(Color.themeBackground)
-                                .contentShape(Rectangle())
+                                .font(.system(size: 20, weight: .medium))
                         }
-                        .frame(width: 44, height: 44)
-                        .buttonStyle(.plain)
+                        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
+                        .accessibilityLabel("Folders")
                         .accessibilityIdentifier("notesListFolderDrawerButton")
                         .transition(.opacity.combined(with: .scale))
                     }
@@ -91,14 +87,9 @@ struct NotesListView: View {
                     if !isSearching {
                         Button(action: { showingTagFilter = true }) {
                             Image(systemName: filterState.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(Color.themePrimaryAccent)
-                                .frame(width: 44, height: 44)
-                                .background(Color.themeBackground)
-                                .contentShape(Rectangle())
+                                .font(.system(size: 20, weight: .medium))
                         }
-                        .frame(width: 44, height: 44)
-                        .buttonStyle(.plain)
+                        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
                         .accessibilityLabel("Filter and sort notes")
                         .accessibilityIdentifier("notesListTagFilterButton")
                         .transition(.opacity.combined(with: .scale))
@@ -185,7 +176,15 @@ struct NotesListView: View {
                         .listRowSeparator(.hidden)
                     case .noNotesYet:
                         Section {
-                            iOSNotesListEmptyStateView()
+                            if usesSplitView {
+                                iOSNotesListEmptyStateView()
+                            } else {
+                                JotleyLibraryWelcome(canStart: transcriptionManager.canStart || transcriptionManager.isTranscribing,
+                                                     onStart: handleCreateNewNoteTapped)
+                                    .padding(.top, 34)
+                                    .accessibilityElement(children: .contain)
+                                    .accessibilityIdentifier("notesListEmptyState")
+                            }
                         }
                         .listRowBackground(Color.themeBackground)
                         .listRowSeparator(.hidden)
@@ -269,14 +268,14 @@ struct NotesListView: View {
             VStack {
                 Spacer()
                 HStack(alignment: .center) {
-                    settingsButton.padding(.leading, 20).padding(.bottom, usesIPadLayout ? 8 : 24)
+                    settingsButton.padding(.leading, 20)
                     Spacer()
                     if showsNewTranscriptionButton {
                         NotesNewTranscriptionButton(action: handleCreateNewNoteTapped)
                             .padding(.trailing, 20)
-                            .padding(.bottom, 8)
                     }
                 }
+                .padding(.bottom, usesIPadLayout ? MobileNoteFooterInsets.splitBottom : MobileNoteFooterInsets.phoneBottom)
             }
             // Match the phone capture control's window-bottom placement.
             .ignoresSafeArea(.container, edges: usesIPadLayout ? [] : .bottom)
@@ -337,8 +336,7 @@ struct NotesListView: View {
                 .font(.system(size: 24, weight: .medium))
             .frame(width: 44, height: 44)
         }
-        .buttonStyle(JotleyGlassButtonStyle(circular: true))
-        .modifier(FloatingNoteControlShadow())
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
         .accessibilityLabel("Settings")
         .accessibilityIdentifier("notesListSettingsButton")
     }

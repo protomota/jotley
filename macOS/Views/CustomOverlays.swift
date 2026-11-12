@@ -30,7 +30,7 @@ struct CustomMoreMenuOverlay<Content: View>: View {
                 .fixedSize()
                 .scaleEffect(scale, anchor: .topTrailing)
                 .opacity(opacity)
-                .padding(.top, 50)  // Below the toolbar button
+                .padding(.top, MacNoteHeaderLayout.menuTopInset)
                 .padding(.trailing, 16)  // Align with right edge
         }
         .zIndex(1000)

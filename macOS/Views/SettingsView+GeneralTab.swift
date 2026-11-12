@@ -29,25 +29,26 @@ extension SettingsView {
                                 .tint(.themePrimaryAccent)
                             }
 
-                            HStack {
-                                Text("Theme Color")
-                                    .frame(width: 120, alignment: .leading)
-
-                                ThemeColorDropdown(
-                                    selection: $themeManager.currentThemeColor,
-                                    isShowing: $showingThemeColorPicker
-                                )
-                                .frame(width: 150)
-                            }
-
-
+                            SettingsDropdown(title: "Theme Color", selection: $themeManager.currentThemeColor,
+                                             options: ThemeColor.allCases, optionTitle: { $0.displayName },
+                                             swatch: { $0.previewColor })
+                                .accessibilityIdentifier("settingsThemePicker")
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Summaries").font(.headline)
-                        SummaryDisplayStylePicker().pickerStyle(.menu)
+                        SettingsDropdown(title: "Summary Style", selection: $summaryDisplayStyle,
+                                         options: SummaryDisplayStyle.allCases, optionTitle: { $0.title })
+                            .accessibilityIdentifier("summaryDisplayStylePicker")
                         Text("Cards adds visual sections. Standard Text uses clean headings and bullets. Your choice applies to every note and can also be changed from a note’s More menu.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Note Organization").font(.headline)
+                        JotleyNoteOrganizationSettings()
+                        Text("After a summary is generated, Jotley can add topic tags and file unfiled notes into a broad folder.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
 
@@ -62,13 +63,10 @@ extension SettingsView {
 
                         VStack(alignment: .leading, spacing: 12) {
                             Toggle("Show Tags", isOn: $showTags)
-                                .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Toggle("Show Transcription Indicator When Jotley Is in Background", isOn: $showRecordingWidget)
-                                .toggleStyle(.switch)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .tint(.themePrimaryAccent)
                     }
 
                     VStack(alignment: .leading, spacing: 16) {
@@ -77,35 +75,22 @@ extension SettingsView {
 
                         VStack(alignment: .leading, spacing: 12) {
 
-                            HStack {
-                                Text("Preferred Language")
-                                    .frame(width: 120, alignment: .leading)
-
-                                Picker("Transcription Language", selection: Binding(
-                                    get: { speechLanguages.contains(where: { $0.id == transcriptionLanguage }) ? transcriptionLanguage : "" },
-                                    set: { transcriptionLanguage = $0 }
-                                )) {
-                                    if !speechLanguages.contains(where: { $0.id == transcriptionLanguage }) {
-                                        Text("Choose a supported language").tag("").disabled(true)
-                                    }
-                                    ForEach(speechLanguages) { language in Text(language.name).tag(language.id) }
-                                }
-                                .pickerStyle(.menu)
-                                .labelsHidden()
-                                .frame(width: 220)
+                            SettingsDropdown(title: "Preferred Language", selection: $transcriptionLanguage,
+                                             options: speechLanguages.map(\.id), placeholder: "Choose a supported language",
+                                             optionTitle: { id in speechLanguages.first { $0.id == id }?.name ?? id })
                                 .disabled(isSettingUpSpeech)
                                 .accessibilityIdentifier("settingsLanguagePicker")
-                            }
 
                             Text("Choose an Apple Intelligence language supported by this Mac for transcription, summaries and Ask AI. Apple speech may need a one-time setup; existing notes and the app’s interface language stay unchanged.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            CustomSpeechWordsButton().disabled(isSettingUpSpeech)
                             Toggle("Transcribe microphone and system audio", isOn: $recordSystemAudio)
-                                .toggleStyle(.switch)
                             Text(speechStatus).font(.caption).foregroundColor(.secondary)
                             if isSettingUpSpeech {
                                 ProgressView("Setting up Apple speech…", value: speechSetupProgress).tint(.themePrimaryAccent)
                                 Button("Cancel Setup") { speechSetupTask?.cancel() }
+                                    .jotleyDismissButtonStyle()
                             } else if speechNeedsSetup {
                                 Button("Set Up On-Device Speech") { setUpSpeech() }
                                     .accessibilityIdentifier("settingsSpeechSetupButton")
@@ -131,12 +116,17 @@ extension SettingsView {
                             .font(.caption).foregroundColor(.secondary)
                     }
 
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Backup & Restore").font(.headline)
+                        LibraryBackupControls()
+                    }
+
                     if updates.isEnabled {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("App Updates").font(.headline)
                             Toggle("Check for updates automatically", isOn: Binding(
                                 get: { updates.automaticChecks }, set: { updates.setAutomaticChecks($0) }
-                            )).toggleStyle(.switch)
+                            ))
                             Button("Check for Updates…") { updates.check() }
                                 .disabled(!updates.canCheck || !updates.isIdle)
                             Text("Sparkle checks jotley.ai for signed app updates. Updates require internet access; transcription and summaries continue to work offline. Your notes and audio are never included in update checks.")
@@ -146,6 +136,8 @@ extension SettingsView {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("About")
                             .font(.headline)
+                        JotleyAboutLogo()
+                        JotleySupporterBadge()
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -166,6 +158,7 @@ extension SettingsView {
                         Divider()
                         Button("Welcome to Jotley", systemImage: "sparkles") { onShowWelcome() }
                             .accessibilityIdentifier("settingsWelcomeJotley")
+                        JotleyTechnicalSupportButton()
                         JotleySupportLinks()
                     }
 
@@ -173,7 +166,7 @@ extension SettingsView {
             }
             .padding(32)
         }
-        .task(id: transcriptionLanguage) { await checkModels() }
+        .task(id: [transcriptionLanguage, customWords]) { await checkModels() }
         .onDisappear { speechSetupTask?.cancel() }
 
     }

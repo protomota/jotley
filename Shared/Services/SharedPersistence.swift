@@ -12,7 +12,8 @@ public enum NoteSyncMode: Equatable {
     public static let containerInfoKey = "JotleyCloudKitContainerIdentifier"
 
     public static func configuredIdentifier(in info: [String: Any]) -> String? {
-        guard let value = info[containerInfoKey] as? String,
+        guard !LocalPaths.isIsolatedTest(info: info),
+              let value = info[containerInfoKey] as? String,
               value.hasPrefix("iCloud."), value.count > 7,
               value.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-").contains($0) }) else { return nil }
         return value
@@ -64,10 +65,16 @@ public enum LocalError: LocalizedError {
 
 public enum LocalPaths {
     public static let bundleID = "com.protomota.jotley.local-development"
+    static func isIsolatedTest(info: [String: Any]) -> Bool {
+        info["JotleyIsolatedLocalTest"] as? Bool == true
+    }
+    static func libraryDirectoryName(info: [String: Any]) -> String {
+        isIsolatedTest(info: info) ? "JotleySignedLocalTest" : "JotleyLocalDevelopment"
+    }
     public static func root() throws -> URL {
         let base = try FileManager.default.url(for: .applicationSupportDirectory,
                                               in: .userDomainMask, appropriateFor: nil, create: true)
-        let root = base.appendingPathComponent("JotleyLocalDevelopment", isDirectory: true)
+        let root = base.appendingPathComponent(libraryDirectoryName(info: Bundle.main.infoDictionary ?? [:]), isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }
@@ -82,25 +89,25 @@ public final class SharedPersistenceController: ObservableObject {
     @Published public private(set) var ready = false
     @Published public private(set) var errorMessage: String?
     private var activeRecording: (noteID: NSManagedObjectID, lease: UUID)?
+    private var noteOperations: [UUID: NSManagedObjectID] = [:]
+
+    private static let bundledModel: NSManagedObjectModel? = {
+        #if SWIFT_PACKAGE
+        let bundle = Bundle.module
+        #else
+        let bundle = Bundle.main
+        #endif
+        guard let url = bundle.url(forResource: "JotleyNotes", withExtension: "momd") else { return nil }
+        return NSManagedObjectModel(contentsOf: url)
+    }()
 
     public init(root: URL? = nil, inMemory: Bool = false, model: NSManagedObjectModel? = nil,
                 syncMode: NoteSyncMode = .localOnly) throws {
         self.syncMode = inMemory ? .localOnly : syncMode
         self.root = try root ?? (inMemory ? FileManager.default.temporaryDirectory.appendingPathComponent("JotleyPreview-\(UUID().uuidString)") : LocalPaths.root())
         try FileManager.default.createDirectory(at: self.root, withIntermediateDirectories: true)
-        let resolvedModel: NSManagedObjectModel
-        if let model { resolvedModel = model }
-        else {
-            #if SWIFT_PACKAGE
-            let bundle = Bundle.module
-            #else
-            let bundle = Bundle.main
-            #endif
-            guard let url = bundle.url(forResource: "JotleyNotes", withExtension: "momd"),
-                  let bundled = NSManagedObjectModel(contentsOf: url) else {
-                throw LocalError.message("The bundled notes model could not be loaded. No data was changed.")
-            }
-            resolvedModel = bundled
+        guard let resolvedModel = model ?? Self.bundledModel else {
+            throw LocalError.message("The bundled notes model could not be loaded. No data was changed.")
         }
         if self.syncMode.isEnabled {
             container = NSPersistentCloudKitContainer(name: "JotleyNotes", managedObjectModel: resolvedModel)
@@ -143,6 +150,7 @@ public final class SharedPersistenceController: ObservableObject {
             throw LocalError.message("This note is unavailable.")
         }
         guard activeRecording == nil else { throw LocalError.message("Finish the current transcription first.") }
+        guard !noteOperations.values.contains(note.objectID) else { throw LocalError.message("Finish generating this note's content before recording it.") }
         if note.objectID.isTemporaryID { try context.obtainPermanentIDs(for: [note]) }
         let lease = UUID()
         activeRecording = (note.objectID, lease)
@@ -150,6 +158,34 @@ public final class SharedPersistenceController: ObservableObject {
     }
     public func endRecording(lease: UUID) {
         if activeRecording?.lease == lease { activeRecording = nil }
+    }
+
+    /// Track asynchronous generation across windows; external edits must not
+    /// race a result that will be saved after an await.
+    public func beginNoteOperation(for noteID: NSManagedObjectID) -> UUID {
+        let lease = UUID()
+        noteOperations[lease] = noteID
+        return lease
+    }
+    public func endNoteOperation(lease: UUID) { noteOperations.removeValue(forKey: lease) }
+
+    public func requireLibraryBackupAccess() throws {
+        guard ready else { throw LocalError.message(errorMessage ?? "The notes library is unavailable.") }
+        guard activeRecording == nil, noteOperations.isEmpty else {
+            throw LocalError.message("Finish transcription and content generation before backing up or restoring notes.")
+        }
+    }
+
+    public func requireExternalWriteAccess(to note: NSManagedObject) throws {
+        guard ready, note.managedObjectContext === context, !note.isDeleted else {
+            throw LocalError.message("This note is unavailable.")
+        }
+        guard activeRecording?.noteID != note.objectID else {
+            throw LocalError.message("Finish recording this note before modifying it through MCP.")
+        }
+        guard !noteOperations.values.contains(note.objectID) else {
+            throw LocalError.message("Finish generating this note's content before modifying it through MCP.")
+        }
     }
 
     public func deleteNote(_ note: NSManagedObject) throws {
@@ -160,10 +196,13 @@ public final class SharedPersistenceController: ObservableObject {
             throw LocalError.message("Stop this transcription before deleting its note.")
         }
         try save() // Rollback below must not discard unrelated pending edits.
-        let chatRequest = NSFetchRequest<NSManagedObject>(entityName: "NoteChatMessage")
-        chatRequest.predicate = NSPredicate(format: "noteId == %@", (note.localNoteID ?? UUID()) as CVarArg)
-        let chat = container.managedObjectModel.entitiesByName["NoteChatMessage"] == nil ? [] : try context.fetch(chatRequest)
-        for message in chat { context.delete(message) }
+        var children: [NSManagedObject] = []
+        for entity in ["NoteChatMessage", "RecordingMarker"] where container.managedObjectModel.entitiesByName[entity] != nil {
+            let request = NSFetchRequest<NSManagedObject>(entityName: entity)
+            request.predicate = NSPredicate(format: "noteId == %@", (note.localNoteID ?? UUID()) as CVarArg)
+            children += try context.fetch(request)
+        }
+        for child in children { context.delete(child) }
         context.delete(note)
         do { try save() }
         catch { context.rollback(); throw error }
@@ -241,6 +280,11 @@ public final class SharedPersistenceController: ObservableObject {
         }
     }
     public func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]? = nil) throws {
+        try saveNoteChanges(note, values: values, replacingTags: replacingTags, autoFolder: nil)
+    }
+
+    func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]?,
+                         autoFolder: LocalNoteFolder?) throws {
         guard ready, note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
         }
@@ -250,6 +294,8 @@ public final class SharedPersistenceController: ObservableObject {
         let previous = values.keys.map { ($0, note.value(forKey: $0)) }
         var previousTags: NSSet?
         var createdTags: [NSManagedObject] = []
+        var createdFolder: NSManagedObject?
+        var assignedFolder = false
         do {
             if let replacingTags {
                 let request = NSFetchRequest<NSManagedObject>(entityName: "Tag")
@@ -279,12 +325,32 @@ public final class SharedPersistenceController: ObservableObject {
                 previousTags = (note.value(forKey: "tags") as? NSSet)?.copy() as? NSSet ?? NSSet()
                 note.setValue(NSSet(array: selected), forKey: "tags")
             }
+            if let name = autoFolder?.name, note.value(forKey: "folder") == nil {
+                let request = NSFetchRequest<NSManagedObject>(entityName: "Folder")
+                request.predicate = NSPredicate(format: "name ==[cd] %@", name)
+                request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+                request.fetchLimit = 1
+                let folder: NSManagedObject
+                if let existing = try context.fetch(request).first {
+                    folder = existing
+                } else {
+                    folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: context)
+                    folder.setValue(UUID(), forKey: "id")
+                    folder.setValue(name, forKey: "name")
+                    folder.setValue(Date(), forKey: "createdAt")
+                    createdFolder = folder
+                }
+                note.setValue(folder, forKey: "folder")
+                assignedFolder = true
+            }
             for (key, value) in values { note.setValue(value, forKey: key) }
             try save()
         } catch {
             for (key, value) in previous { note.setValue(value, forKey: key) }
             if let previousTags { note.setValue(previousTags, forKey: "tags") }
             for tag in createdTags { context.delete(tag) }
+            if assignedFolder { note.setValue(nil, forKey: "folder") }
+            if let createdFolder { context.delete(createdFolder) }
             throw error
         }
     }

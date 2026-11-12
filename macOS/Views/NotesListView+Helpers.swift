@@ -27,7 +27,6 @@ extension NotesListView {
         let isSelected: Bool
         let toggleSelection: (Note, Bool) -> Void
         let prepareDelete: (Note) -> Void
-        let topPadding: CGFloat
         let rowIndex: Int
         let isRecordingNote: Bool
         @Environment(\.colorScheme) private var colorScheme
@@ -52,20 +51,21 @@ extension NotesListView {
                     isSelected: isSelected,
                     onDelete: { prepareDelete(note) }
                 )
-                .padding(.top, topPadding)
-                .background(Color.themeContentBackground.clipShape(Rectangle()))
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 16)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
             .tint(Color.themePrimaryAccent)
             .accessibilityIdentifier("notesListNoteRow-\(rowIndex)")
             .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.13))
-                    .frame(height: 1)
-                    .padding(.leading, 20)
-                    .padding(.trailing, 14)
+                if !isSelected {
+                    Rectangle()
+                        .fill(Color.primary.opacity(colorScheme == .dark ? 0.18 : 0.13))
+                        .frame(height: 1)
+                        .padding(.leading, 28)
+                        .padding(.trailing, 16)
+                        .allowsHitTesting(false)
+                }
             }
             .overlay(alignment: .topTrailing) {
                 if isRecordingNote {
@@ -85,7 +85,7 @@ extension NotesListView {
                     )
                     .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.4 : 0.18), radius: 2, x: 0, y: 1)
                     .padding(.top, 5)
-                    .padding(.trailing, 16)
+                    .padding(.trailing, 20)
                     .offset(x: 4, y: 4)
                     .zIndex(10)
                         .help("Active transcription")

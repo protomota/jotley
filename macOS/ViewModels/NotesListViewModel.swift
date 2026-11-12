@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreData
 import Combine
+import AppKit
 
 // Retains the existing view-facing model while all capture and inference run locally.
 @MainActor final class NotesListViewModel: ObservableObject {
@@ -27,10 +28,12 @@ import Combine
     private var inference: Task<Void, Never>?
     #if DEBUG
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
-    var simulatedTagGeneration: (@MainActor (String, [LocalTagCandidate]) async throws -> [String])?
+    var simulatedOrganization: (@MainActor (String, [LocalTagCandidate]) async throws -> LocalNoteOrganization)?
     #endif
     private var recordingLease: UUID?
+    private var summaryLease: UUID?
     private var stopTask: Task<Void, Never>?
+    private var isConfirmingCapture = false
     private var baseText = ""
     private var baseUtterances: [TranscriptUtterance] = []
     init(viewContext: NSManagedObjectContext, recorder: ProcessTapRecorder, persistenceController: SharedPersistenceController, summaryNotifications: JotleySummaryNotifications? = nil) {
@@ -70,12 +73,49 @@ import Combine
         } catch { report(error); return nil }
     }
     func startNewNote() async {
-        guard !recorder.isRecording, !recorder.isBusy, !operationInProgress, !LocalAppModel.shared.busy else { return }
+        guard canStartCapture, let systemAudio = await confirmCapture(), canStartCapture else { return }
         guard let note = createBlankNote() else { return }
-        await resumeTranscriptionOnNote(note: note)
+        await startCapture(on: note, systemAudio: systemAudio)
     }
     func resumeTranscriptionOnNote(note: Note) async {
-        guard !recorder.isRecording, !recorder.isBusy, !operationInProgress, !LocalAppModel.shared.busy else { return }
+        guard canStartCapture, let systemAudio = await confirmCapture(), canStartCapture else { return }
+        await startCapture(on: note, systemAudio: systemAudio)
+    }
+
+    private var canStartCapture: Bool {
+        !recorder.isRecording && !recorder.isBusy && !operationInProgress && !LocalAppModel.shared.busy && !isConfirmingCapture
+    }
+
+    private func confirmCapture() async -> Bool? {
+        guard UserDefaults.standard.object(forKey: "recordSystemAudio") as? Bool ?? true else { return false }
+        #if DEBUG
+        if recorder.simulatedStart != nil { return true }
+        #endif
+        isConfirmingCapture = true
+        defer { isConfirmingCapture = false }
+        let alert = NSAlert()
+        alert.messageText = "Before you transcribe a call"
+        alert.informativeText = "Jotley doesn’t join the call or notify anyone. Tell the other participants and get their permission before transcribing. Microphone-only mode can still pick up people you hear through speakers."
+        alert.addButton(withTitle: "Start with System Audio")
+        alert.addButton(withTitle: "Use Microphone Only")
+        let cancel = alert.addButton(withTitle: "Cancel")
+        alert.buttons.first?.keyEquivalent = ""
+        cancel.keyEquivalent = "\u{1b}"
+        let response: NSApplication.ModalResponse
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow, window.isVisible, window.attachedSheet == nil {
+            response = await alert.beginSheetModal(for: window)
+        } else {
+            NSApp.activate()
+            response = alert.runModal()
+        }
+        switch response {
+        case .alertFirstButtonReturn: return true
+        case .alertSecondButtonReturn: return false
+        default: return nil
+        }
+    }
+
+    private func startCapture(on note: Note, systemAudio: Bool) async {
         operationInProgress = true; defer { operationInProgress = false }
         do {
             guard note.managedObjectContext === viewContext, !note.isDeleted else {
@@ -93,8 +133,7 @@ import Combine
             LocalAppModel.shared.selected = note.id
             newNoteBeingRecorded = note; selectedNoteIDs = [note.objectID]; selectedDetailTab = DetailTab.transcript.rawValue
             recorder.speechLocale = Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")
-            let system = UserDefaults.standard.object(forKey: "recordSystemAudio") as? Bool ?? true
-            try await recorder.start(root: persistenceController.root, noteID: id, systemAudio: system)
+            try await recorder.start(root: persistenceController.root, noteID: id, systemAudio: systemAudio)
             LocalAppModel.shared.message = ""
             isTranscriptionPaused = false
             if let message = recorder.errorMessage { syncErrorMessage = message; showSyncError = true }
@@ -152,8 +191,16 @@ import Combine
     }
     func isTranscriptLoading(for _: Note) -> Bool { false }
     func summaryLoadingStartedAt(for noteID: NSManagedObjectID) -> Date? { generatingSummaryNoteID == noteID ? generatingSummaryStartedAt : nil }
-    func beginSummaryGeneration(for id: NSManagedObjectID) { isGeneratingSummary = true; generatingSummaryNoteID = id; generatingSummaryStartedAt = Date() }
-    func endSummaryGeneration(for id: NSManagedObjectID) { if generatingSummaryNoteID == id { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil } }
+    func beginSummaryGeneration(for id: NSManagedObjectID) {
+        if let summaryLease { persistenceController.endNoteOperation(lease: summaryLease) }
+        summaryLease = persistenceController.beginNoteOperation(for: id)
+        isGeneratingSummary = true; generatingSummaryNoteID = id; generatingSummaryStartedAt = Date()
+    }
+    func endSummaryGeneration(for id: NSManagedObjectID) {
+        guard generatingSummaryNoteID == id else { return }
+        if let summaryLease { persistenceController.endNoteOperation(lease: summaryLease); self.summaryLease = nil }
+        isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil
+    }
 
     func toggleSelection(for note: Note, isCommandKeyPressed: Bool = false) {
         LocalAppModel.shared.selected = note.id
@@ -201,11 +248,17 @@ import Combine
     }
     func generateSummary(note: Note, templateKey: String) async {
         guard !operationInProgress, !isGeneratingSummary, !recorder.isRecording, !recorder.isBusy, !LocalAppModel.shared.busy else { return }
+        do { try persistenceController.requireExternalWriteAccess(to: note) }
+        catch { report(error); return }
+        let template: SummaryTemplateDefinition
+        do { template = try SummaryTemplateStore.shared.resolve(templateKey) }
+        catch { report(error); return }
         summaryNotifications.prepareForSummary()
-        isGeneratingSummary = true; generatingSummaryNoteID = note.objectID; generatingSummaryStartedAt = Date()
+        beginSummaryGeneration(for: note.objectID)
         streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing
-        let template = LocalSummaryTemplate.resolve(templateKey)
         let source = note.transcription ?? ""
+        let canFileNote = note.folder == nil
+        let locale = Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")
         let activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep,
             reason: "Finish on-device note summary")
         let task = Task { @MainActor in
@@ -214,7 +267,7 @@ import Combine
                 ProcessInfo.processInfo.endActivity(activity)
                 JotleyEngagement.shared.endProcessing()
             }
-            defer { isGeneratingSummary = false; generatingSummaryNoteID = nil; generatingSummaryStartedAt = nil; streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing }
+            defer { endSummaryGeneration(for: note.objectID); streamingSummaryViewModel.summary = ""; streamingSummaryViewModel.progress = .preparing }
             do {
                 let update: @Sendable (String) async -> Void = { [weak self] text in
                     guard !Task.isCancelled else { return }
@@ -228,38 +281,51 @@ import Combine
                 #if DEBUG
                 if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
                 else { result = try await LocalSummary.generate(source, template: template,
-                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update) }
+                    locale: locale, progress: progress, snapshot: update) }
                 #else
                 result = try await LocalSummary.generate(source, template: template,
-                    locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"), progress: progress, snapshot: update)
+                    locale: locale, progress: progress, snapshot: update)
                 #endif
                 var generatedTitle: String?
                 var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
                     streamingSummaryViewModel.progress = .finishing
                     do {
-                        generatedTitle = try await LocalSummary.generateTitle(from: result,
-                            locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
+                        generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale)
                     } catch is CancellationError { throw CancellationError() }
                     catch { titleError = error }
                 }
-                var generatedTags: [String]?
-                streamingSummaryViewModel.progress = .organizingTags
-                let library = try persistenceController.tagLibrary()
-                do {
-                    #if DEBUG
-                    if let simulatedTagGeneration { generatedTags = try await simulatedTagGeneration(result, library) }
-                    else { generatedTags = try await LocalNoteTags.generate(from: result, transcript: source, library: library,
-                        locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")) }
-                    #else
-                    generatedTags = try await LocalNoteTags.generate(from: result, transcript: source, library: library,
-                        locale: Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US"))
-                    #endif
-                } catch is CancellationError { throw CancellationError() }
-                catch { generatedTags = nil }
-                try Task.checkCancellation(); guard !note.isDeleted else { return }
-                try persistenceController.saveNoteChanges(note,
-                    values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle), replacingTags: LocalNoteTags.completedNames(generatedTags, transcript: source, summary: result, library: library))
+                let autoTags = LocalNoteOrganizationSettings.autoTags()
+                let autoFolder = canFileNote && note.folder == nil && LocalNoteOrganizationSettings.autoFolders()
+                let library = autoTags ? try persistenceController.tagLibrary() : []
+                var organization: LocalNoteOrganization?
+                if autoTags || autoFolder {
+                    streamingSummaryViewModel.progress = .organizingTags
+                    do {
+                        #if DEBUG
+                        if let simulatedOrganization { organization = try await simulatedOrganization(result, library) }
+                        else {
+                            organization = try await LocalNoteTags.generateOrganization(from: result, transcript: source,
+                                library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+                        }
+                        #else
+                        organization = try await LocalNoteTags.generateOrganization(from: result, transcript: source,
+                            library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+                        #endif
+                    } catch is CancellationError { throw CancellationError() }
+                    catch { organization = nil }
+                }
+                try Task.checkCancellation()
+                guard !note.isDeleted else { return }
+                guard (note.transcription ?? "") == source else {
+                    throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
+                }
+                let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
+                    ? LocalNoteTags.completedNames(organization?.tags, transcript: source, summary: result, library: library)
+                    : nil
+                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? organization?.folder : nil
+                try persistenceController.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
+                                                           replacingTags: tags, autoFolder: folder)
                 await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
                 let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }

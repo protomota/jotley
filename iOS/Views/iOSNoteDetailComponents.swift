@@ -50,21 +50,20 @@ struct NoteSummaryActionsLayout: Layout {
     }
 }
 
-/// Glass belongs to each pill, leaving the space around the controls clear.
-typealias FloatingNoteSecondaryButtonStyle = JotleyGlassButtonStyle
+enum MobileNoteFooterInsets {
+    static let splitBottom: CGFloat = 8
+    static let phoneBottom: CGFloat = 24
+}
 
 struct NotesNewTranscriptionButton: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(themeManager.currentThemeColor.color)
         }
-        .buttonStyle(JotleyGlassButtonStyle(circular: true))
-        .modifier(FloatingNoteControlShadow())
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
         .accessibilityIdentifier("notesListNewNoteButton")
         .accessibilityLabel("New live transcription")
     }
@@ -165,8 +164,10 @@ struct AddTagSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { newTagText = ""; isPresented = false }
+                        .jotleyDismissButtonStyle(inToolbar: true)
                         .accessibilityIdentifier("addTagCancelButton")
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
             .tint(Color.themeActionText)
             .onAppear { isTextFieldFocused = true }
@@ -242,7 +243,7 @@ struct TranscriptBubbleView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .frame(maxWidth: isLikelyMultiLine ? .infinity : nil, alignment: .leading)
-            .modifier(JotleyTranscriptCard())
+            .modifier(JotleyTranscriptCard(neutral: true))
 
             if !isLikelyMultiLine {
                 Spacer(minLength: 0)
@@ -359,12 +360,11 @@ struct LocalAskNoteView: View {
                                                isEnabled: generation == nil, onSend: send)
                     }
                     .padding(12).frame(minHeight: 44)
-                    .modifier(JotleyTranscriptCard(cornerRadius: 20))
+                    .modifier(JotleyAskComposerSurface(isFocused: inputFocused))
                     .contentShape(RoundedRectangle(cornerRadius: 20))
                     .onTapGesture { if generation == nil { inputFocused = true } }
                     Button(action: send) {
                         Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Color.themePrimaryAccent)
                             .frame(width: 44, height: 44)
                     }.buttonStyle(JotleyGlassButtonStyle(circular: true)).disabled(generation != nil || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unavailable != nil)
                         .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
@@ -381,9 +381,8 @@ struct LocalAskNoteView: View {
             .onChange(of: scenePhase) { _, phase in if phase == .background { cancel() } }
             .onReceive(NotificationCenter.default.publisher(for: LiveTranscriptionManager.willBeginTranscription)) { _ in cancel() }
             .tint(.themePrimaryAccent).observeThemeChanges()
-            .modifier(JotleyGlassPanel())
-            .presentationBackground(.clear)
         }
+        .modifier(JotleyGlassPanel())
         .allowsHitTesting(!showingClear)
         .accessibilityHidden(showingClear)
         .overlay { clearConfirmation }
@@ -420,6 +419,7 @@ struct LocalAskNoteView: View {
                 .disabled(messages.isEmpty || generation != nil)
                 .accessibilityIdentifier("askAIClearButton")
             Button("Done") { dismiss() }
+                .jotleyDismissButtonStyle()
                 .accessibilityIdentifier("askAIDoneButton")
         }
         .font(.system(size: 15)).buttonStyle(JotleyGlassButtonStyle()).padding(16)
@@ -438,7 +438,7 @@ struct LocalAskNoteView: View {
             }
             ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
                 Button { input = suggestion; inputFocused = true } label: {
-                    Text(suggestion).foregroundStyle(Color.themeActionText)
+                    Text(suggestion)
                 }
                     .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle())
             }

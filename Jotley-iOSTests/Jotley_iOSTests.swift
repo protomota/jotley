@@ -45,6 +45,7 @@ struct Jotley_iOSTests {
         let service = JotleySummaryNotifications(defaults: defaults, authorization: { status },
             requestAuthorization: { requests += 1; status = .authorized; return true },
             enqueue: { notifications.append($0) }, isActive: { true })
+        #expect(service.isEnabled)
         let note = UUID(), generation = UUID()
         service.prepareForSummary(); service.prepareForSummary()
         await service.summarySaved(noteID: note, generationID: generation)
@@ -91,23 +92,27 @@ struct Jotley_iOSTests {
         try store.save()
         #expect(note.tagNames.count == 10)
         manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
-        manager.simulatedTagGeneration = { _, library in
+        manager.simulatedOrganization = { _, library in
             #expect(library.contains { $0.name == "AI" })
-            return ["Artificial Intelligence", "AI Tools", "Design"]
+            return LocalNoteOrganization(tags: ["Artificial Intelligence", "AI Tools", "Design"], folder: .work)
         }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(note.summary == "A completed design summary.")
         #expect(note.tagNames == ["AI", "Design"] && other.tagNames == ["AI", "Design"])
+        #expect(note.folder?.name == "Work")
         #expect(manager.errorMessage == nil && sent.count == 1)
-        manager.simulatedTagGeneration = { _, _ in throw LocalError.message("Model unavailable") }
+        manager.simulatedOrganization = { _, _ in throw LocalError.message("Model unavailable") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(!note.tagNames.isEmpty && note.tagNames.count <= 2)
         let fallbackTags = note.tagNames
         #expect(manager.errorMessage == nil && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
-        manager.simulatedTagGeneration = { _, _ in try await Task.sleep(for: .seconds(5)); return ["Wrong"] }
+        manager.simulatedOrganization = { _, _ in
+            try await Task.sleep(for: .seconds(5))
+            return LocalNoteOrganization(tags: ["Wrong"], folder: .personal)
+        }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryProgress == .organizingTags { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(manager.summaryProgress == .organizingTags)
@@ -119,7 +124,7 @@ struct Jotley_iOSTests {
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(sent.count == 2 && note.summary == "A completed design summary.")
         manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
-        manager.simulatedTagGeneration = { _, _ in [] }
+        manager.simulatedOrganization = { _, _ in LocalNoteOrganization(tags: [], folder: .unfiled) }
         note.transcription = "one two three four five six seven eight nine ten"
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
@@ -148,7 +153,7 @@ struct Jotley_iOSTests {
         let manager = LiveTranscriptionManager(store: store, summaryNotifications: service)
         let note = try manager.createNote(text: "Maya will check the next build Friday.", title: "Notification test")
         manager.simulatedSummaryGeneration = { _ in "Maya will check the next build Friday." }
-        manager.simulatedTagGeneration = { _, _ in ["Testing"] }
+        manager.simulatedOrganization = { _, _ in LocalNoteOrganization(tags: ["Testing"], folder: .unfiled) }
         manager.summarize(note, template: .auto)
         for _ in 0..<200 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(20)) }
         #expect(note.summary == "Maya will check the next build Friday.")

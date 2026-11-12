@@ -62,6 +62,7 @@ struct iOSNoteFolderRow: View {
                         .foregroundColor(.themePrimaryAccent)
                 }
             }
+            .accessibilityIdentifier("noteDetailFolderPicker")
         }
         .font(.footnote)
         .sheet(isPresented: $showingCreate) {
@@ -97,7 +98,9 @@ private struct NewFolderInlineSheetiOS: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onCancel() }
+                        .jotleyDismissButtonStyle(inToolbar: true)
                 }
+                .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { commit() }
                         .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

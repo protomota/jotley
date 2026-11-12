@@ -21,11 +21,7 @@ extension NoteDetailPlaceholderView {
 
         // Get the current template name from note.summaryType
         private var currentTemplateName: String {
-            let templateKey = LocalSummaryTemplate.resolve(note.summaryType).key
-            if templateKey == "default-summary" {
-                return "Auto"
-            }
-            return parent.availableTemplates.first { $0.key == templateKey }?.title ?? "Auto"
+            parent.templateCatalog.title(for: note.summaryType)
         }
 
         private var hasSummary: Bool {
@@ -71,7 +67,7 @@ extension NoteDetailPlaceholderView {
 
         private func applyTemplateAndRegenerate(_ templateKey: String) {
             isPresented = false
-            guard LocalSummaryTemplate.resolve(note.summaryType).key != templateKey else { return }
+            guard note.summaryType ?? "default-summary" != templateKey else { return }
             parent.selectedTemplateKeyForAction = templateKey
             parent.currentSelectedTemplate = parent.availableTemplates.first { $0.key == templateKey } ??
                 Template(
@@ -263,6 +259,9 @@ extension NoteDetailPlaceholderView {
                         availableTemplates: parent.availableTemplates,
                         onSelectTemplate: { templateKey in
                             applyTemplateAndRegenerate(templateKey)
+                        }, onManageTemplates: { create in
+                            isPresented = false
+                            parent.templatePresentation = create ? .create : .manage
                         }
                     )
                     .offset(

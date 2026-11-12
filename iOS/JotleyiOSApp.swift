@@ -21,6 +21,9 @@ struct JotleyiOSApp: App {
                 if let data = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_DATA"]?.data(using: .utf8) {
                     // Explicit simulator-only fixtures use a disposable in-memory store.
                     // No fixture path or data-loading hook is compiled into shipping builds.
+                    if ProcessInfo.processInfo.environment["JOTLEY_TEST_RESET_CUSTOM_WORDS"] == "1" {
+                        UserDefaults.standard.removeObject(forKey: CustomSpeechWords.defaultsKey)
+                    }
                     if let progress = ProcessInfo.processInfo.environment["JOTLEY_TEST_ENGAGEMENT_COUNT"], let count = Int(progress) {
                         UserDefaults.standard.set(count, forKey: JotleyEngagement.countKey)
                         UserDefaults.standard.set(true, forKey: JotleyEngagement.reviewKey)
@@ -33,7 +36,9 @@ struct JotleyiOSApp: App {
                             note.summary = sample.summary
                             note.summaryType = sample.template ?? (sample.summary.isEmpty ? "default-summary" : "Concise")
                             note.timestamp = Date().addingTimeInterval(sample.timestampOffset ?? Double(-index * 3600))
-                            note.folder = Folder.getOrCreate(named: sample.folder, in: fixtureStore.context)
+                            if !sample.folder.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                note.folder = Folder.getOrCreate(named: sample.folder, in: fixtureStore.context)
+                            }
                             for tag in sample.tags { try note.addTagByName(tag, in: fixtureStore.context) }
                             note.setTranscriptUtterances(sample.transcript.components(separatedBy: "\n\n").enumerated().map { TranscriptUtterance(text: $0.element, start: Double($0.offset * 25), end: Double(($0.offset + 1) * 25)) })
                             if let id = note.id {
@@ -62,7 +67,9 @@ struct JotleyiOSApp: App {
                 try await Task.sleep(for: .seconds(1))
                 return "AI and design guide the project research and planning."
             }
-            recorder.simulatedTagGeneration = { _, _ in ["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"] }
+            recorder.simulatedOrganization = { _, _ in
+                LocalNoteOrganization(tags: ["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"], folder: .work)
+            }
         }
         if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_SCROLL"] == "1" {
             recorder.simulatedSummaryGeneration = { update in
