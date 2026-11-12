@@ -22,6 +22,7 @@ struct NoteDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State var actionsFooterHeight: CGFloat = 150
     @State var followsLiveSummary = true
+    @State var summaryScrollPosition = ScrollPosition()
     @State var selectedTab = "Transcript"
     @State var isEditingTitle = false
     @State var editedTitle = ""

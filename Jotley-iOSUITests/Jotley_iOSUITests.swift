@@ -1036,6 +1036,7 @@ final class Jotley_iOSUITests: XCTestCase {
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
         app.launchArguments = ["-jotleySummaryNotificationsEnabled", "NO"]
         app.launch()
+        showNotesLibrary(app)
         let row = app.buttons.containing(.staticText, identifier: "Tag replacement").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         XCTAssertTrue(app.staticTexts["Outdated-1"].waitForExistence(timeout: 5))

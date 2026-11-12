@@ -23,7 +23,12 @@ extension NoteDetailView {
             }
             .padding(.bottom, actionsFooterHeight + 16)
         }
-        .defaultScrollAnchor(isWritingVisibleSummary && followsLiveSummary ? .bottom : nil, for: .sizeChanges)
+        .scrollPosition($summaryScrollPosition)
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.height } action: { previous, height in
+            guard isWritingVisibleSummary, followsLiveSummary, previous != height else { return }
+            // Move only after the new text has a measured height.
+            summaryScrollPosition.scrollTo(edge: .bottom)
+        }
         .onScrollPhaseChange { _, phase, context in
             guard isWritingVisibleSummary else { return }
             if phase == .interacting {

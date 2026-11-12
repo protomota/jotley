@@ -736,11 +736,14 @@ final class LiveTranscriptionManager: ObservableObject {
                 let update: @Sendable (String) async -> Void = { [weak self] value in
                     guard !Task.isCancelled else { return }
                     await MainActor.run { [weak self] in
-                        guard self?.summaryNoteID == id else { return }
-                        self?.summaryPreview = value
+                        guard let self, self.summaryNoteID == id else { return }
+                        if self.summaryPreview != value { self.summaryPreview = value }
                         if !value.isEmpty {
-                            if self?.summaryProgress != .writing { self?.summaryRuntime?.update(.writing) }
-                            self?.summaryProgress = .writing; self?.summaryRuntime?.streamed()
+                            if self.summaryProgress != .writing {
+                                self.summaryProgress = .writing
+                                self.summaryRuntime?.update(.writing)
+                            }
+                            self.summaryRuntime?.streamed()
                         }
                     }
                 }
