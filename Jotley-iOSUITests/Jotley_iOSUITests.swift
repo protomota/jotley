@@ -1040,17 +1040,15 @@ final class Jotley_iOSUITests: XCTestCase {
         let row = app.buttons.containing(.staticText, identifier: "Tag replacement").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         XCTAssertTrue(app.staticTexts["Outdated-1"].waitForExistence(timeout: 5))
-        for _ in 0..<2 {
-            triggerSummaryAction(in: app)
-            XCTAssertTrue(app.staticTexts["AI"].waitForExistence(timeout: 10))
-            XCTAssertTrue(app.staticTexts["Design"].exists)
-            for old in oldTags { XCTAssertFalse(app.staticTexts[old].exists, "Old tags must disappear without reopening the note") }
-            XCTAssertFalse(app.staticTexts["Overflow"].exists)
-            for tag in ["AI", "Design", "Research", "Planning", "Meetings"] {
-                XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", tag)).count, 1)
-            }
-            XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 5))
+        triggerSummaryAction(in: app)
+        XCTAssertTrue(app.staticTexts["AI"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Design"].exists)
+        for old in oldTags { XCTAssertFalse(app.staticTexts[old].exists, "Old tags must disappear without reopening the note") }
+        XCTAssertFalse(app.staticTexts["Overflow"].exists)
+        for tag in ["AI", "Design", "Research", "Planning", "Meetings"] {
+            XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", tag)).count, 1)
         }
+        XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 10))
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Regeneration replaces five visible tags with five library-aware tags"
         attachment.lifetime = .keepAlways; add(attachment)

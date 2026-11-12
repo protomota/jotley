@@ -59,7 +59,16 @@ struct JotleyiOSApp: App {
             } catch { failure = error.localizedDescription }
         }
         store = persistence; launchError = failure
-        let recorder = LiveTranscriptionManager(store: failure == nil ? persistence : nil)
+        let testNotifications: JotleySummaryNotifications?
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_TAGS"] == "1" {
+            testNotifications = JotleySummaryNotifications(defaults: .standard, authorization: { .denied },
+                requestAuthorization: { false }, enqueue: { _ in }, isActive: { false })
+        } else { testNotifications = nil }
+        #else
+        testNotifications = nil
+        #endif
+        let recorder = LiveTranscriptionManager(store: failure == nil ? persistence : nil, summaryNotifications: testNotifications)
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["JOTLEY_TEST_SUMMARY_TAGS"] == "1" {
             recorder.simulatedSummaryGeneration = { update in
