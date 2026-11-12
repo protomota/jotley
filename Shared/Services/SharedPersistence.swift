@@ -284,7 +284,7 @@ public final class SharedPersistenceController: ObservableObject {
     }
 
     func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]?,
-                         autoFolder: LocalNoteFolder?) throws {
+                         autoFolder: LocalNoteFolder?, projectName: String? = nil, filingSource: String = "") throws {
         guard ready, note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
         }
@@ -327,21 +327,45 @@ public final class SharedPersistenceController: ObservableObject {
             }
             if let name = autoFolder?.name, note.value(forKey: "folder") == nil {
                 let request = NSFetchRequest<NSManagedObject>(entityName: "Folder")
-                request.predicate = NSPredicate(format: "name ==[cd] %@", name)
                 request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
-                request.fetchLimit = 1
-                let folder: NSManagedObject
-                if let existing = try context.fetch(request).first {
-                    folder = existing
-                } else {
-                    folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: context)
-                    folder.setValue(UUID(), forKey: "id")
-                    folder.setValue(name, forKey: "name")
-                    folder.setValue(Date(), forKey: "createdAt")
-                    createdFolder = folder
+                let folders = try context.fetch(request)
+                let project = projectName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let primaryProject = project.count >= 3 && project.count <= 32 &&
+                    project.split(whereSeparator: \.isWhitespace).count <= 4 &&
+                    project.contains(where: \.isLetter) && Self.mentionsFolder(project, in: filingSource) ? project : nil
+                let broadNames = ["Work", "Personal", "Study", "Ideas", "General"]
+                let projectFolders = folders.filter { folder in
+                    let title = folder.text("name").trimmingCharacters(in: .whitespacesAndNewlines)
+                    return title.count >= 3 && !broadNames.contains { $0.caseInsensitiveCompare(title) == .orderedSame } &&
+                        Self.mentionsFolder(title, in: filingSource)
                 }
-                note.setValue(folder, forKey: "folder")
-                assignedFolder = true
+                let explicitMatch = primaryProject.flatMap { project in
+                    folders.first { $0.text("name").caseInsensitiveCompare(project) == .orderedSame }
+                }
+                let existingProject = projectFolders.max { $0.text("name").count < $1.text("name").count }
+                let broadMatch = folders.first { $0.text("name").caseInsensitiveCompare(name) == .orderedSame }
+                let generalMatch = folders.first { $0.text("name").caseInsensitiveCompare("General") == .orderedSame }
+                let maxFolders = 10
+                var folder = explicitMatch ?? existingProject
+                if folder == nil {
+                    let canCreateProject = folders.count < maxFolders - 1 || (folders.count < maxFolders && generalMatch != nil)
+                    if let primaryProject, canCreateProject {
+                        createdFolder = insertAutoFolder(named: primaryProject)
+                        folder = createdFolder
+                    } else if let broadMatch {
+                        folder = broadMatch
+                    } else if folders.count < maxFolders {
+                        let fallbackName = folders.count == maxFolders - 1 && generalMatch == nil ? "General" : name
+                        createdFolder = insertAutoFolder(named: fallbackName)
+                        folder = createdFolder
+                    } else {
+                        folder = generalMatch
+                    }
+                }
+                if let folder {
+                    note.setValue(folder, forKey: "folder")
+                    assignedFolder = true
+                }
             }
             for (key, value) in values { note.setValue(value, forKey: key) }
             try save()
@@ -352,6 +376,52 @@ public final class SharedPersistenceController: ObservableObject {
             if assignedFolder { note.setValue(nil, forKey: "folder") }
             if let createdFolder { context.delete(createdFolder) }
             throw error
+        }
+    }
+
+    private static func mentionsFolder(_ name: String, in text: String) -> Bool {
+        func normalized(_ value: String) -> String {
+            value.lowercased().split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")
+        }
+        let name = normalized(name)
+        return !name.isEmpty && " \(normalized(text)) ".contains(" \(name) ")
+    }
+
+    private func insertAutoFolder(named name: String) -> NSManagedObject {
+        let folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: context)
+        folder.setValue(UUID(), forKey: "id")
+        folder.setValue(name, forKey: "name")
+        folder.setValue(Date(), forKey: "createdAt")
+        return folder
+    }
+
+    func organizeCompletedRecording(_ note: NSManagedObject, locale: Locale) {
+        let transcript = note.text("transcription")
+        let autoFolder = LocalNoteOrganizationSettings.autoFolders() && note.value(forKey: "folder") == nil
+        let autoTags = LocalNoteOrganizationSettings.autoTags() && ((note.value(forKey: "tags") as? NSSet)?.count ?? 0) == 0
+        guard autoFolder || autoTags,
+              !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let id = note.objectID
+        let lease = beginNoteOperation(for: id)
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.endNoteOperation(lease: lease) }
+            let library = autoTags ? (try? self.tagLibrary()) ?? [] : []
+            let organization = try? await LocalNoteTags.generateOrganization(from: "", transcript: transcript,
+                library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+            guard let current = try? self.context.existingObject(with: id),
+                  !current.isDeleted, current.text("transcription") == transcript else { return }
+            let shouldFile = autoFolder && LocalNoteOrganizationSettings.autoFolders() && current.value(forKey: "folder") == nil
+            let shouldTag = autoTags && LocalNoteOrganizationSettings.autoTags() && ((current.value(forKey: "tags") as? NSSet)?.count ?? 0) == 0
+            guard shouldFile || shouldTag else { return }
+            let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: transcript) : organization?.folder
+            let tags = shouldTag ? LocalNoteTags.completedNames(organization?.tags, transcript: transcript, summary: "", library: library) : nil
+            do {
+                try self.saveNoteChanges(current, values: [:], replacingTags: tags, autoFolder: shouldFile ? category : nil,
+                                         projectName: organization?.projectName, filingSource: transcript)
+            } catch {
+                print("Could not organize the completed note: \(error)")
+            }
         }
     }
     public func save() throws {

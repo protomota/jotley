@@ -113,6 +113,7 @@
 		A2EA91B4307B452800AAB201 /* JotleyAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9168307B452800AAB201 /* JotleyAppDelegate.swift */; };
 		A2EA91B5307B452800AAB201 /* AddTagPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9128307B452800AAB201 /* AddTagPopoverView.swift */; };
 		A2EA91B6307B452800AAB201 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9133307B452800AAB201 /* FlowLayout.swift */; };
+		9A7F610B9D99499A8B54E4AB /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9133307B452800AAB201 /* FlowLayout.swift */; };
 		A2EA91B7307B452800AAB201 /* SummaryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA9120307B452800AAB201 /* SummaryTabView.swift */; };
 		A2EA91B8307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA913B307B452800AAB201 /* NoteDetailPlaceholderView+ClipboardExport.swift */; };
 		A2EA91B9307B452800AAB201 /* DescriptionTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EA911F307B452800AAB201 /* DescriptionTabView.swift */; };
@@ -729,7 +730,6 @@
 				A2EA9130307B452800AAB201 /* DetailTab.swift */,
 				A2EA9131307B452800AAB201 /* DetailTabViewPanel.swift */,
 				A2EA9132307B452800AAB201 /* ExpandedTranscriptionView.swift */,
-				A2EA9133307B452800AAB201 /* FlowLayout.swift */,
 				A2EA9134307B452800AAB201 /* FolderSidebarView.swift */,
 				A2EA9135307B452800AAB201 /* NoteDetailComponents.swift */,
 				A2EA9136307B452800AAB201 /* NoteDetailPlaceholderView.swift */,
@@ -1049,6 +1049,7 @@
 			children = (
 				A2EA9275307B532700AAB201 /* Font+Extensions.swift */,
 				A2EA9276307B532700AAB201 /* SharedThemeColors.swift */,
+				A2EA9133307B452800AAB201 /* FlowLayout.swift */,
 			);
 			name = Styling;
 			path = Shared/Styling;
@@ -1445,6 +1446,7 @@
 				A2EA9257307B523300AAB201 /* iOSNotesListEmptyStateView.swift in Sources */,
 				A2EA9258307B523300AAB201 /* RecordingModalView.swift in Sources */,
 				A2EA9259307B523300AAB201 /* iOSNoteDetailComponents.swift in Sources */,
+				9A7F610B9D99499A8B54E4AB /* FlowLayout.swift in Sources */,
 				A2EA925A307B523300AAB201 /* iOSNoteFolderRow.swift in Sources */,
 				A2EA925B307B523300AAB201 /* iOSNotesListView+Data.swift in Sources */,
 				A2EA925C307B523300AAB201 /* RecordingPlaybackFromNotesView.swift in Sources */,

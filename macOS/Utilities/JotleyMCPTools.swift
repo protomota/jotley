@@ -66,7 +66,7 @@ enum JotleyMCPTools {
             "remove": customWordArray
         ], required: ["expected_revision"], writes: true, destructive: true, idempotent: true),
         tool("set_note_tags", "Replace this note's tag membership with existing tag UUIDs. Preserve other tag_ids from a fresh read when adding/removing one tag. Empty array removes all tags from this note without deleting the library tags. Requires Read & write and a current note revision.", properties: identity.merging([
-            "tag_ids": .object(["type": "array", "items": ["type": "string"], "maxItems": 100, "uniqueItems": true])
+            "tag_ids": .object(["type": "array", "items": ["type": "string"], "maxItems": .int(LocalNoteTags.maximumCount), "uniqueItems": true])
         ]) { _, new in new }, required: ["id", "expected_revision", "tag_ids"], writes: true, destructive: true, idempotent: true),
         tool("move_note", "Move a note to an existing folder UUID, or pass null to make it unfiled. Preserves note text, dates and tags. Requires Read & write and a current note revision.", properties: identity.merging([
             "folder_id": .object(["type": ["string", "null"]])
@@ -259,7 +259,10 @@ enum JotleyMCPTools {
         }
         switch name {
         case "set_note_tags":
-            guard let ids = arguments["tag_ids"]?.arrayValue, ids.count <= 100, Set(ids.compactMap(\.stringValue)).count == ids.count else { throw LocalError.message("tag_ids must contain up to 100 unique tag UUIDs.") }
+            guard let ids = arguments["tag_ids"]?.arrayValue, ids.count <= LocalNoteTags.maximumCount,
+                  Set(ids.compactMap(\.stringValue)).count == ids.count else {
+                throw LocalError.message("tag_ids must contain up to \(LocalNoteTags.maximumCount) unique tag UUIDs.")
+            }
             let tags = try ids.map { try findOrganization(["id": $0], entity: "Tag", store: store) }
             try store.save()
             note.setValue(NSSet(array: tags), forKey: "tags")
@@ -465,8 +468,7 @@ enum JotleyMCPTools {
         var tags: [String]?
         if tagsRequested {
             let library = try store.tagLibrary()
-            let generated = try await LocalNoteTags.generate(from: result, transcript: source, library: library, locale: locale)
-            tags = LocalNoteTags.completedNames(generated, transcript: source, summary: result, library: library)
+            tags = try await LocalNoteTags.generate(from: result, transcript: source, library: library, locale: locale)
         }
         try Task.checkCancellation()
         guard authorization() else { throw LocalError.message("MCP write access was revoked during generation; the note was not changed.") }
@@ -483,7 +485,9 @@ enum JotleyMCPTools {
         for (key, value) in values { note.setValue(value, forKey: key) }
         if let source {
             note.setValue(source.value(forKey: "folder"), forKey: "folder")
-            note.setValue(source.value(forKey: "tags"), forKey: "tags")
+            let tags = (source.value(forKey: "tags") as? Set<NSManagedObject> ?? [])
+                .sorted { $0.text("name") < $1.text("name") }
+            note.setValue(NSSet(array: Array(tags.prefix(LocalNoteTags.maximumCount))), forKey: "tags")
         }
         do { try store.save(); return note }
         catch { store.context.delete(note); throw error }

@@ -43,23 +43,55 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(try store.context.count(for: request), 1)
     }
 
-    func testCompletedTagsAlwaysReplaceEligibleNotesAndRespectTranscriptLength() {
+    func testCompletedTagsFillFiveDistinctSlotsEvenForShortNotes() {
         let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20)]
         let nine = "one two three four five six seven eight nine"
         let ten = nine + " ten"
-        XCTAssertEqual(LocalNoteTags.tagLimit(for: nine), 0)
-        XCTAssertEqual(LocalNoteTags.completedNames(["AI"], transcript: nine, summary: "AI", library: library), [])
-        XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: ten, summary: "AI helps design.", library: library), ["AI"])
+        XCTAssertEqual(LocalNoteTags.completedNames(["AI"], transcript: nine, summary: "AI", library: library).count, 5)
+        let short = LocalNoteTags.completedNames(nil, transcript: ten, summary: "AI helps design.", library: library)
+        XCTAssertEqual(short.count, 5)
+        XCTAssertEqual(Array(short.prefix(2)), ["AI", "Design"])
         let long = String(repeating: "AI helps design teams plan research projects and meetings every week. ", count: 40)
-        XCTAssertEqual(LocalNoteTags.tagLimit(for: long), 5)
         let modelTags = LocalNoteTags.completedNames(["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"], transcript: long, summary: "", library: library)
         XCTAssertEqual(modelTags, ["AI", "Design", "Research", "Planning", "Meetings"])
         for proposed: [String]? in [nil, [], ["###", " "]] {
             let fallback = LocalNoteTags.completedNames(proposed, transcript: long, summary: "AI helps design.", library: library)
-            XCTAssertEqual(fallback, ["AI", "Design"])
-            XCTAssertFalse(LocalNoteTags.completedNames(proposed, transcript: ten, summary: "", library: []).isEmpty)
+            XCTAssertEqual(Array(fallback.prefix(2)), ["AI", "Design"])
+            XCTAssertEqual(Set(fallback.map(LocalNoteTags.key)).count, 5)
+            XCTAssertEqual(LocalNoteTags.completedNames(proposed, transcript: ten, summary: "", library: []).count, 5)
         }
         XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: "", summary: "", library: library), [])
+    }
+
+    @MainActor func testAutoFilingReusesNamedProjectsAndReservesGeneralAtTheCap() throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let first = try store.create(title: "Jotley review", text: "The Jotley project is ready.")
+        try store.saveNoteChanges(first, values: [:], replacingTags: nil, autoFolder: .work,
+                                  projectName: "Jotley", filingSource: "The Jotley project is ready.")
+        let project = try XCTUnwrap(first.value(forKey: "folder") as? NSManagedObject)
+        XCTAssertEqual(project.text("name"), "Jotley")
+        let second = try store.create(title: "Second review", text: "Testing the JOTLEY release.")
+        try store.saveNoteChanges(second, values: [:], replacingTags: nil, autoFolder: .work,
+                                  filingSource: "Testing the JOTLEY release.")
+        XCTAssertEqual((second.value(forKey: "folder") as? NSManagedObject)?.objectID, project.objectID)
+
+        for index in 1...8 {
+            let folder = NSEntityDescription.insertNewObject(forEntityName: "Folder", into: store.context)
+            folder.setValue(UUID(), forKey: "id")
+            folder.setValue("Manual \(index)", forKey: "name")
+        }
+        try store.save()
+        let third = try store.create(title: "Another project", text: "OpenTalon project kickoff.")
+        try store.saveNoteChanges(third, values: [:], replacingTags: nil, autoFolder: .work,
+                                  projectName: "OpenTalon", filingSource: "OpenTalon project kickoff.")
+        XCTAssertEqual((third.value(forKey: "folder") as? NSManagedObject)?.text("name"), "General")
+        let fourth = try store.create(title: "Course", text: "Lecture notes")
+        try store.saveNoteChanges(fourth, values: [:], replacingTags: nil, autoFolder: .study,
+                                  projectName: "Invented project", filingSource: "Lecture notes")
+        XCTAssertEqual((fourth.value(forKey: "folder") as? NSManagedObject)?.objectID,
+                       (third.value(forKey: "folder") as? NSManagedObject)?.objectID)
+        XCTAssertEqual(try store.context.count(for: NSFetchRequest<NSManagedObject>(entityName: "Folder")), 10)
     }
 
     func testAutoTagsReuseBucketsAndLimitDistinctTopics() {

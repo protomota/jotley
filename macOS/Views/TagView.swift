@@ -32,12 +32,8 @@ struct TagView: View {
 
             Text(tag)
                 .font(.caption)
-                .foregroundColor(Color.themeTextPrimary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(Color.themeAccent.opacity(0.3))
-                )
+                .fixedSize(horizontal: false, vertical: true)
+                .modifier(JotleyNoteTagStyle(horizontalPadding: 8, verticalPadding: 4))
         }
     }
 }

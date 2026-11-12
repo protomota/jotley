@@ -20,8 +20,8 @@ struct NoteDetailView: View {
     var newTranscriptionAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @Environment(\.dismiss) var dismiss
-    @Environment(\.scenePhase) var scenePhase
     @State var actionsFooterHeight: CGFloat = 150
+    @State var followsLiveSummary = true
     @State var selectedTab = "Transcript"
     @State var isEditingTitle = false
     @State var editedTitle = ""

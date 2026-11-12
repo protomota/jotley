@@ -83,7 +83,7 @@ struct SettingsView: View {
             } header: {
                 Text("Note Organization")
             } footer: {
-                Text("After a summary is generated, Jotley can add topic tags and file unfiled notes into a broad folder.")
+                Text("Auto Tags adds five topics to recordings and summaries. Auto File Notes organizes completed recordings and unfiled summaries into a matching project or broad folder.")
             }
 
             Section {

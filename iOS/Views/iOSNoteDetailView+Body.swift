@@ -2,7 +2,6 @@ import SwiftUI
 
 extension NoteDetailView {
     var body: some View {
-        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 0) {
                 noteHeaderSection
@@ -23,17 +22,19 @@ extension NoteDetailView {
                 }
             }
             .padding(.bottom, actionsFooterHeight + 16)
-            Color.clear.frame(height: 1).id("summaryBottom")
         }
-        .task(id: transcriptionManager.summaryPreview) {
-            guard summaryIsRunning, selectedTab == "Summary", scenePhase == .active else { return }
-            await Task.yield()
-            guard !Task.isCancelled else { return }
-            proxy.scrollTo("summaryBottom", anchor: .bottom)
+        .defaultScrollAnchor(isWritingVisibleSummary && followsLiveSummary ? .bottom : nil, for: .sizeChanges)
+        .onScrollPhaseChange { _, phase, context in
+            guard isWritingVisibleSummary else { return }
+            if phase == .interacting {
+                followsLiveSummary = false
+            } else if phase == .idle {
+                let geometry = context.geometry
+                followsLiveSummary = geometry.visibleRect.maxY >= geometry.contentSize.height - 40
+            }
         }
-        .onChange(of: summaryIsRunning) { _, running in
-            if running { proxy.scrollTo("summaryBottom", anchor: .bottom) }
-        }
+        .onChange(of: isWritingVisibleSummary) { _, writing in
+            if !writing { followsLiveSummary = true }
         }
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
@@ -93,6 +94,7 @@ extension NoteDetailView {
         .tint(.themeActionText)
         .observeThemeChanges()
     }
+    private var isWritingVisibleSummary: Bool { summaryIsRunning && selectedTab == "Summary" }
     private var usesInlineNoteActions: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private var noteHeaderActions: some View {
@@ -193,21 +195,23 @@ extension NoteDetailView {
                     .accessibilityIdentifier("noteDetailTimestamp")
             }
             iOSNoteFolderRow(note: note, onChange: transcriptionManager.saveEdits).padding(.horizontal).padding(.top,8)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(note.tagNames, id: \.self) { tag in
-                        iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
-                            .accessibilityIdentifier("noteDetailTag-\(tag)")
-                    }
-                    Button { showingAddTag = true } label: {
-                        JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle")
-                    }
-                        .font(.caption.weight(.medium))
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("noteDetailAddTagButton")
-                }.padding(.horizontal)
-            }.padding(.top,8)
+            FlowLayout(spacing: 8) {
+                ForEach(note.tagNames, id: \.self) { tag in
+                    iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
+                        .accessibilityIdentifier("noteDetailTag-\(tag)")
+                }
+                Button { showingAddTag = true } label: {
+                    JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle")
+                }
+                .font(.caption.weight(.medium))
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+                .disabled(note.tagSet.count >= LocalNoteTags.maximumCount)
+                .accessibilityHint(note.tagSet.count >= LocalNoteTags.maximumCount ? "Remove a tag to add another." : "")
+                .accessibilityIdentifier("noteDetailAddTagButton")
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top,8).padding(.bottom,16)
     }
     private var noteTabPickerSection: some View {
@@ -268,6 +272,7 @@ extension NoteDetailView {
                     .padding(.horizontal, newTranscriptionAction == nil ? 16 : 24)
                     .padding(.top, 8).padding(.bottom, footerBottomInset)
                     .frame(maxWidth: .infinity)
+                    .background(Color.themeBackground)
     }
 
     private var transcriptionAndSummaryFooter: some View {

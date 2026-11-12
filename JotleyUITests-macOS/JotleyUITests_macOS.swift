@@ -402,13 +402,14 @@ private struct MacSupportPreviewRoot: View {
         }
         defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedOrganization = nil; try? store.deleteNote(other) }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.summary == "Finished design summary.", note.tagNames == ["AI", "Design"], delivered == 1,
+        guard note.summary == "Finished design summary.", note.tagNames.count == 5,
+              Set(["AI", "Design"]).isSubset(of: note.tagNames), delivered == 1,
               (other.value(forKey: "tags") as? NSSet)?.count == 2 else {
             throw LocalError.message("Mac summary must replace old tags and reuse existing library buckets.")
         }
         viewModel.simulatedOrganization = { _, _ in throw LocalError.message("Injected tagging failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard !note.tagNames.isEmpty, note.tagNames.count <= 2, note.summary == "Finished design summary.", delivered == 2, !viewModel.showSyncError else {
+        guard note.tagNames.count == 5, note.summary == "Finished design summary.", delivered == 2, !viewModel.showSyncError else {
             throw LocalError.message("Tagging failure must use local fallback tags and save the completed summary.")
         }
         viewModel.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }

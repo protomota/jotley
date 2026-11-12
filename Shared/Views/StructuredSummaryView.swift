@@ -372,8 +372,7 @@ struct StructuredSummaryView: View {
         let markdown = ParsedNoteMarkdown.rendering(content, isStreaming: isStreaming)
         let summary = StructuredSummary(markdown)
         let palette = SummaryPalette.current
-        // scrollTo(bottom) needs actual heights while text grows. Lazy estimates
-        // repeatedly materialize and discard cards near the viewport's edge.
+        // Use actual card heights as the streaming text grows.
         return Group {
             if style == .standard {
                 StandardSummaryTextView(markdown: markdown)
@@ -406,6 +405,7 @@ struct StructuredSummaryBlockView: View {
     let palette: SummaryPalette
     @ScaledMetric(relativeTo: .headline) private var iconBox: CGFloat = 34
     @ScaledMetric(relativeTo: .body) private var numberSize: CGFloat = 30
+    @ScaledMetric(relativeTo: .body) private var preferredTextColumnWidth: CGFloat = 230
 
     var body: some View {
         switch block {
@@ -566,18 +566,21 @@ struct StructuredSummaryBlockView: View {
                                 Text(item.body).font(.body).foregroundStyle(palette.secondary)
                                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                             }
-                        } else {
-                            // Owners and short labels read as a chip beside the task.
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(item.body).font(.body).foregroundStyle(palette.text)
-                                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                                if let label = item.label {
-                                    Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(palette.badge)
-                                        .lineLimit(1).fixedSize()
-                                        .padding(.horizontal, 10).padding(.vertical, 4)
-                                        .background(Capsule().fill(palette.badge.opacity(0.10)))
+                        } else if let label = item.label {
+                            ViewThatFits(in: .horizontal) {
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    rowText(item)
+                                        .frame(minWidth: preferredTextColumnWidth, idealWidth: preferredTextColumnWidth,
+                                               maxWidth: .infinity, alignment: .leading)
+                                    rowBadge(label).fixedSize()
+                                }
+                                VStack(alignment: .leading, spacing: 6) {
+                                    rowText(item).frame(maxWidth: .infinity, alignment: .leading)
+                                    rowBadge(label).fixedSize(horizontal: false, vertical: true)
                                 }
                             }
+                        } else {
+                            rowText(item).frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -591,6 +594,16 @@ struct StructuredSummaryBlockView: View {
                 .accessibilityIdentifier("markdownListItem-\(item.id)")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func rowText(_ item: StructuredSummary.Item) -> some View {
+        Text(item.body).font(.body).foregroundStyle(palette.text).textSelection(.enabled)
+    }
+
+    private func rowBadge(_ label: AttributedString) -> some View {
+        Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(palette.badge)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(Capsule().fill(palette.badge.opacity(0.10)))
     }
 
     private func itemText(_ item: StructuredSummary.Item, color: Color) -> some View {

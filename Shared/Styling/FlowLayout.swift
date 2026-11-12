@@ -2,7 +2,7 @@
 //  FlowLayout.swift
 //  Jotley
 //
-//  Flow layout and preference keys extracted from NoteDetailPlaceholderView+Body.swift
+//  Wraps items into rows within the proposed width.
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = FlowResult(in: proposal.replacingUnspecifiedDimensions().width, subviews: subviews, spacing: spacing)
+        let result = FlowResult(in: proposal.width ?? .infinity, subviews: subviews, spacing: spacing)
         return result.size
     }
 
@@ -22,13 +22,12 @@ struct FlowLayout: Layout {
         for (index, element) in result.rows.enumerated() {
             var x = bounds.minX
             for (subviewIndex, subview) in zip(element.range, subviews[element.range]) {
-                let width = result.widths[subviewIndex]
                 let itemSize = result.sizes[subviewIndex]
                 // Center each item vertically within the row
                 let yOffset = bounds.minY + result.yOffsets[index] + (element.height - itemSize.height) / 2
                 subview.place(at: CGPoint(x: x, y: yOffset),
-                             proposal: ProposedViewSize(width: width, height: itemSize.height))
-                x += width + spacing
+                             proposal: ProposedViewSize(itemSize))
+                x += itemSize.width + spacing
             }
         }
     }
@@ -36,7 +35,6 @@ struct FlowLayout: Layout {
     struct FlowResult {
         var rows: [(range: Range<Int>, height: CGFloat)] = []
         var yOffsets: [CGFloat] = []
-        var widths: [CGFloat] = []
         var sizes: [CGSize] = []
         var size: CGSize = .zero
 
@@ -44,11 +42,14 @@ struct FlowLayout: Layout {
             var x: CGFloat = 0
             var y: CGFloat = 0
             var maxHeight: CGFloat = 0
+            var maxWidth: CGFloat = 0
             var rangeStart = 0
 
             for (index, subview) in subviews.enumerated() {
-                let size = subview.sizeThatFits(.unspecified)
-                widths.append(size.width)
+                let idealSize = subview.sizeThatFits(.unspecified)
+                let size = idealSize.width > width
+                    ? subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
+                    : idealSize
                 sizes.append(size)
 
                 if x + size.width > width && rangeStart < index {
@@ -61,6 +62,7 @@ struct FlowLayout: Layout {
                 }
 
                 x += size.width + spacing
+                maxWidth = max(maxWidth, x - spacing)
                 maxHeight = max(maxHeight, size.height)
             }
 
@@ -70,7 +72,7 @@ struct FlowLayout: Layout {
                 y += maxHeight
             }
 
-            self.size = CGSize(width: width, height: y)
+            self.size = CGSize(width: width.isFinite ? width : maxWidth, height: y)
         }
     }
 }

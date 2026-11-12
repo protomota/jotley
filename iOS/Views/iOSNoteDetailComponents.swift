@@ -80,7 +80,7 @@ struct iOSTagView: View {
         HStack(spacing: 4) {
             Text(tag)
                 .font(.caption)
-                .foregroundColor(Color(uiColor: .label))
+                .fixedSize(horizontal: false, vertical: true)
 
             if showRemoveButton {
                 Button {
@@ -88,16 +88,12 @@ struct iOSTagView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.caption2)
-                        .foregroundColor(Color.themeTextPrimary.opacity(0.7))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(tag)")
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(Color.themePrimaryAccent.opacity(0.3))
-        )
+        .modifier(JotleyNoteTagStyle())
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.2)) {
                 showRemoveButton.toggle()
@@ -152,7 +148,7 @@ struct AddTagSheetView: View {
                             .font(.headline).frame(maxWidth: .infinity)
                     }
                     .buttonStyle(JotleyGlassButtonStyle())
-                    .disabled(getCanonicalTag(newTagText).isEmpty)
+                    .disabled(getCanonicalTag(newTagText).isEmpty || note.tagSet.count >= LocalNoteTags.maximumCount)
                     .accessibilityIdentifier("addTagSaveButton")
                 }
                 .padding(16)
@@ -180,7 +176,7 @@ struct AddTagSheetView: View {
     }
 
     private func addTag() {
-        guard !newTagText.isEmpty else { return }
+        guard !newTagText.isEmpty, note.tagSet.count < LocalNoteTags.maximumCount else { return }
 
         let formattedTag = getFormattedTag(newTagText)
         let canonicalNewTag = getCanonicalTag(formattedTag)

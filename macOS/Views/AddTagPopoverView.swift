@@ -52,30 +52,12 @@ internal struct AddTagPopoverView: View {
                 Button {
                     let trimmedTag = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
                     let formattedTag = getFormattedTagForDisplay(trimmedTag) // Format for display/storage
-                    let canonicalTag = getCanonicalTag(trimmedTag) // Use canonical for de-duplication
-
-                    if !canonicalTag.isEmpty { // De-duplicate based on canonical form
-                        // Check if we already have 10 tags
-                        if note.tagSet.count >= 10 {
-
-                        } else {
-                            // Check against canonical forms of existing tags
-                            let existingCanonicalTags = Set(note.tagSet.compactMap { $0.canonicalName })
-                            if !existingCanonicalTags.contains(canonicalTag) {
-                                // Add tag using the new Tag entity system
-                                do {
-                                    try note.addTagByName(formattedTag, in: viewContext)
-                                    // Update currentTags binding to reflect the change
-                                    currentTags = note.tagNames
-                                    saveContext()
-                                } catch {
-
-                                }
-                            } else {
-
-                            }
-                        }
-                    }
+                    guard !getCanonicalTag(trimmedTag).isEmpty, note.tagSet.count < LocalNoteTags.maximumCount else { return }
+                    do {
+                        try note.addTagByName(formattedTag, in: viewContext)
+                    } catch { return }
+                    currentTags = note.tagNames
+                    saveContext()
                     newTagText = ""
                     isEditingTags = false
                     showPopover = false
@@ -83,7 +65,7 @@ internal struct AddTagPopoverView: View {
                     JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus")
                 }
                 .keyboardShortcut(.defaultAction) // This is now the primary action
-                .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(getCanonicalTag(newTagText).isEmpty || note.tagSet.count >= LocalNoteTags.maximumCount)
             }
         }
         .buttonStyle(JotleyGlassButtonStyle())

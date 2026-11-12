@@ -391,6 +391,21 @@ struct JotleyAccentIconLabel: View {
     }
 }
 
+struct JotleyNoteTagStyle: ViewModifier {
+    @ObservedObject private var theme = ThemeManager.shared
+    var horizontalPadding: CGFloat = 10
+    var verticalPadding: CGFloat = 6
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(.white)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+            // Use the saturated shade that supports white text in either appearance.
+            .background(theme.currentThemeColor.color(in: .light), in: Capsule())
+    }
+}
+
 #if os(iOS)
 /// Match compact action text and icons to the selected accent.
 struct MobileActionLabel: View {

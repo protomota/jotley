@@ -184,6 +184,9 @@ import AppKit
             _ = await recorder.stop()
             do {
                 try persistenceController.save()
+                if let note = newNoteBeingRecorded {
+                    persistenceController.organizeCompletedRecording(note, locale: recorder.speechLocale)
+                }
             } catch { report(error) }
             if let error = recorder.errorMessage { syncErrorMessage = error; showSyncError = true }
         }
@@ -323,9 +326,12 @@ import AppKit
                 let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
                     ? LocalNoteTags.completedNames(organization?.tags, transcript: source, summary: result, library: library)
                     : nil
-                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? organization?.folder : nil
+                let filingSource = result + "\n" + source
+                let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: filingSource) : organization?.folder
+                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? category : nil
                 try persistenceController.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
-                                                           replacingTags: tags, autoFolder: folder)
+                                                           replacingTags: tags, autoFolder: folder,
+                                                           projectName: organization?.projectName, filingSource: filingSource)
                 await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
                 let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }

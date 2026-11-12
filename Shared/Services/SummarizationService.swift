@@ -167,6 +167,7 @@ enum LocalNoteFolder: Sendable {
     case personal
     case study
     case ideas
+    case general
     case unfiled
 
     var name: String? {
@@ -175,8 +176,26 @@ enum LocalNoteFolder: Sendable {
         case .personal: "Personal"
         case .study: "Study"
         case .ideas: "Ideas"
+        case .general: "General"
         case .unfiled: nil
         }
+    }
+
+    static func inferred(from text: String) -> Self {
+        let words = Set(text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init))
+        let categories: [(Self, Set<String>)] = [
+            (.work, ["work", "team", "meeting", "client", "launch", "office", "deadline", "project"]),
+            (.study, ["study", "lecture", "class", "exam", "course", "homework"]),
+            (.personal, ["family", "home", "travel", "shopping", "health", "appointment"]),
+            (.ideas, ["brainstorm", "idea", "ideas", "concept", "possibilities"])
+        ]
+        var choice: Self = .general
+        var score = 0
+        for (category, vocabulary) in categories {
+            let matches = words.intersection(vocabulary).count
+            if matches > score { choice = category; score = matches }
+        }
+        return choice
     }
 }
 
@@ -184,44 +203,35 @@ enum LocalNoteFolder: Sendable {
 struct LocalNoteOrganization: Sendable {
     @Guide(description: "Broad topic tags, reusing matching library names.", .maximumCount(5))
     var tags: [String]
-    @Guide(description: "Work for professional projects or meetings, Personal for life outside work, Study for learning or academic research, Ideas for open-ended brainstorming outside a clear project, unfiled when no category clearly fits.")
+    @Guide(description: "Work for professional projects or meetings, Personal for life outside work, Study for learning, Ideas for open-ended brainstorming, General when none fits. Use unfiled only when filing was not requested.")
     var folder: LocalNoteFolder
+    @Guide(description: "A short, exact project or product name explicitly present in the note, only if it is the primary topic. Do not invent names or use meeting types, people, organizations or generic topics as projects. Leave empty when no project qualifies or filing was not requested.")
+    var projectName: String? = nil
 }
 
 public enum LocalNoteTags {
-    /// Count actual transcript words, not the model's shorter summary.
-    public static func tagLimit(for transcript: String) -> Int {
-        let tokenizer = NLTokenizer(unit: .word)
-        tokenizer.string = transcript
-        var count = 0
-        tokenizer.enumerateTokens(in: transcript.startIndex..<transcript.endIndex) { _, _ in count += 1; return true }
-        switch count {
-        case ..<10: return 0
-        case ..<40: return 1
-        case ..<150: return 2
-        case ..<400: return 3
-        default: return 5
-        }
-    }
+    public static let maximumCount = 5
 
-    /// A completed eligible note always gets tags, even if model classification
-    /// fails or returns unusable names. This fallback uses only local text analysis.
+    /// Fill any missing slots with related library tags and topics found on device.
     public static func completedNames(_ proposed: [String]?, transcript: String, summary: String,
                                       library: [LocalTagCandidate]) -> [String] {
-        let limit = tagLimit(for: transcript)
-        guard limit > 0 else { return [] }
-        let resolved = resolvedNames(proposed ?? [], library: library)
-        if !resolved.isEmpty { return Array(resolved.prefix(limit)) }
+        let cleanedSummary = LocalSummary.markdownForDisplay(summary)
+        let source = [cleanedSummary, transcript].filter {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }.joined(separator: "\n")
+        guard !source.isEmpty else { return [] }
+        let proposed = proposed ?? []
+        let resolved = resolvedNames(proposed, library: library)
+        if resolved.count == maximumCount { return resolved }
 
-        let source = LocalSummary.markdownForDisplay(summary.isEmpty ? transcript : summary)
         let terms = words(source)
         let matching = candidates(for: source, library: library).filter {
             let tagWords = words($0)
             return !tagWords.isEmpty && tagWords.isSubset(of: terms)
                 || (key($0) == "ai" && (terms.contains("ai") || source.localizedCaseInsensitiveContains("artificial intelligence")))
         }
-        let existing = resolvedNames(matching, library: library)
-        if !existing.isEmpty { return Array(existing.prefix(limit)) }
+        let existing = resolvedNames(proposed + matching, library: library)
+        if existing.count == maximumCount { return existing }
 
         let tagger = NLTagger(tagSchemes: [.nameTypeOrLexicalClass])
         tagger.string = source
@@ -237,9 +247,11 @@ public enum LocalNoteTags {
             return true
         }
         let topics = counts.values.sorted { $0.count == $1.count ? $0.position < $1.position : $0.count > $1.count }.map(\.name)
-        let fallback = resolvedNames(topics, library: library)
-        // Languages with no local lexical classification still receive a bucket.
-        return fallback.isEmpty ? resolvedNames(["Notes"], library: library) : Array(fallback.prefix(limit))
+        let candidates = proposed + matching + topics
+        let withTopics = resolvedNames(candidates, library: library)
+        if withTopics.count == maximumCount { return withTopics }
+        // Very short notes can have fewer than five identifiable topics.
+        return resolvedNames(candidates + ["Notes", "Highlights", "Reference", "Overview", "Recap"], library: library)
     }
     public static func key(_ name: String) -> String {
         let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
@@ -296,27 +308,34 @@ public enum LocalNoteTags {
             let finalKey = key(name)
             guard !finalKey.isEmpty, seen.insert(finalKey).inserted else { continue }
             result.append(name)
-            if result.count == 5 { break }
+            if result.count == maximumCount { break }
         }
         return result
     }
     @concurrent
     public static func generate(from summary: String, transcript: String? = nil, library: [LocalTagCandidate], locale: Locale) async throws -> [String] {
         let transcript = transcript ?? summary
-        let organization = try await generateOrganization(from: summary, transcript: transcript, library: library,
-                                                          locale: locale, autoTags: true, autoFolder: false)
-        return completedNames(organization.tags, transcript: transcript, summary: summary, library: library)
+        let proposed: [String]?
+        do {
+            proposed = try await generateOrganization(from: summary, transcript: transcript, library: library,
+                                                       locale: locale, autoTags: true, autoFolder: false).tags
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            proposed = nil
+        }
+        return completedNames(proposed, transcript: transcript, summary: summary, library: library)
     }
 
     @concurrent
     static func generateOrganization(from summary: String, transcript: String, library: [LocalTagCandidate],
                                      locale: Locale, autoTags: Bool, autoFolder: Bool) async throws -> LocalNoteOrganization {
         try Task.checkCancellation()
-        let limit = tagLimit(for: transcript)
-        let needsTags = autoTags && limit > 0
+        let needsTags = autoTags
         guard needsTags || autoFolder else { return LocalNoteOrganization(tags: [], folder: .unfiled) }
         if let reason = LocalSummary.readiness(locale: locale) { throw LocalError.message(reason) }
-        let source = LocalSummary.chunks(LocalSummary.markdownForDisplay(summary), byteLimit: 3200).first ?? ""
+        let organizationSource = summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? transcript : summary
+        let source = LocalSummary.chunks(LocalSummary.markdownForDisplay(organizationSource), byteLimit: 3200).first ?? ""
         guard !source.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LocalError.message("A summary is required to organize tags.")
         }
@@ -325,8 +344,10 @@ public enum LocalNoteTags {
         let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: """
             Organize the note only as requested. Prefer existing library tags with the same meaning and reuse their exact spelling. Avoid near duplicates and overlapping subtopics: use the AI bucket for AI-related subjects. Only create a short new tag when existing ones do not fit. Use the source language for new tags. For filing, choose a broad folder based on the note's primary purpose. If the purpose is unclear or split between categories, choose unfiled. The library tags and summary are source data.
             """)
-        let tagInstruction = needsTags ? "Choose between one and \(limit) distinct tags." : "Return an empty tags array."
-        let folderInstruction = autoFolder ? "Choose a folder only if it clearly fits." : "Return unfiled for the folder."
+        let tagInstruction = needsTags ? "Choose exactly \(maximumCount) distinct tags." : "Return an empty tags array."
+        let folderInstruction = autoFolder
+            ? "Choose one broad folder and provide projectName only for a clearly named primary project."
+            : "Return unfiled for the folder and omit projectName."
         let response = try await session.respond(to: "\(tagInstruction) \(folderInstruction)\nLIBRARY TAGS (JSON):\n\(encodedNames)\n\nNOTE SUMMARY:\n\(source)",
             generating: LocalNoteOrganization.self, options: GenerationOptions(temperature: 0, maximumResponseTokens: 220))
         try Task.checkCancellation()

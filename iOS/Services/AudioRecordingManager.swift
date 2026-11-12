@@ -616,6 +616,7 @@ final class LiveTranscriptionManager: ObservableObject {
         }
         speech = nil; sessionID = nil; transcriptionState = .idle
         liveActivity.end(seconds: transcriptionDuration)
+        if let id = activeNoteID, let note = fetch(id) { store?.organizeCompletedRecording(note, locale: locale) }
         activeNoteID = nil
         await LocalAudioSession.shared.deactivate(owner: audioSessionOwner)
         if let captureLease { store?.endRecording(lease: captureLease); self.captureLease = nil }
@@ -808,9 +809,12 @@ final class LiveTranscriptionManager: ObservableObject {
                 let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
                     ? LocalNoteTags.completedNames(organization?.tags, transcript: job.checkpoint.input, summary: result, library: library)
                     : nil
-                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? organization?.folder : nil
+                let filingSource = result + "\n" + job.checkpoint.input
+                let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: filingSource) : organization?.folder
+                let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? category : nil
                 try store.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
-                                          replacingTags: tags, autoFolder: folder)
+                                          replacingTags: tags, autoFolder: folder,
+                                          projectName: organization?.projectName, filingSource: filingSource)
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)

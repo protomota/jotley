@@ -145,7 +145,7 @@ extension NoteDetailPlaceholderView {
                         })
             }
 
-            if isEditingTags && currentTags.count < 10 {
+            if isEditingTags && currentTags.count < LocalNoteTags.maximumCount {
                 Button {
                     showAddTagPopover = true
                 } label: {

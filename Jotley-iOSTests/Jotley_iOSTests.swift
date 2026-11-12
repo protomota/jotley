@@ -88,9 +88,9 @@ struct Jotley_iOSTests {
         let note = try manager.createNote(text: String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5), title: "Design review")
         let other = try manager.createNote(text: "Related work", title: "Related")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
-        for index in 1...10 { try note.addTagByName("Outdated-\(index)", in: store.context) }
+        for index in 1...5 { try note.addTagByName("Outdated-\(index)", in: store.context) }
         try store.save()
-        #expect(note.tagNames.count == 10)
+        #expect(note.tagNames.count == 5)
         manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
         manager.simulatedOrganization = { _, library in
             #expect(library.contains { $0.name == "AI" })
@@ -99,13 +99,13 @@ struct Jotley_iOSTests {
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(note.summary == "A completed design summary.")
-        #expect(note.tagNames == ["AI", "Design"] && other.tagNames == ["AI", "Design"])
+        #expect(note.tagNames.count == 5 && Set(["AI", "Design"]).isSubset(of: note.tagNames) && other.tagNames == ["AI", "Design"])
         #expect(note.folder?.name == "Work")
         #expect(manager.errorMessage == nil && sent.count == 1)
         manager.simulatedOrganization = { _, _ in throw LocalError.message("Model unavailable") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(!note.tagNames.isEmpty && note.tagNames.count <= 2)
+        #expect(note.tagNames.count == 5)
         let fallbackTags = note.tagNames
         #expect(manager.errorMessage == nil && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
@@ -128,11 +128,11 @@ struct Jotley_iOSTests {
         note.transcription = "one two three four five six seven eight nine ten"
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames.count == 1 && sent.count == 3)
+        #expect(note.tagNames.count == 5 && sent.count == 3)
         note.transcription = "one two three four five six seven eight nine"
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames.isEmpty && sent.count == 4)
+        #expect(note.tagNames.count == 5 && sent.count == 4)
     }
     #endif
 

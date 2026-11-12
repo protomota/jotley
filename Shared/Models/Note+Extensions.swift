@@ -160,6 +160,9 @@ public extension Note {
         if tagSet.contains(where: { $0.canonicalName == canonicalName }) {
             return // Already has this tag
         }
+        guard tagSet.count < LocalNoteTags.maximumCount else {
+            throw LocalError.message("A note can have up to \(LocalNoteTags.maximumCount) tags. Remove a tag to add another.")
+        }
 
         // Fetch or create Tag entity
         let fetchRequest: NSFetchRequest<Tag> = Tag.fetchRequest()
