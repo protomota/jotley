@@ -24,7 +24,7 @@ extension LiveTranscriptionView {
         // The closure hands the manager to the waveform's own timer, which
         // pulls the level so this view doesn't re-render on every meter tick.
         LiveTranscriptionWaveformView(
-            levelProvider: { [weak transcriptionManager] in transcriptionManager?.audioLevel ?? 0 },
+            levelProvider: { [weak transcriptionManager] in transcriptionManager?.nextWaveformPeak() ?? 0 },
             isTranscribing: transcriptionManager.transcriptionState == .listening,
             isPaused: transcriptionManager.transcriptionState == .paused
         )

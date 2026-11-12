@@ -71,10 +71,9 @@ struct FolderChipView: View {
                     .foregroundStyle(theme.currentThemeColor.color)
                 Text(note.folder?.displayName ?? "No Folder")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(theme.currentThemeColor.color)
+                    .foregroundStyle(Color.shouldUseDarkTheme() ? Color.white : Color.themeLightTextPrimary)
                     .lineLimit(1)
             }
-            .foregroundStyle(theme.currentThemeColor.color)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(

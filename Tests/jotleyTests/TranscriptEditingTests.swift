@@ -50,10 +50,26 @@ final class TranscriptEditingTests: XCTestCase {
         XCTAssertEqual(decoded[1], source[1])
         let reopened = TranscriptEditDraft(text: draft.text, utterances: decoded)
         XCTAssertFalse(reopened.hasChanges)
-        XCTAssertEqual(reopened.segments.map(\.text), ["Review the design.", "Keep the purple branding.", "Ship on Friday."])
+        XCTAssertEqual(reopened.segments.map(\.text), ["Review the design.\nKeep the purple branding.", "Ship on Friday."])
         XCTAssertEqual(reopened.segments.first?.start, source.first?.start)
-        XCTAssertEqual(reopened.segments[1].end, source.first?.end)
+        XCTAssertEqual(reopened.segments.first?.end, source.first?.end)
         XCTAssertEqual(reopened.segments.last, source.last)
+    }
+
+    func testBracketedTextParsesBackIntoEditableTimestampedRows() {
+        let source = [
+            TranscriptUtterance(id: "first", text: "First line.", start: 2.3, end: 4, speaker: 1),
+            TranscriptUtterance(id: "second", text: "Second line.", start: 15.4, end: 19, speaker: 2)
+        ]
+        var draft = TranscriptEditDraft(text: "First line. Second line.", utterances: source)
+        XCTAssertEqual(draft.editorText, "[00:02]\nFirst line.\n[00:15]\nSecond line.")
+        draft.editorText = "Untimed preface.\n\n[00:02]\nFirst corrected line.\n[00:15]\nSecond line.\nExtra line."
+        XCTAssertEqual(draft.savedUtterances.map(\.start), [nil, 2.3, 15.4])
+        XCTAssertEqual(draft.savedUtterances.map(\.speaker), [nil, 1, 2])
+        XCTAssertEqual(draft.savedUtterances.last?.text, "Second line.\nExtra line.")
+        XCTAssertEqual(TranscriptUtterance.fallbackUtterances(from: draft.editorText).map(\.start), [nil, 2, 15])
+        XCTAssertEqual(draft.matchCount(for: .init(text: "00:02")), 0)
+        XCTAssertFalse(draft.text.contains("[00:02]"))
     }
 
     func testUntimedLegacyTextGetsReadableBreaksWithoutFabricatedTimestamps() {
@@ -62,6 +78,7 @@ final class TranscriptEditingTests: XCTestCase {
         XCTAssertGreaterThan(draft.segments.count, 10)
         XCTAssertTrue(draft.segments.allSatisfy { $0.start == nil && $0.end == nil })
         XCTAssertFalse(draft.hasChanges)
+        XCTAssertEqual(draft.editorText, text)
         draft.segments[0].text += "Corrected."
         XCTAssertTrue(draft.text.contains("\n\n"))
         XCTAssertTrue(draft.savedUtterances.allSatisfy { $0.timestampLabel == nil })

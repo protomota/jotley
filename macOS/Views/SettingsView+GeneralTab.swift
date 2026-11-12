@@ -31,7 +31,7 @@ extension SettingsView {
 
                             SettingsDropdown(title: "Theme Color", selection: $themeManager.currentThemeColor,
                                              options: ThemeColor.allCases, optionTitle: { $0.displayName },
-                                             swatch: { $0.previewColor })
+                                             swatch: { $0.color(in: themeManager.effectiveColorScheme ?? colorScheme) })
                                 .accessibilityIdentifier("settingsThemePicker")
                         }
                     }

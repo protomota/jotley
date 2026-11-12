@@ -450,7 +450,8 @@ extension LocalCoreTests {
         guard ProcessInfo.processInfo.environment["JOTLEY_RUN_MODEL_TESTS"] == "1" else {
             throw XCTSkip("Enable explicitly with a locally generated speech fixture and installed Apple assets.")
         }
-        let audio = try AVAudioFile(forReading: URL(fileURLWithPath: "/tmp/jotley-local-live-speech.aiff"), commonFormat: .pcmFormatFloat32, interleaved: false)
+        let fixture = ProcessInfo.processInfo.environment["JOTLEY_MODEL_AUDIO_FIXTURE"] ?? "/tmp/jotley-local-live-speech.aiff"
+        let audio = try AVAudioFile(forReading: URL(fileURLWithPath: fixture), commonFormat: .pcmFormatFloat32, interleaved: false)
         let probe = LiveResultProbe()
         let session = try await LiveSpeechSession.start(locale: Locale(identifier: "en-US")) { await probe.accept($0) }
         guard let buffer = AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: 2048) else { return XCTFail("Audio buffer unavailable") }
@@ -473,7 +474,14 @@ extension LocalCoreTests {
         let result = try await session.finish()
         XCTAssertTrue(result.text.lowercased().contains("audio source"), result.text)
         XCTAssertTrue(result.text.lowercased().contains("purple bicycle"), "Stop must retain the final spoken words: \(result.text)")
-        XCTAssertFalse(result.utterances.isEmpty)
+        let entries = result.utterances.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        XCTAssertGreaterThanOrEqual(entries.count, 2)
+        XCTAssertTrue(entries.allSatisfy { $0.start.isFinite && $0.start >= 0 && $0.end.isFinite && $0.end > $0.start })
+        XCTAssertGreaterThan(entries.last?.start ?? 0, entries.first?.start ?? 0)
+        let document = TranscriptUtterance.formattedTranscriptText(entries.map {
+            TranscriptUtterance(text: $0.text, start: $0.start, end: $0.end)
+        })
+        print("Speech timestamp proof:\n\(document)")
     }
 }
 

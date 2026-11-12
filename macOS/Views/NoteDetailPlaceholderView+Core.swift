@@ -15,6 +15,8 @@ struct LocalMacTranscriptEditor: View {
     @EnvironmentObject var store: SharedPersistenceController
     @State private var draft: TranscriptEditDraft
     @State private var error: String?
+    @State private var editorHeight: CGFloat = 0
+    @FocusState private var editorFocused: Bool
     var onFinish: () -> Void
 
     init(note: Note, viewModel: NotesListViewModel, onFinish: @escaping () -> Void = {}) {
@@ -32,7 +34,8 @@ struct LocalMacTranscriptEditor: View {
         do {
             guard canSave else { throw LocalError.message("Finish transcription or processing before saving edits.") }
             try note.saveEditedTranscript(draft, in: store)
-            draft = TranscriptEditDraft(text: note.transcription ?? "", utterances: note.storedTranscriptUtterances)
+            draft = TranscriptEditDraft(text: note.transcription ?? "", utterances: note.storedTranscriptUtterances,
+                                        editorText: draft.editorText)
             error = nil
             return true
         } catch {
@@ -57,12 +60,17 @@ struct LocalMacTranscriptEditor: View {
                 .accessibilityIdentifier("transcriptEditorSaveButton")
             }
             TranscriptFindReplace(draft: $draft)
-            if !draft.segments.contains(where: { $0.timestampLabel != nil }) {
+            if !draft.hasTimestamps {
                 Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
             }
-            ForEach($draft.segments) { $segment in
-                LocalMacTranscriptParagraphEditor(segment: $segment)
-            }
+            InlineEditableSummaryTextView(text: $draft.editorText, isFocused: $editorFocused,
+                accentColor: NSColor(Color.themePrimaryAccent), textColor: NSColor(Color.themeTextPrimary),
+                measuredHeight: $editorHeight, fontSize: 15)
+                .frame(maxWidth: .infinity, minHeight: max(editorHeight, 160), alignment: .topLeading)
+                .padding(12)
+                .modifier(JotleyEditorField(isFocused: editorFocused))
+                .accessibilityLabel("Transcript")
+                .accessibilityIdentifier("transcriptEditorText")
             if let error {
                 HStack(alignment: .top) {
                     Text(error).font(.callout).foregroundStyle(.red).accessibilityIdentifier("transcriptEditorError")
@@ -80,7 +88,7 @@ struct LocalMacTranscriptEditor: View {
         .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 12))
         .tint(.themePrimaryAccent).observeThemeChanges()
         .onExitCommand(perform: finish)
-        .task(id: draft.segments) {
+        .task(id: draft.editorText) {
             guard draft.hasChanges else { return }
             do { try await Task.sleep(for: .seconds(2)) } catch { return }
             guard !Task.isCancelled else { return }
@@ -92,28 +100,5 @@ struct LocalMacTranscriptEditor: View {
         .onDisappear {
             if !save(), let error { viewModel.report(LocalError.message(error)) }
         }
-    }
-}
-
-private struct LocalMacTranscriptParagraphEditor: View {
-    @Binding var segment: TranscriptUtterance
-    @State private var height: CGFloat = 0
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let timestamp = segment.timestampLabel {
-                Text(timestamp).font(.caption.monospacedDigit()).foregroundStyle(Color.themeTextSecondary)
-            }
-            InlineEditableSummaryTextView(text: $segment.text, isFocused: $focused,
-                accentColor: NSColor(Color.themePrimaryAccent), textColor: NSColor(Color.themeTextPrimary),
-                measuredHeight: $height, fontSize: 15)
-                .frame(height: max(height, 32), alignment: .topLeading)
-                .accessibilityLabel(segment.timestampLabel.map { "Transcript at \($0)" } ?? "Transcript paragraph")
-                .accessibilityIdentifier("transcriptEditorText")
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(JotleyEditorField(isFocused: focused))
     }
 }

@@ -102,7 +102,7 @@ struct MobileNoteTextEditor: View {
     @State private var text: String
     @State private var transcriptDraft: TranscriptEditDraft
     @State private var error: String?
-    @FocusState private var summaryFocused: Bool
+    @FocusState private var editorFocused: Bool
     private let original: String
     init(note: Note, field: Field) {
         self.note = note
@@ -115,30 +115,20 @@ struct MobileNoteTextEditor: View {
         NavigationStack {
             Group {
                 if field == .transcript {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 16) {
-                            TranscriptFindReplace(draft: $transcriptDraft)
-                            if !transcriptDraft.segments.contains(where: { $0.timestampLabel != nil }) {
-                                Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
-                            }
-                            ForEach($transcriptDraft.segments) { $segment in
-                                MobileTranscriptParagraphEditor(segment: $segment)
-                            }
+                    VStack(alignment: .leading, spacing: 12) {
+                        TranscriptFindReplace(draft: $transcriptDraft)
+                        if !transcriptDraft.hasTimestamps {
+                            Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
                         }
+                        editor(text: $transcriptDraft.editorText)
                     }
                 } else {
-                    TextEditor(text: $text)
-                        .focused($summaryFocused)
-                        .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .modifier(JotleyEditorField(isFocused: summaryFocused))
+                    editor(text: $text)
                 }
             }
                 .font(.body).foregroundStyle(Color.themeTextPrimary)
                 .scrollContentBackground(.hidden).padding()
                 .background(Color.themeBackground)
-                .accessibilityLabel(field.title)
-                .accessibilityIdentifier("\(field.key)EditorText")
                 .navigationTitle("Edit \(field.title)")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -174,36 +164,14 @@ struct MobileNoteTextEditor: View {
         .observeThemeChanges()
         .interactiveDismissDisabled(field == .transcript ? transcriptDraft.hasChanges : text != original)
     }
-}
 
-private struct MobileTranscriptParagraphEditor: View {
-    @Binding var segment: TranscriptUtterance
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let timestamp = segment.timestampLabel {
-                Text(timestamp)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color.themeTextSecondary)
-            }
-            Text(verbatim: segment.text + "\n ")
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity, minHeight: 42, alignment: .topLeading)
-                .hidden()
-                .accessibilityHidden(true)
-                .overlay {
-                    TextEditor(text: $segment.text)
-                        .focused($focused)
-                        .scrollContentBackground(.hidden)
-                        .scrollDisabled(true)
-                        .accessibilityLabel(segment.timestampLabel.map { "Transcript at \($0)" } ?? "Transcript paragraph")
-                        .accessibilityIdentifier("transcriptEditorText")
-                }
-        }
-        .padding(10)
-        .modifier(JotleyEditorField(isFocused: focused))
+    private func editor(text: Binding<String>) -> some View {
+        TextEditor(text: text)
+            .focused($editorFocused)
+            .scrollContentBackground(.hidden)
+            .padding(8)
+            .modifier(JotleyEditorField(isFocused: editorFocused))
+            .accessibilityLabel(field.title)
+            .accessibilityIdentifier("\(field.key)EditorText")
     }
 }

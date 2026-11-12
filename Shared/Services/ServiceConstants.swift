@@ -42,12 +42,79 @@ struct TranscriptUtterance: Codable, Identifiable, Hashable {
     }
 
     static func fallbackUtterances(from transcript: String) -> [TranscriptUtterance] {
+        if transcript.split(whereSeparator: \.isNewline).contains(where: { bracketedTime($0) != nil }) {
+            return parseTranscriptText(transcript)
+        }
         let paragraphs = transcript
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
         return paragraphs.enumerated().map { TranscriptUtterance(id: "plain-\($0.offset)", text: $0.element) }
+    }
+
+    static func formattedTranscriptText(_ utterances: [Self]) -> String {
+        var text = ""
+        for entry in utterances where !entry.isEmpty {
+            if let timestamp = entry.timestampLabel {
+                if !text.isEmpty { text += "\n" }
+                text += "[\(timestamp)]\n"
+            } else if !text.isEmpty {
+                text += "\n\n"
+            }
+            text += entry.text
+        }
+        return text
+    }
+
+    /// Parse bracketed lines as cue boundaries, retaining the original subsecond
+    /// timing and speaker metadata when an existing timestamp survives an edit.
+    static func parseTranscriptText(_ text: String, preserving original: [Self] = []) -> [Self] {
+        let timed = original.compactMap { entry in
+            entry.start.map { ($0.rounded(.down), entry) }
+        }.filter { $0.1.timestampLabel != nil }
+        var anchors = Dictionary(grouping: timed, by: \.0).mapValues { $0.map(\.1)[...] }
+        var rows: [Self] = []
+        var lines: [Substring] = []
+        var start: Double?
+
+        func flush() {
+            let anchor = start.flatMap { anchors[$0]?.popFirst() }
+            if !lines.isEmpty {
+                let paragraph = lines.joined(separator: "\n")
+                if var entry = anchor {
+                    entry.text = paragraph
+                    rows.append(entry)
+                } else {
+                    rows.append(Self(text: paragraph, start: start))
+                }
+            }
+            lines.removeAll(keepingCapacity: true)
+            start = nil
+        }
+
+        for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            if let time = bracketedTime(line) {
+                flush()
+                start = time
+            } else if line.allSatisfy(\.isWhitespace) {
+                flush()
+            } else {
+                lines.append(line)
+            }
+        }
+        flush()
+        return rows
+    }
+
+    private static func bracketedTime(_ line: Substring) -> Double? {
+        guard line.first == "[", line.last == "]" else { return nil }
+        let parts = line.dropFirst().dropLast().split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 2, parts[0].count >= 2, parts[1].count == 2,
+              parts.allSatisfy({ $0.utf8.allSatisfy { (48...57).contains($0) } }),
+              let minutes = Int(parts[0]), let seconds = Int(parts[1]), seconds < 60,
+              minutes <= (Int.max - 59) / 60 else { return nil }
+        return Double(minutes * 60 + seconds)
     }
 
     static func deduplicated(_ utterances: [TranscriptUtterance]) -> [TranscriptUtterance] {
@@ -409,33 +476,68 @@ struct TranscriptEditDraft: Equatable {
     let originalText: String
     let originalUtterances: [TranscriptUtterance]
     private let initialSegments: [TranscriptUtterance]
+    private let initialEditorText: String
+    private var editedText: String?
     var segments: [TranscriptUtterance]
 
-    init(text: String, utterances: [TranscriptUtterance]) {
+    init(text: String, utterances: [TranscriptUtterance], editorText: String? = nil) {
         originalText = text
         originalUtterances = utterances
-        let paragraphs = utterances.isEmpty
-            ? TranscriptUtterance.coalescedForDisplay(TranscriptUtterance.fallbackUtterances(from: text))
-            : TranscriptUtterance.displayParagraphs(utterances)
+        let paragraphs: [TranscriptUtterance]
+        if utterances.isEmpty {
+            let fallback = TranscriptUtterance.fallbackUtterances(from: text)
+            paragraphs = fallback.contains { $0.timestampLabel != nil }
+                ? fallback
+                : TranscriptUtterance.coalescedForDisplay(fallback)
+        } else {
+            paragraphs = utterances
+        }
         segments = paragraphs.isEmpty ? [TranscriptUtterance(id: "empty", text: "")] : paragraphs
         initialSegments = segments
+        initialEditorText = editorText ?? (paragraphs.contains { $0.timestampLabel != nil }
+            ? TranscriptUtterance.formattedTranscriptText(paragraphs)
+            : text)
     }
 
-    var hasChanges: Bool { segments != initialSegments }
-    var text: String { savedUtterances.map(\.text).joined(separator: "\n\n") }
+    var editorText: String {
+        get {
+            editedText ?? (segments == initialSegments ? initialEditorText : TranscriptUtterance.formattedTranscriptText(segments))
+        }
+        set {
+            editedText = newValue
+            segments = TranscriptUtterance.parseTranscriptText(newValue, preserving: initialSegments)
+        }
+    }
+    var hasChanges: Bool { editorText != initialEditorText }
+    var hasTimestamps: Bool { segments.contains { $0.timestampLabel != nil } }
+    var text: String {
+        if !hasTimestamps, let editedText { return editedText }
+        return savedUtterances.map(\.text).joined(separator: "\n\n")
+    }
     func matchCount(for query: TranscriptFindQuery) -> Int {
         guard let pattern = query.pattern else { return 0 }
+        if !hasTimestamps {
+            let text = editorText
+            return pattern.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
+        }
         return segments.reduce(0) { $0 + pattern.numberOfMatches(in: $1.text, range: NSRange($1.text.startIndex..., in: $1.text)) }
     }
 
     mutating func replaceAll(_ query: TranscriptFindQuery, with replacement: String) {
         guard let pattern = query.pattern else { return }
         let literal = NSRegularExpression.escapedTemplate(for: replacement)
+        if !hasTimestamps {
+            let text = editorText
+            editorText = pattern.stringByReplacingMatches(in: text,
+                range: NSRange(text.startIndex..., in: text), withTemplate: literal)
+            return
+        }
         for index in segments.indices {
             let text = segments[index].text
             segments[index].text = pattern.stringByReplacingMatches(in: text,
                 range: NSRange(text.startIndex..., in: text), withTemplate: literal)
         }
+        editedText = TranscriptUtterance.formattedTranscriptText(segments)
     }
     var savedUtterances: [TranscriptUtterance] {
         segments.filter { !$0.isEmpty }.map {

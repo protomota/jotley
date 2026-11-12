@@ -241,10 +241,14 @@ public extension Note {
         let resolved: [TranscriptUtterance]
 
         if !stored.isEmpty {
-            resolved = TranscriptUtterance.displayParagraphs(stored)
+            resolved = stored.contains { $0.timestampLabel != nil }
+                ? stored
+                : TranscriptUtterance.displayParagraphs(stored)
         } else {
             let fallback = TranscriptUtterance.fallbackUtterances(from: transcription ?? "")
-            resolved = TranscriptUtterance.coalescedForDisplay(fallback)
+            resolved = fallback.contains { $0.timestampLabel != nil }
+                ? fallback
+                : TranscriptUtterance.coalescedForDisplay(fallback)
         }
 
         let cached = TranscriptUtterancesCacheBox(resolved, payload: payload, sourceText: sourceText)

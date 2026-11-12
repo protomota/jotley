@@ -9,6 +9,9 @@ struct FolderSidebarView: View {
     @Binding var showingFolderManagement: Bool
     private let rowHeight: CGFloat = 28
     private let rowSpacing: CGFloat = 4
+    private var folderTextColor: Color {
+        Color.shouldUseDarkTheme() ? .white : .themeLightTextPrimary
+    }
 
     @FetchRequest(fetchRequest: {
         // Resolve the entity in the environment's context, including isolated stores.
@@ -95,13 +98,13 @@ struct FolderSidebarView: View {
                     .foregroundColor(Color.themeTextSecondary)
                 Image(systemName: isExpanded ? "folder.fill" : "folder")
                     .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.themePrimaryAccent)
                     .accessibilityHidden(true)
-                Text("FOLDERS")
+                Text("Folders")
                     .font(.system(size: 11, weight: .bold))
-                    .kerning(0.6)
+                    .foregroundStyle(folderTextColor)
                 Spacer()
             }
-            .foregroundStyle(Color.themePrimaryAccent)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
@@ -151,7 +154,7 @@ struct FolderSidebarView: View {
                     .frame(width: 14)
                 Text(folder.displayName)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(Color.themePrimaryAccent)
+                    .foregroundStyle(folderTextColor)
                     .lineLimit(1)
                 Spacer()
                 Text("\(folder.noteCount)")

@@ -486,25 +486,49 @@ private struct MacSupportPreviewRoot: View {
     }
 
     @MainActor private static func verifyTranscriptEditing(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
-        note.transcription = "Original Mac words."
+        let theme = ThemeManager.shared
+        let priorAppearance = theme.currentAppearanceMode
+        let priorColor = theme.currentThemeColor
+        let screenshot = ProcessInfo.processInfo.environment["JOTLEY_TRANSCRIPT_EDITOR_SCREENSHOT"]
+        if screenshot != nil {
+            theme.setAppearanceMode(.dark)
+            theme.setThemeColor(.magenta)
+        }
+        defer {
+            theme.setAppearanceMode(priorAppearance)
+            theme.setThemeColor(priorColor)
+        }
+        note.transcription = "Original Mac words. Another paragraph."
         note.summary = "Preserved summary."
         note.sourceURL = "local://preserved-recording"
-        note.setTranscriptUtterances([TranscriptUtterance(text: "Original Mac words.", start: 1, end: 3)])
+        note.setTranscriptUtterances([
+            TranscriptUtterance(text: "Original Mac words.", start: 1.2, end: 3),
+            TranscriptUtterance(text: "Another paragraph.", start: 7.4, end: 9)
+        ])
         try store.context.save()
         let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note,
             selectedTab: .constant(DetailTab.transcript.rawValue), viewModel: viewModel, isEditingTranscript: true)
-            .environment(\.managedObjectContext, store.context).environmentObject(store))
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 440), styleMask: [.borderless], backing: .buffered, defer: false)
+            .environment(\.managedObjectContext, store.context).environmentObject(store)
+            .preferredColorScheme(theme.effectiveColorScheme))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 560), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = host; window.orderFrontRegardless()
         defer { window.close() }
         try await Task.sleep(for: .milliseconds(250))
         func textViews(_ view: NSView) -> [NSTextView] {
             (view as? NSTextView).map { [$0] } ?? view.subviews.flatMap(textViews)
         }
-        guard let editor = textViews(host).first(where: { $0.isEditable }), editor.string == "Original Mac words." else {
-            throw LocalError.message("Mac transcript editor did not open with editable saved words.")
+        let editors = textViews(host).filter(\.isEditable)
+        guard editors.count == 1, let editor = editors.first,
+              editor.string == "[00:01]\nOriginal Mac words.\n[00:07]\nAnother paragraph." else {
+            throw LocalError.message("Mac transcript must open in one editable field with its saved timestamps.")
         }
-        editor.selectAll(nil); editor.insertText("Corrected Mac words.\n\nAnother paragraph.", replacementRange: editor.selectedRange())
+        if let screenshot,
+           let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: screenshot))
+        }
+        editor.selectAll(nil)
+        editor.insertText("[00:01]\nCorrected Mac words.\n[00:07]\nAnother paragraph.", replacementRange: editor.selectedRange())
         try await Task.sleep(for: .milliseconds(2300))
         guard window.attachedSheet == nil, note.transcription == "Corrected Mac words.\n\nAnother paragraph." else {
             throw LocalError.message("Transcript edits must autosave inline without opening a sheet.")
@@ -524,6 +548,7 @@ private struct MacSupportPreviewRoot: View {
         guard !textViews(host).contains(where: { $0.isEditable }),
               note.transcription == "Corrected Mac words.\n\nAnother paragraph." + addition,
               note.transcriptUtterances.map(\.text) == ["Corrected Mac words.", "Another paragraph." + addition],
+              note.transcriptUtterances.map(\.start) == [1.2, 7.4],
               note.summary == "Preserved summary.", note.sourceURL == "local://preserved-recording" else {
             throw LocalError.message("Mac editor failed to persist corrected words or preserve existing content.")
         }

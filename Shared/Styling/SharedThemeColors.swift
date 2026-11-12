@@ -43,8 +43,8 @@ enum ThemeColor: String, CaseIterable, Codable {
                 : Color(red: 181.0 / 255, green: 75.0 / 255, blue: 0)
         case .magenta:
             return scheme == .dark
-                ? Color(red: 1, green: 139.0 / 255, blue: 200.0 / 255)
-                : Color(red: 188.0 / 255, green: 0, blue: 101.0 / 255)
+                ? Color(red: 236.0 / 255, green: 95.0 / 255, blue: 224.0 / 255)
+                : Color(red: 163.0 / 255, green: 34.0 / 255, blue: 147.0 / 255)
         case .yellow:
             return scheme == .dark
                 ? Color(red: 248.0 / 255, green: 214.0 / 255, blue: 80.0 / 255)
@@ -70,17 +70,6 @@ enum ThemeColor: String, CaseIterable, Codable {
 
     func glassForeground(in scheme: ColorScheme) -> Color {
         usesDarkGlass(in: scheme) ? Color(red: 1, green: 0.89, blue: 0.12) : color(in: scheme)
-    }
-
-    var previewColor: Color {
-        switch self {
-        case .orange: return .orange
-        case .magenta: return Color(red: 1, green: 0, blue: 0.5)
-        case .yellow: return .yellow
-        case .lightBlue: return Color(red: 0.3, green: 0.7, blue: 1)
-        case .neutral: return Color(white: 0.72)
-        case .purple: return color
-        }
     }
 
 }
@@ -403,11 +392,12 @@ struct JotleyEditorField: ViewModifier {
 
     func body(content: Content) -> some View {
         let outline = RoundedRectangle(cornerRadius: 10)
-        let accent = theme.currentThemeColor.color(in: colorScheme)
+        let scheme = theme.effectiveColorScheme ?? colorScheme
+        let accent = theme.currentThemeColor.color(in: scheme)
         content
             .foregroundStyle(Color.themeTextPrimary)
             .tint(accent)
-            .background(colorScheme == .dark ? Color.themeDarkContentBackground : .white, in: outline)
+            .background(scheme == .dark ? Color.themeDarkContentBackground : .white, in: outline)
             .overlay {
                 outline.strokeBorder(isFocused ? accent : Color.themeTextSecondary.opacity(0.34),
                                      lineWidth: isFocused ? 2 : 1)

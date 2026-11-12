@@ -4,6 +4,7 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var themeManager = ThemeManager.shared
     @AppStorage("transcriptionLanguage") private var transcriptionLanguage = "en-US"
     @AppStorage(CustomSpeechWords.defaultsKey) private var customWords = ""
@@ -45,14 +46,17 @@ struct SettingsView: View {
                 Menu {
                     Picker("Theme Color", selection: $themeManager.currentThemeColor) {
                         ForEach(ThemeColor.allCases, id: \.self) { color in
-                            HStack {
-                                Circle().fill(color.previewColor).frame(width: 20, height: 20)
+                            Label {
                                 Text(color.displayName)
-                            }.tag(color)
+                            } icon: {
+                                themeSwatchImage(color)
+                            }
+                            .tag(color)
                         }
                     }
                 } label: {
-                    selectionLabel("Theme Color", value: themeManager.currentThemeColor.displayName)
+                    selectionLabel("Theme Color", value: themeManager.currentThemeColor.displayName,
+                                   swatch: themeManager.currentThemeColor.color(in: swatchScheme))
                 }
                 .accessibilityIdentifier("settingsThemeColorPicker")
                 .onChange(of: themeManager.currentThemeColor) { _, newValue in
@@ -207,10 +211,24 @@ struct SettingsView: View {
     }
     /// Native menu selection stays intact; explicit label colors avoid a stale
     /// selected-value tint when a presented Form changes appearance.
-    private func selectionLabel(_ title: String, value: String) -> some View {
+    private var swatchScheme: ColorScheme { themeManager.effectiveColorScheme ?? colorScheme }
+
+    private func themeSwatchImage(_ color: ThemeColor) -> Image {
+        let size = CGSize(width: 18, height: 18)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            context.cgContext.setFillColor(UIColor(color.color(in: swatchScheme)).cgColor)
+            context.cgContext.fillEllipse(in: CGRect(origin: .zero, size: size))
+        }
+        return Image(uiImage: image.withRenderingMode(.alwaysOriginal)).renderingMode(.original)
+    }
+
+    private func selectionLabel(_ title: String, value: String, swatch: Color? = nil) -> some View {
         HStack {
             Text(title).foregroundStyle(Color.themeTextPrimary)
             Spacer()
+            if let swatch {
+                Circle().fill(swatch).frame(width: 12, height: 12).accessibilityHidden(true)
+            }
             Text(value).foregroundStyle(Color.themeTextSecondary)
             Image(systemName: "chevron.up.chevron.down")
                 .font(.caption2.weight(.semibold)).foregroundStyle(Color.themeTextSecondary)

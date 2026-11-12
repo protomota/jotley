@@ -2301,13 +2301,20 @@ final class Jotley_iOSUITests: XCTestCase {
         }
         openEditor()
         let editor = app.textViews["transcriptEditorText"]
-        editor.tap(); editor.typeText(" Cancelled.")
+        XCTAssertEqual(app.textViews.matching(identifier: "transcriptEditorText").count, 1)
+        XCTAssertTrue((editor.value as? String ?? "").contains("[00:00]\nOriginal words."))
+        editor.tap()
+        editor.typeKey("a", modifierFlags: .command)
+        editor.typeText("[00:00]\nCancelled.")
         app.buttons["transcriptEditorCancelButton"].tap()
         XCTAssertTrue(app.staticTexts["Original words."].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Cancelled.")).firstMatch.exists)
         openEditor()
-        editor.tap(); editor.typeText(" Corrected.\nNew paragraph.")
-        XCTAssertTrue(app.staticTexts["00:00"].exists)
+        editor.tap()
+        editor.typeKey("a", modifierFlags: .command)
+        editor.typeText("[00:00]\nOriginal words. Corrected.\nNew paragraph.")
+        let editedDocument = editor.value as? String ?? ""
+        XCTAssertTrue(editedDocument.contains("[00:00]\n"), editedDocument)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Edit Transcript"; attachment.lifetime = .keepAlways; add(attachment)
         app.buttons["transcriptEditorSaveButton"].tap()
@@ -2315,7 +2322,7 @@ final class Jotley_iOSUITests: XCTestCase {
         openEditor()
         XCTAssertTrue((editor.value as? String ?? "").contains("Corrected."))
         XCTAssertTrue((editor.value as? String ?? "").contains("\nNew paragraph."))
-        XCTAssertTrue(app.staticTexts["00:00"].exists)
+        XCTAssertTrue((editor.value as? String ?? "").contains("[00:00]\n"))
         app.buttons["transcriptEditorCancelButton"].tap()
     }
 

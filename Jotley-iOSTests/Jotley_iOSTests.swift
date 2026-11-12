@@ -846,7 +846,7 @@ extension Jotley_iOSTests {
         #expect(!manager.isTranscribing && !manager.busy && manager.activeNoteID == nil && manager.canStart)
         #expect(session.finishCount == 1 && session.cancelCount == 0)
         #expect(note.transcription == "Final words before Stop.")
-        #expect(manager.audioLevel == 0)
+        #expect(manager.nextWaveformPeak() == 0)
         await session.publish("Late words after Stop")
         #expect(note.transcription == "Final words before Stop.")
         #expect(manager.liveTranscript == "Final words before Stop.")
@@ -992,16 +992,55 @@ extension Jotley_iOSTests {
         #expect(final.map(\.text) == ["First card.", "Second card."])
     }
 
+    @MainActor @Test func newRecordingTimestampsSurviveSavingEditingAndReloading() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = try SharedPersistenceController(root: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let note = try #require(store.create(title: "Timestamp verification") as? Note)
+        let checkpoint = MobileTranscriptCheckpoint(baseText: "", baseUtterances: [], offset: 0)
+        var result = LocalTranscript()
+        result.accept(text: "First spoken line.", start: 0.4, end: 2, final: true)
+        result.accept(text: "Second spoken line.", start: 7.3, end: 9, final: true)
+        try checkpoint.save(result, to: note, in: store)
+
+        let id = note.objectID
+        store.context.reset()
+        let reloaded = try #require(store.context.existingObject(with: id) as? Note)
+        #expect(reloaded.transcriptUtterances.map(\.timestampLabel) == ["00:00", "00:07"])
+        var draft = TranscriptEditDraft(text: reloaded.transcription ?? "", utterances: reloaded.storedTranscriptUtterances)
+        #expect(draft.editorText == "[00:00]\nFirst spoken line.\n[00:07]\nSecond spoken line.")
+        draft.editorText = draft.editorText.replacingOccurrences(of: "Second spoken", with: "Second edited")
+        try reloaded.saveEditedTranscript(draft, in: store)
+
+        store.context.reset()
+        let edited = try #require(store.context.existingObject(with: id) as? Note)
+        #expect(edited.transcriptUtterances.map(\.start) == [0.4, 7.3])
+        #expect(edited.transcriptUtterances.map(\.text) == ["First spoken line.", "Second edited line."])
+    }
+
     @Test func waveformRevealsQuietInputAndRetainsLoudInputHeadroom() {
-        let samples: [Float] = [0, 0.001, 0.005, 0.01, 0.03, 0.1, 0.3, 0.6, 0.9, 1]
+        let samples: [Float] = [0, 0.005, 0.01, 0.03, 0.1, 0.3, 0.6, 0.9, 1]
         let levels = samples.map(LiveWaveformResponse.level)
         #expect(zip(levels, levels.dropFirst()).allSatisfy { $0 < $1 })
-        #expect(LiveWaveformResponse.level(for: 0.01) > 0.09)
+        #expect(LiveWaveformResponse.level(for: 0.001) == LiveWaveformResponse.restingLevel)
+        #expect(LiveWaveformResponse.level(for: 0.01) > 0.17)
+        #expect(LiveWaveformResponse.level(for: 0.1) - LiveWaveformResponse.level(for: 0.01) > 0.3)
         #expect(LiveWaveformResponse.level(for: 0.9) < LiveWaveformResponse.level(for: 1))
         #expect(LiveWaveformResponse.level(for: 1) < 0.93)
         #expect(LiveWaveformResponse.level(for: .nan) == 0.04)
         #expect(LiveWaveformResponse.level(for: -.infinity) == 0.04)
         #expect(LiveWaveformResponse.level(for: -1) == 0.04)
+    }
+
+    @Test func microphoneMeterPreservesPeaksWithinOneTapBuffer() {
+        var samples = [Float](repeating: 0, count: 4_800)
+        samples[799] = -0.02
+        samples[2_399] = 0.3
+        samples[4_799] = -0.06
+        let peaks = samples.withUnsafeBytes {
+            LiveTranscriptionManager.waveformPeaks(in: Data($0), sampleRate: 48_000)
+        }
+        #expect(peaks == [0.02, 0.3, 0.06])
     }
 }
 #endif
@@ -1082,7 +1121,7 @@ extension Jotley_iOSTests {
         view.update(levelProvider: { 0 }, listening: false, paused: false, color: .gray)
         view.layoutIfNeeded()
         #expect(layers.allSatisfy { $0.animationKeys()?.isEmpty != false })
-        #expect(layers.allSatisfy { abs($0.bounds.height - 6) < 0.01 })
+        #expect(layers.allSatisfy { abs($0.bounds.height - 4.8) < 0.01 })
     }
 }
 

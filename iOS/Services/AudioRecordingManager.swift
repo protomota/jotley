@@ -249,7 +249,9 @@ final class LiveTranscriptionManager: ObservableObject {
     @Published private(set) var transcriptionState: TranscriptionState = .idle
     @Published private(set) var busy = false
     @Published private(set) var transcriptionDuration: TimeInterval = 0
-    private(set) var audioLevel: Float = 0
+    nonisolated static let waveformSamplesPerSecond = 30.0
+    private var waveformPeaks: ArraySlice<Float> = []
+    private var lastWaveformPeak: Float = 0
     @Published private(set) var activeNoteID: UUID?
     @Published private(set) var liveTranscript = ""
     @Published private(set) var liveUtterances: [TranscriptUtterance] = []
@@ -466,18 +468,18 @@ final class LiveTranscriptionManager: ObservableObject {
                 self.handleInterruption("The microphone connection changed. Transcription is paused. Tap Resume to reconnect the input, words already transcribed are saved.")
             }
         }
-        // iOS 27's throwing API reports tap setup failures. Its documented buffer
-        // range is 100–400 ms; 2048 frames was only 43 ms on a 48 kHz iPhone.
-        let tapFrames = AVAudioFrameCount(ceil(format.sampleRate * 0.15))
+        // Use the shortest supported tap (100 ms) and meter shorter slices
+        // within each buffer to retain changes between syllables.
+        let tapFrames = AVAudioFrameCount(ceil(format.sampleRate * 0.1))
         try input.installAudioTap(onBus: 0, bufferSize: tapFrames, format: format) { [weak self, weak engine] buffer, _ in
             do {
                 let data = try Self.monoPCM(buffer)
-                let peak = data.withUnsafeBytes { $0.bindMemory(to: Float.self).reduce(Float(0)) { max($0, abs($1)) } }
+                let peaks = Self.waveformPeaks(in: data, sampleRate: format.sampleRate)
                 progress.received(frames: Int(buffer.frameLength))
                 speech.append(data, sampleRate: format.sampleRate)
                 Task { @MainActor [weak self, weak engine] in
                     guard let self, let engine, self.sessionID == token, self.engine === engine, !self.endingSession else { return }
-                    self.audioLevel = peak
+                    self.waveformPeaks = peaks[...]
                 }
             } catch {
                 Task { @MainActor [weak self] in
@@ -488,14 +490,42 @@ final class LiveTranscriptionManager: ObservableObject {
         tapInstalled = true
         engine.prepare(); try engine.start()
     }
+
+    nonisolated static func waveformPeaks(in data: Data, sampleRate: Double) -> [Float] {
+        data.withUnsafeBytes { bytes in
+            let samples = bytes.bindMemory(to: Float.self)
+            guard !samples.isEmpty else { return [] }
+            let windows = max(1, Int((Double(samples.count) * waveformSamplesPerSecond / sampleRate).rounded()))
+            return (0..<windows).map { window in
+                let start = window * samples.count / windows
+                let end = (window + 1) * samples.count / windows
+                return samples[start..<end].reduce(Float(0)) { max($0, abs($1)) }
+            }
+        }
+    }
+
+    func nextWaveformPeak() -> Float {
+        #if DEBUG && targetEnvironment(simulator)
+        if let start = simulatedSegmentStart, !simulatedAudioLevels.isEmpty {
+            let elapsed = max(0, ProcessInfo.processInfo.systemUptime - start)
+            let index = Int(elapsed * Self.waveformSamplesPerSecond) % simulatedAudioLevels.count
+            return simulatedAudioLevels[index]
+        }
+        #endif
+        if let peak = waveformPeaks.popFirst() {
+            lastWaveformPeak = peak
+            return peak
+        }
+        // Fill a brief scheduling gap between buffers, then settle to silence.
+        let peak = lastWaveformPeak
+        lastWaveformPeak = 0
+        return peak
+    }
+
     private func updateCaptureProgress() {
         guard transcriptionState == .listening, let progress = captureProgress, segmentRate > 0 else { return }
         #if DEBUG && targetEnvironment(simulator)
         if simulatedSpeechStart != nil, let start = simulatedSegmentStart {
-            if !simulatedAudioLevels.isEmpty {
-                let index = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * 10) % simulatedAudioLevels.count
-                audioLevel = simulatedAudioLevels[index]
-            }
             let expectedFrames = Int(max(0, ProcessInfo.processInfo.systemUptime - start) * segmentRate)
             let pendingFrames = expectedFrames - Int(progress.snapshot().frames)
             if pendingFrames > 0 { progress.received(frames: pendingFrames) }
@@ -535,7 +565,8 @@ final class LiveTranscriptionManager: ObservableObject {
         if let progress = captureProgress, segmentRate > 0 {
             previousDuration += Double(progress.snapshot().frames) / segmentRate
         }
-        captureProgress = nil; transcriptionDuration = previousDuration; audioLevel = 0
+        captureProgress = nil; transcriptionDuration = previousDuration
+        waveformPeaks = []; lastWaveformPeak = 0
     }
     private func speechFailed(_ error: Error, sessionID token: UUID) {
         guard sessionID == token, !endingSession, !speechHasFailed else { return }

@@ -14,6 +14,7 @@ enum SettingsSection: String, CaseIterable {
     }
 }
 struct SettingsView: View {
+    @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var persistenceController: SharedPersistenceController
     @ObservedObject var themeManager = ThemeManager.shared

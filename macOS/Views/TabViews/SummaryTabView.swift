@@ -161,6 +161,7 @@ struct SummaryTabView: View {
                                     .frame(maxWidth: .infinity, alignment: .topLeading)
                             }
                             }
+                            .modifier(JotleyEditorField(isFocused: isSummaryEditorFocused))
                         }
                     } else {
                         if !hasSummaryTextToRender {
