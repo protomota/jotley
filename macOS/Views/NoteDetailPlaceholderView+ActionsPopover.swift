@@ -264,6 +264,8 @@ extension NoteDetailPlaceholderView {
                             parent.templatePresentation = create ? .create : .manage
                         }
                     )
+                    // The overlay only offers the shorter main menu's height; without this the rows are squeezed.
+                    .fixedSize(horizontal: false, vertical: true)
                     .offset(
                         x: -(templateSubmenuWidth + submenuGap),
                         y: max(0, templateMenuFrame.minY - 8)
