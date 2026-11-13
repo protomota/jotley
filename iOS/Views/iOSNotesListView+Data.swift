@@ -133,9 +133,9 @@ extension NotesListView {
         if date == .distantFuture { return "" }
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
-            return "Today"
+            return String(localized: "Today")
         } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            return String(localized: "Yesterday")
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = "E, MMM d"

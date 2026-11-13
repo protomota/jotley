@@ -15,7 +15,6 @@ struct LocalMacTranscriptEditor: View {
     @EnvironmentObject var store: SharedPersistenceController
     @State private var draft: TranscriptEditDraft
     @State private var error: String?
-    @State private var editorHeight: CGFloat = 0
     @FocusState private var editorFocused: Bool
     var onFinish: () -> Void
 
@@ -65,8 +64,9 @@ struct LocalMacTranscriptEditor: View {
             }
             InlineEditableSummaryTextView(text: $draft.editorText, isFocused: $editorFocused,
                 accentColor: NSColor(Color.themePrimaryAccent), textColor: NSColor(Color.themeTextPrimary),
-                measuredHeight: $editorHeight, fontSize: 15)
-                .frame(maxWidth: .infinity, minHeight: max(editorHeight, 160), alignment: .topLeading)
+                fontSize: 15)
+                .clipped()
+                .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
                 .padding(12)
                 .modifier(JotleyEditorField(isFocused: editorFocused))
                 .accessibilityLabel("Transcript")

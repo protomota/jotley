@@ -114,10 +114,10 @@ final class TipJarStore: ObservableObject {
                   productIDs.contains(transaction.productID) else { continue }
             do {
                 guard try await Purchases.shared.recordPurchase(.success(verification)) != nil else { continue }
-                await transaction.finish()
                 JotleySupporterStore.shared.recordVerifiedPurchase(id: String(transaction.id), kind: .tip)
                 hasTipped = true; hasSupportedDevelopment = true
                 preferences.set(true, forKey: Self.supportKey)
+                await transaction.finish()
             } catch {
                 message = "A previous tip is waiting for confirmation. Please try again later."
             }
@@ -158,15 +158,15 @@ final class TipJarStore: ObservableObject {
                     message = "Your tip is waiting for confirmation. Please try again later."
                     return
                 }
-                await transaction.finish()
                 JotleySupporterStore.shared.recordVerifiedPurchase(id: String(transaction.id), kind: .tip)
+                hasTipped = true
+                hasSupportedDevelopment = true
+                preferences.set(true, forKey: Self.supportKey)
+                await transaction.finish()
             @unknown default:
                 message = "Apple could not confirm this tip. Please try again later."
                 return
             }
-            hasTipped = true
-            hasSupportedDevelopment = true
-            preferences.set(true, forKey: Self.supportKey)
             message = nil
         } catch {
             let failure = TipPurchaseFailure(error)
@@ -180,10 +180,13 @@ struct TipJarView: View {
     let appName: String
     let productPrefix: String
     let privacyURL: URL
-    var accent: Color = .purple
     var onTipCompleted: () -> Void = {}
     @StateObject private var store = TipJarStore()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var previewCelebration: JotleySupporterStore.Celebration?
+
+    private var accent: Color { ThemeManager.shared.currentThemeColor.color(in: colorScheme) }
     private var productIDs: [String] {
         ["small", "medium", "large"].map { productPrefix + "." + $0 }
     }
@@ -193,12 +196,12 @@ struct TipJarView: View {
     }
 
     private var successConfirmation: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 10) {
+            JotleySupporterEmblem()
+            Text("Jotley Supporter")
+                .font(.subheadline.weight(.semibold))
+                .accessibilityIdentifier("jotleySupporterBadge")
+            VStack(spacing: 5) {
                 Text(showsCurrentSuccess ? "Tip completed" : "Thank you for your support")
                     .font(.title3.bold())
                     .accessibilityIdentifier("tipJarSuccessTitle")
@@ -206,14 +209,14 @@ struct TipJarView: View {
                      ? "Thank you for supporting development. You’re all set—no further action is needed."
                      : "Your previous tip was received. You can leave another tip whenever you’d like.")
                     .font(.callout)
+                    .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("tipJarSuccessDetail")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(accent.opacity(0.3)))
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tipJarSuccess")
     }
@@ -229,46 +232,22 @@ struct TipJarView: View {
                     .disabled(store.purchasingID != nil)
                     .accessibilityIdentifier("tipJarDone")
             }
-            if store.hasSupportedDevelopment {
-                successConfirmation
-            }
-            JotleySupporterBadge()
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
+                    if store.hasSupportedDevelopment {
+                        successConfirmation
+                    } else {
+                        JotleySupporterBadge()
+                    }
                     if store.hasSupportedDevelopment {
                         Text("Leave another tip (optional)")
                             .font(.headline)
                     } else {
-                        Text("Leave an optional, one-time tip to support continued development. All note-taking features are free. Personal technical support is a separate optional paid purchase.")
+                        Text("Leave an optional, one-time tip to support continued development. All note-taking features are free.")
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    if store.isLoading {
-                        ProgressView("Loading tips…")
-                    }
-                    ForEach(store.products, id: \.productIdentifier) { product in
-                        Button {
-                            Task { await store.purchase(product) }
-                        } label: {
-                            HStack(spacing: 16) {
-                                Text(product.localizedTitle)
-                                Spacer()
-                                if store.purchasingID == product.productIdentifier {
-                                    ProgressView()
-                                } else {
-                                    Text(product.localizedPriceString).fontWeight(.semibold)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
-                            .contentShape(RoundedRectangle(cornerRadius: 14))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(store.purchasingID != nil)
-                        .accessibilityIdentifier("tipJarProduct-" + product.productIdentifier)
-                    }
+                    tipChoices
                     if let message = store.message {
                         Text(message)
                             .fixedSize(horizontal: false, vertical: true)
@@ -296,12 +275,79 @@ struct TipJarView: View {
         }
         .padding(24)
         .frame(idealWidth: 440, maxWidth: 560)
+        #if os(iOS)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        #else
         .frame(idealHeight: 540, maxHeight: 650)
+        #endif
         .tint(accent)
-        .jotleySupporterCelebration(.tip)
+        .jotleySupporterCelebration(.tip, previewEvent: previewCelebration)
         .interactiveDismissDisabled(store.purchasingID != nil)
-        .task { await store.load(productIDs: productIDs) }
-        .onDisappear { if store.hasTipped { onTipCompleted() } }
+        .task {
+            #if DEBUG && targetEnvironment(simulator)
+            if ProcessInfo.processInfo.environment["JOTLEY_TIP_DESIGN_PREVIEW"] != nil {
+                if store.hasTipped { previewCelebration = .init(kind: .tip) }
+                return
+            }
+            #endif
+            await store.load(productIDs: productIDs)
+        }
+        .onChange(of: store.hasTipped) { _, completed in if completed { onTipCompleted() } }
+    }
+
+    @ViewBuilder private var tipChoices: some View {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["JOTLEY_TIP_DESIGN_PREVIEW"] != nil {
+            ForEach(0..<3) { index in
+                tipLabel(["Small Tip", "Medium Tip", "Large Tip"][index],
+                         price: ["$0.99", "$2.99", "$5.99"][index])
+            }
+        } else {
+            storeTipChoices
+        }
+        #else
+        storeTipChoices
+        #endif
+    }
+
+    @ViewBuilder private var storeTipChoices: some View {
+        if store.isLoading { ProgressView("Loading tips…") }
+        ForEach(store.products, id: \.productIdentifier) { product in
+            Button {
+                Task { await store.purchase(product) }
+            } label: {
+                tipLabel(product.localizedTitle, price: product.localizedPriceString,
+                         purchasing: store.purchasingID == product.productIdentifier)
+            }
+            .buttonStyle(.plain)
+            .disabled(store.purchasingID != nil)
+            .accessibilityIdentifier("tipJarProduct-" + product.productIdentifier)
+        }
+    }
+
+    private func tipLabel(_ title: String, price: String, purchasing: Bool = false) -> some View {
+        HStack(spacing: 16) {
+            Text(title).fontWeight(.medium)
+            Spacer(minLength: 0)
+            if purchasing { ProgressView() } else { Text(price).monospacedDigit().fontWeight(.semibold) }
+        }
+        .modifier(TipRowSurface(accent: accent))
+    }
+}
+
+private struct TipRowSurface: ViewModifier {
+    let accent: Color
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14)
+        content
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
+            .background(.background.secondary, in: shape)
+            .overlay(shape.strokeBorder(accent, lineWidth: 1))
+            .contentShape(shape)
     }
 }
 

@@ -20,8 +20,14 @@ struct JotleySupportTicketsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
     @State private var nonce = ""
-    @State private var showingRequest = false
+    private enum RequestPresentation: String, Identifiable {
+        case purchased, existing
+        var id: Self { self }
+    }
+    @State private var requestPresentation: RequestPresentation?
     @State private var confirmingDeletion = false
+    @State private var submittedTicketID: String?
+    @State private var ticketToDelete: JotleySupportTicket?
     var body: some View {
         NavigationStack {
             Group {
@@ -57,15 +63,32 @@ struct JotleySupportTicketsView: View {
         .frame(minWidth: 760, idealWidth: 840, minHeight: 650)
         .onDisappear { store.cancelBrowserSignIn() }
         #endif
-        .sheet(isPresented: $showingRequest) { newRequest }
+        .sheet(item: $requestPresentation, onDismiss: { store.requestUnlocked = false }) { presentation in
+            newRequest(showCelebration: presentation == .purchased)
+        }
         .confirmationDialog("Delete your support account?", isPresented: $confirmingDeletion, titleVisibility: .visible) {
             Button("Delete Support Account", role: .destructive) { Task { await store.deleteAccount() } }
             Button("Keep My Account", role: .cancel) { }
         } message: {
             Text("This permanently deletes your support profile, tickets and conversations. Unused tickets will no longer be available. Your local notes stay on your device. Deletion does not request a refund; unlinked transaction references are retained to reconcile purchases and prevent reuse.")
         }
-        .onChange(of: store.requestUnlocked) { _, unlocked in if unlocked { showingRequest = true } }
-        .onChange(of: store.selectedTicketID) { _, id in if id != nil { showingRequest = false } }
+        .alert("Delete this conversation?", isPresented: Binding(
+            get: { ticketToDelete != nil },
+            set: { if !$0 { ticketToDelete = nil } }
+        ), presenting: ticketToDelete) { ticket in
+            Button("Delete conversation", role: .destructive) { Task { await store.deleteConversation(ticket) } }
+                .accessibilityIdentifier("supportConfirmDeleteConversation")
+            Button("Cancel", role: .cancel) { }
+        } message: { ticket in
+            Text("“\(ticket.subject)” and its messages will be permanently deleted. Your other tickets will stay in your history. This does not refund or restore the purchase.")
+        }
+        .onChange(of: store.requestUnlocked) { _, unlocked in
+            if unlocked { requestPresentation = .purchased }
+        }
+        .onChange(of: store.selectedTicketID) { _, id in
+            if id != nil && requestPresentation != nil { submittedTicketID = id }
+            if id != nil { requestPresentation = nil }
+        }
         .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in store.signOut() }
         .task {
             await store.load()
@@ -81,8 +104,11 @@ struct JotleySupportTicketsView: View {
                 Label("Personal help from a real person", systemImage: "person.bubble.left.and.bubble.right")
                     .font(.headline)
                 JotleySupporterBadge()
-                Text("Get help with one Jotley issue, including MCP setup. Each ticket has its own private conversation with Brad, the person behind Jotley.")
-                Text("One-time purchase. Follow-up replies stay in the same ticket.").font(.callout).foregroundStyle(.secondary)
+                Text("Get help with one Jotley issue, including MCP setup. Each ticket opens a private conversation with Jotley Support.")
+                if let price = store.ticketPrice {
+                    Text("\(price) per ticket · One-time purchase").font(.callout.weight(.semibold))
+                }
+                Text("Follow-up replies stay in the same ticket.").font(.callout).foregroundStyle(.secondary)
             }
             if let account = store.account {
                 Section("Your Apple account") {
@@ -95,13 +121,23 @@ struct JotleySupportTicketsView: View {
                 }
                 Section("Open a support request") {
                     if !store.unusedPurchases.isEmpty {
-                        Button("Write your support request") { showingRequest = true }
+                        Button("Write your support request") { requestPresentation = .existing }
                             .accessibilityIdentifier("supportWriteRequest")
                         Text("You have a purchased ticket available.").font(.caption).foregroundStyle(.secondary)
                     } else if JotleySupportStore.usesAppStore {
-                        Button(store.product.map { "Buy one ticket · \($0.displayPrice)" } ?? "Support purchase unavailable") {
+                        Button(store.ticketPrice.map { "Buy one ticket · \($0)" } ?? "Support purchase unavailable") {
+                            #if DEBUG && targetEnvironment(simulator)
+                            if store.isDesignPreview { store.previewPurchasedTicket(); return }
+                            #endif
                             Task { await store.buyAppStoreTicket() }
-                        }.disabled(!store.canBuy).accessibilityIdentifier("supportBuyAppStoreTicket")
+                        }
+                        .buttonStyle(JotleyGlassButtonStyle())
+                        .disabled(!canBuyTicket)
+                        .accessibilityIdentifier("supportBuyAppStoreTicket")
+                        if store.ticketPrice == nil && !store.busy {
+                            Text("The App Store didn’t return a price. Tap Refresh to check again.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     } else {
                         Button("Buy one ticket · $9.99") {
                             Task { if let url = await store.macCheckout() { openURL(url) } }
@@ -172,7 +208,16 @@ struct JotleySupportTicketsView: View {
                 Text("After deleting your support account, open Apple Account → Sign-In and Security → Sign in with Apple → Jotley → Stop Using Sign in with Apple to remove Apple’s authorization too.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }.formStyle(.grouped)
+        }
+        .formStyle(.grouped)
+        .accessibilityIdentifier("supportAccountForm")
+    }
+
+    private var canBuyTicket: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if store.isDesignPreview { return true }
+        #endif
+        return store.canBuy
     }
     private func status(_ value: String) -> String {
         switch value {
@@ -185,12 +230,35 @@ struct JotleySupportTicketsView: View {
     private func conversation(_ ticket: JotleySupportTicket) -> some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                Button("All tickets", systemImage: "chevron.left") { store.selectedTicketID = nil }
+                HStack {
+                    Button("All tickets", systemImage: "chevron.left") { store.selectedTicketID = nil }
+                        .accessibilityIdentifier("supportAllTickets")
+                    Spacer()
+                    Menu {
+                        if ticket.status != "resolved" {
+                            Button("Mark as resolved", systemImage: "checkmark.circle") {
+                                Task { await store.resolveTicket(ticket) }
+                            }
+                        }
+                        Button("Delete conversation…", systemImage: "trash", role: .destructive) { ticketToDelete = ticket }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").font(.title3)
+                    }
+                    .accessibilityLabel("Ticket actions")
+                    .accessibilityIdentifier("supportTicketActions")
+                    .disabled(store.busy)
+                }
                 Text(ticket.subject).font(.title3.bold())
                 Text("\(ticket.reference) · \(status(ticket.status))").font(.caption).foregroundStyle(.secondary)
-                Label("Private conversation with Brad · Jotley Support", systemImage: "person.fill")
+                Label("Private conversation with Jotley Support", systemImage: "person.fill")
                     .font(.caption).foregroundStyle(.secondary)
             }.frame(maxWidth: .infinity, alignment: .leading).padding()
+            if submittedTicketID == ticket.id {
+                Label("Your request was sent to Protomota. Check this ticket or your Apple account email for confirmation.",
+                      systemImage: "checkmark.circle")
+                    .font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding()
+                    .accessibilityIdentifier("supportRequestSent")
+            }
             Divider()
             ScrollViewReader { proxy in
                 ScrollView {
@@ -200,12 +268,12 @@ struct JotleySupportTicketsView: View {
                         }
                         ForEach(store.messages) { message in
                             VStack(alignment: .leading, spacing: 7) {
-                                Text(message.senderRole == "support" ? "Brad · Jotley" : "You").font(.caption.bold())
+                                Text(message.senderRole == "support" ? "Jotley Support" : "You").font(.caption.bold())
                                 Text(message.body).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(14)
-                            .background(Color.themePrimaryAccent.opacity(message.senderRole == "support" ? 0.12 : 0.055), in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.themePrimaryAccent.opacity(message.senderRole == "support" ? 0.3 : 0.1)))
+                            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.themePrimaryAccent.opacity(message.senderRole == "support" ? 0.45 : 0.25)))
                             .frame(maxWidth: .infinity, alignment: message.senderRole == "support" ? .leading : .trailing)
                             .id(message.id)
                         }
@@ -214,7 +282,20 @@ struct JotleySupportTicketsView: View {
                 .onChange(of: store.messages.last?.id) { _, id in if let id { withAnimation { proxy.scrollTo(id, anchor: .bottom) } } }
             }
             Divider()
-            VStack(alignment: .leading, spacing: 10) {
+            if ticket.status == "resolved" {
+                Label("This ticket is resolved. You can still read the conversation.", systemImage: "checkmark.circle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .accessibilityIdentifier("supportResolvedTicket")
+            } else {
+                replyComposer(ticket)
+            }
+        }
+    }
+    private func replyComposer(_ ticket: JotleySupportTicket) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
                 Text("Reply in this ticket").font(.caption).foregroundStyle(.secondary)
                 TextEditor(text: Binding(get: { store.replyDrafts[ticket.id] ?? "" }, set: { store.replyDrafts[ticket.id] = String($0.prefix(10000)) }))
                     .frame(minHeight: 70, maxHeight: 110).padding(6)
@@ -228,17 +309,23 @@ struct JotleySupportTicketsView: View {
                         .disabled(store.busy || (store.replyDrafts[ticket.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ticket.purchase.status != "paid")
                         .accessibilityIdentifier("supportSendReply")
                 }
-            }.padding()
-        }
+        }.padding()
     }
     @State private var subject = ""
     @State private var topic = "MCP setup"
     @State private var requestBody = ""
-    private var newRequest: some View {
+    private func newRequest(showCelebration: Bool) -> some View {
         NavigationStack {
             Form {
+                if showCelebration {
+                    Section { SupportTicketReadyHeader() }
+                }
                 Section {
-                    if let email = store.account?.user.email { LabeledContent("Apple contact email", value: email).textSelection(.enabled) }
+                    if let email = store.account?.user.email {
+                        LabeledContent("Apple contact email", value: email)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("supportAppleContact")
+                    }
                     Text("One ticket covers one Jotley issue and its follow-up conversation.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Your request") {
@@ -252,6 +339,9 @@ struct JotleySupportTicketsView: View {
                     Text("Describe what you tried and what happened. Your device and Jotley version help too. Notes and transcripts are never attached automatically.")
                         .font(.caption).foregroundStyle(.secondary)
                     Button("Send support request") {
+                        #if DEBUG && targetEnvironment(simulator)
+                        if store.isDesignPreview { store.previewSubmittedRequest(subject: subject, topic: topic, body: requestBody); return }
+                        #endif
                         Task { await store.openRequest(subject: subject, topic: topic, message: requestBody) }
                     }
                     .disabled(store.busy || store.unusedPurchases.isEmpty || subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || requestBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -260,17 +350,44 @@ struct JotleySupportTicketsView: View {
                 if let notice = store.notice { Text(notice).font(.callout).foregroundStyle(.secondary) }
             }
             .formStyle(.grouped).navigationTitle("New support request")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showingRequest = false; store.requestUnlocked = false }
+                    Button("Cancel") { requestPresentation = nil }
                         .jotleyDismissButtonStyle(inToolbar: true)
                 }
                 .sharedBackgroundVisibility(.hidden)
             }
         }
-        .jotleySupporterCelebration(.support)
         #if os(macOS)
         .frame(width: 600, height: 620)
         #endif
+    }
+}
+
+private struct SupportTicketReadyHeader: View {
+    @State private var revealID: UUID?
+
+    var body: some View {
+        VStack(spacing: 10) {
+            JotleySupporterEmblem(animationID: revealID)
+            Text("Your support ticket is ready").font(.title3.bold())
+                .accessibilityIdentifier("supportTicketReady")
+            Text("Send your request below. We’ll email confirmation to your Apple account address.")
+                .font(.callout).foregroundStyle(.secondary)
+            Text("Jotley Supporter")
+                .font(.caption.weight(.semibold))
+                .accessibilityIdentifier("supportTicketBadge")
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .task {
+            guard revealID == nil else { return }
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            revealID = UUID()
+        }
     }
 }

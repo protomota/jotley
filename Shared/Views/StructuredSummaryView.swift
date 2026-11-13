@@ -723,7 +723,8 @@ struct NoteContentSwitch: View {
                 Button { selection = tab } label: {
                     HStack(spacing: 5) {
                         if tab == "Summary" && summaryIsGenerating { ProgressView().controlSize(.mini) }
-                        Text(tab).font(.subheadline.weight(selection == tab ? .semibold : .medium)).lineLimit(1)
+                        Text(tab == "Summary" ? LocalizedStringKey("Summary") : LocalizedStringKey("Transcript"))
+                            .font(.subheadline.weight(selection == tab ? .semibold : .medium)).lineLimit(1)
                     }
                     .foregroundStyle(Color.themeTextPrimary)
                     .padding(.horizontal, 16).padding(.vertical, 7)

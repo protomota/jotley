@@ -4,14 +4,17 @@ import CoreData
 /// Collapsible folder list that lives at the top of the notes sidebar.
 /// Selecting a folder scopes the notes list via `FilterAndSortState`.
 struct FolderSidebarView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var theme = ThemeManager.shared
     @ObservedObject var filterState: FilterAndSortState
     @Binding var isExpanded: Bool
     @Binding var showingFolderManagement: Bool
     private let rowHeight: CGFloat = 28
     private let rowSpacing: CGFloat = 4
     private var folderTextColor: Color {
-        Color.shouldUseDarkTheme() ? .white : .themeLightTextPrimary
+        colorScheme == .dark ? .white : .black
     }
+    private var folderIconColor: Color { theme.currentThemeColor.color(in: colorScheme) }
 
     @FetchRequest(fetchRequest: {
         // Resolve the entity in the environment's context, including isolated stores.
@@ -31,13 +34,13 @@ struct FolderSidebarView: View {
             if isExpanded {
                 VStack(alignment: .leading, spacing: rowSpacing) {
                     row(
-                        title: "All Notes",
+                        title: String(localized: "All Notes"),
                         systemImage: "tray.full",
                         isSelected: filterState.selectedFolder == .all,
                         action: { filterState.selectedFolder = .all }
                     )
                     row(
-                        title: "Unfiled",
+                        title: String(localized: "Unfiled"),
                         systemImage: "tray",
                         isSelected: filterState.selectedFolder == .unfiled,
                         action: { filterState.selectedFolder = .unfiled }
@@ -61,8 +64,8 @@ struct FolderSidebarView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "folder.badge.plus")
                                 .font(.system(size: 11))
-                                .foregroundStyle(Color.themePrimaryAccent)
-                            Text("Manage Folders…")
+                                .foregroundStyle(folderIconColor)
+                            Text("Manage Folders")
                                 .font(.system(size: 12))
                             Spacer()
                         }
@@ -98,11 +101,12 @@ struct FolderSidebarView: View {
                     .foregroundColor(Color.themeTextSecondary)
                 Image(systemName: isExpanded ? "folder.fill" : "folder")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.themePrimaryAccent)
+                    .foregroundStyle(folderIconColor)
                     .accessibilityHidden(true)
                 Text("Folders")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(folderTextColor)
+                    .textCase(nil)
                 Spacer()
             }
             .padding(.vertical, 6)
@@ -150,7 +154,7 @@ struct FolderSidebarView: View {
             HStack(spacing: 8) {
                 Image(systemName: isSelected ? "folder.fill" : "folder")
                     .font(.system(size: 11))
-                    .foregroundColor(Color.themePrimaryAccent)
+                    .foregroundStyle(folderIconColor)
                     .frame(width: 14)
                 Text(folder.displayName)
                     .font(.system(size: 12, weight: isSelected ? .semibold : .regular))

@@ -15,7 +15,6 @@ struct SummaryTabView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var inlineEditRequested = false
     @State private var previousRawMarkdownMode = false
-    @State private var inlineEditorHeight: CGFloat = ContentLayoutConstants.standardMinHeight
 
     // Optional callback for generating summary
     private let compactContentPadding = EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
@@ -133,13 +132,13 @@ struct SummaryTabView: View {
                                     text: $editableSummary,
                                     isFocused: $isSummaryEditorFocused,
                                     accentColor: NSColor(themeManager.currentThemeColor.color),
-                                    textColor: NSColor(Color.themeTextPrimary),
-                                    measuredHeight: $inlineEditorHeight
+                                    textColor: NSColor(Color.themeTextPrimary)
                                 )
+                                .clipped()
                                 .padding(compactContentPadding)
                                 .frame(
                                     maxWidth: .infinity,
-                                    minHeight: max(inlineEditorHeight, ContentLayoutConstants.standardMinHeight),
+                                    minHeight: ContentLayoutConstants.standardMinHeight,
                                     alignment: .topLeading
                                 )
                                 .onAppear {

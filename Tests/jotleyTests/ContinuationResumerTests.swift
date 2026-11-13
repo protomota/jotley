@@ -63,7 +63,7 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: "", summary: "", library: library), [])
     }
 
-    @MainActor func testAutoFilingReusesNamedProjectsAndReservesGeneralAtTheCap() throws {
+    @MainActor func testAutoFilingReusesNamedProjectsAndReservesMiscAtTheCap() throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }
         let first = try store.create(title: "Jotley review", text: "The Jotley project is ready.")
@@ -85,7 +85,7 @@ final class LocalCoreTests: XCTestCase {
         let third = try store.create(title: "Another project", text: "OpenTalon project kickoff.")
         try store.saveNoteChanges(third, values: [:], replacingTags: nil, autoFolder: .work,
                                   projectName: "OpenTalon", filingSource: "OpenTalon project kickoff.")
-        XCTAssertEqual((third.value(forKey: "folder") as? NSManagedObject)?.text("name"), "General")
+        XCTAssertEqual((third.value(forKey: "folder") as? NSManagedObject)?.text("name"), "Misc")
         let fourth = try store.create(title: "Course", text: "Lecture notes")
         try store.saveNoteChanges(fourth, values: [:], replacingTags: nil, autoFolder: .study,
                                   projectName: "Invented project", filingSource: "Lecture notes")

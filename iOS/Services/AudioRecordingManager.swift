@@ -278,6 +278,7 @@ final class LiveTranscriptionManager: ObservableObject {
     var simulatedAudioLevels: [Float] = []
     private var simulatedSegmentStart: TimeInterval?
     var simulatedSummaryGeneration: (@MainActor (@escaping @Sendable (String) async -> Void) async throws -> String)?
+    var simulatedTitleGeneration: (@MainActor (String) async throws -> String)?
     var simulatedOrganization: (@MainActor (String, [LocalTagCandidate]) async throws -> LocalNoteOrganization)?
     #endif
     private var sessionID: UUID?
@@ -762,28 +763,47 @@ final class LiveTranscriptionManager: ObservableObject {
                         try self.persistSummaryJob(next)
                     }
                 }
-                let result: String
-                if let savedResult = job.checkpoint.result { result = savedResult }
+                let modelResult: String
+                if let savedResult = job.checkpoint.result { modelResult = savedResult }
                 else {
                     #if DEBUG && targetEnvironment(simulator)
-                    if let simulatedSummaryGeneration { result = try await simulatedSummaryGeneration(update) }
-                    else { result = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
+                    if let simulatedSummaryGeneration { modelResult = try await simulatedSummaryGeneration(update) }
+                    else { modelResult = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
                         resuming: job.checkpoint, checkpoint: checkpoint, progress: progress, snapshot: update) }
                     #else
-                    result = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
+                    modelResult = try await LocalSummary.generate(job.checkpoint.input, template: template, locale: locale,
                         resuming: job.checkpoint, checkpoint: checkpoint, progress: progress, snapshot: update)
                     #endif
+                }
+                let result: String
+                if LocalSummary.firstContentLine(in: modelResult) != nil { result = modelResult }
+                else if let transcriptLine = LocalSummary.firstContentLine(in: job.checkpoint.input) {
+                    // A short recording can produce a heading with no summary body.
+                    result = transcriptLine
+                } else {
+                    throw LocalError.message("The model returned no summary. Your current note was preserved.")
                 }
                 // Keep the completed model result before the separate title call.
                 var finishedJob = self.pendingSummaryJob ?? job; finishedJob.checkpoint.result = result
                 try self.persistSummaryJob(finishedJob)
                 var generatedTitle: String?
-                var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
                     self.summaryProgress = .finishing; runtime.update(.finishing)
-                    do { generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale) }
-                    catch is CancellationError { throw CancellationError() }
-                    catch { titleError = error }
+                    do {
+                        #if DEBUG && targetEnvironment(simulator)
+                        if let simulatedTitleGeneration {
+                            generatedTitle = LocalSummary.descriptiveTitle(try await simulatedTitleGeneration(result))
+                        } else { generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale) }
+                        #else
+                        generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale)
+                        #endif
+                    } catch {
+                        try Task.checkCancellation()
+                        if error is CancellationError { throw error }
+                    }
+                    if generatedTitle == nil {
+                        generatedTitle = LocalSummary.fallbackTitle(transcript: job.checkpoint.input, summary: result)
+                    }
                 }
                 let autoTags = LocalNoteOrganizationSettings.autoTags()
                 let autoFolder = canFileNote && note.folder == nil && LocalNoteOrganizationSettings.autoFolders()
@@ -821,8 +841,6 @@ final class LiveTranscriptionManager: ObservableObject {
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }
-                if !warnings.isEmpty { self.errorMessage = "Summary saved. " + warnings.joined(separator: " ") }
             } catch is CancellationError {
                 if !self.summaryPausedBySystem { self.removeSummaryJob() }
             } catch {

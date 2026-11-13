@@ -100,4 +100,4 @@ The original code and artwork are © 2026 Protomota, LLC and use the [Jotley Sou
 
 If Jotley helps you, a **rating and review** on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) helps other people find it. Sharing the app and sending feedback help us improve it. [Optional tips](https://jotley.ai/tips) support development. All note-taking features stay free; personal technical support is a separate optional paid service.
 
-[Website](https://jotley.ai) · [Support](mailto:jotly-support@protomota.com) · [Licensing](mailto:jotly-legal@protomota.com)
+[Website](https://jotley.ai) · [Send feedback](https://protomota.com/apps?app=jotley#feedback) · [Licensing](mailto:jotly-legal@protomota.com)

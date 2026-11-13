@@ -8,12 +8,52 @@ import FoundationModels
         if CommandLine.arguments.contains("--mcp-stdio") {
             await JotleyMCPStdioBridge.run()
         } else {
+            #if DEBUG
+            if let fixture = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_DATA"] {
+                do {
+                    LocalAppModel.isolatedStoreForTesting = try screenshotLibrary(fixture)
+                } catch {
+                    fatalError("Could not create the isolated screenshot library: \(error)")
+                }
+            }
+            #endif
             JotleyApp.main()
         }
     }
+
+    #if DEBUG
+    @MainActor private static func screenshotLibrary(_ fixture: String) throws -> SharedPersistenceController {
+        struct Sample: Decodable {
+            let title: String
+            let folder: String
+            let tags: [String]
+            let transcript: String
+            let summary: String
+        }
+        let samples = try JSONDecoder().decode([Sample].self, from: Data(fixture.utf8))
+        let store = try SharedPersistenceController(inMemory: true)
+        for (index, sample) in samples.enumerated() {
+            guard let note = try store.create(title: sample.title, text: sample.transcript, noteType: "voice") as? Note
+            else { throw LocalError.message("Could not create a screenshot note.") }
+            note.timestamp = Date().addingTimeInterval(Double(-index * 3_600))
+            note.summary = sample.summary
+            if !sample.folder.isEmpty {
+                note.folder = Folder.getOrCreate(named: sample.folder, in: store.context)
+            }
+            for tag in sample.tags { try note.addTagByName(tag, in: store.context) }
+            let utterances = sample.transcript.components(separatedBy: "\n\n").enumerated().map { index, text in
+                TranscriptUtterance(text: text, start: Double(index * 25), end: Double((index + 1) * 25))
+            }
+            note.setTranscriptUtterances(utterances)
+        }
+        try store.save()
+        return store
+    }
+    #endif
 }
 
 struct JotleyApp: App {
+    private let openingSize = CGSize(width: 1080, height: 720)
     @NSApplicationDelegateAdaptor private var appDelegate: JotleyAppDelegate
     @ObservedObject private var local = LocalAppModel.shared
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -30,16 +70,48 @@ struct JotleyApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified(showsTitle: false))
+        .defaultSize(width: openingSize.width, height: openingSize.height)
+        .restorationBehavior(MacScreenshotFixture.isActive ? .disabled : .automatic)
+        .defaultLaunchBehavior(MacScreenshotFixture.isActive ? .presented : .automatic)
         .commands {
+            if MacScreenshotFixture.isActive {
+                ScreenshotWindowCommands()
+            }
             CommandGroup(after: .appInfo) {
                 if updates.isEnabled {
                     Button("Check for Updates…") { updates.check() }
                         .disabled(!updates.canCheck || !updates.isIdle)
                 }
             }
+            CommandGroup(after: .help) {
+                Button("Send Feedback…") {
+                    NSWorkspace.shared.open(JotleyEngagement.feedbackURL)
+                }
+            }
             CommandGroup(replacing: .newItem) {
             Button("New Transcription") { Task { await appDelegate.activeNotesViewModel?.startNewNote() } }.keyboardShortcut("n")
         } }
+    }
+}
+
+private struct ScreenshotWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            Button("Open Screenshot Window") { openWindow(id: "main") }
+                .keyboardShortcut("0", modifiers: [.command, .option])
+        }
+    }
+}
+
+enum MacScreenshotFixture {
+    static var isActive: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_DATA"] != nil
+        #else
+        false
+        #endif
     }
 }
 

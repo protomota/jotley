@@ -12,6 +12,7 @@ extension NoteDetailPlaceholderView {
 /// Isolated chip view so it can fetch folders via @FetchRequest without
 /// bloating NoteDetailPlaceholderView's state.
 struct FolderChipView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject private var theme = ThemeManager.shared
     @ObservedObject var note: Note
@@ -68,10 +69,10 @@ struct FolderChipView: View {
             HStack(spacing: 4) {
                 Image(systemName: note.folder == nil ? "folder" : "folder.fill")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(theme.currentThemeColor.color)
+                    .foregroundStyle(theme.currentThemeColor.color(in: colorScheme))
                 Text(note.folder?.displayName ?? "No Folder")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.shouldUseDarkTheme() ? Color.white : Color.themeLightTextPrimary)
+                    .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)
@@ -82,7 +83,6 @@ struct FolderChipView: View {
             )
         }
         .menuStyle(.button).buttonStyle(.plain)
-        .tint(theme.currentThemeColor.color)
         .fixedSize()
         .accessibilityIdentifier("noteDetailFolderChip")
         .sheet(isPresented: $showingCreate) {

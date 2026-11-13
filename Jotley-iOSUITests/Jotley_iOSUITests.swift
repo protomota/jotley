@@ -8,6 +8,68 @@ import Speech
 final class Jotley_iOSUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    @MainActor func testLocalizedStorefrontCaptures() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let fixture = environment["JOTLEY_STORE_SCREENSHOT_FIXTURE"] else {
+            throw XCTSkip("Run scripts/capture-app-store.py to supply localized fixtures.")
+        }
+        let locales = try JSONDecoder().decode([String: CaptureLocale].self, from: Data(fixture.utf8))
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        for (locale, sample) in locales.sorted(by: { $0.key < $1.key }) {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = sample.notes
+            app.launchArguments = [
+                "-AppleLanguages", "(\(locale))", "-AppleLocale", sample.region,
+                "-jotleyWelcomeCompleted.v1", "YES", "-selectedThemeColor", "Purple"
+            ]
+            app.launch()
+            showNotesLibrary(app)
+            let row = app.buttons.containing(.staticText, identifier: sample.title).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10), locale)
+            let library = app.staticTexts["notesListTitle"]
+            XCTAssertEqual(library.label, sample.libraryLabel, locale)
+            if isPad {
+                app.buttons["notesListFolderDrawerButton"].tap()
+                let done = app.buttons["folderDrawerDoneButton"]
+                XCTAssertTrue(done.waitForExistence(timeout: 5), locale)
+                capture(XCUIScreen.main.screenshot(), named: "\(locale)-03-folders")
+                done.tap()
+            } else {
+                capture(XCUIScreen.main.screenshot(), named: "\(locale)-01-library")
+            }
+
+            row.tap()
+            let transcript = app.buttons["noteDetailTranscriptTab"]
+            XCTAssertTrue(transcript.waitForExistence(timeout: 10), locale)
+            XCTAssertEqual(transcript.label, sample.transcriptLabel, locale)
+            XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].waitForExistence(timeout: 5), locale)
+            capture(XCUIScreen.main.screenshot(), named: "\(locale)-\(isPad ? "01" : "02")-summary")
+
+            transcript.tap()
+            XCTAssertTrue(app.buttons["noteDetailContinueTranscriptionButton"].waitForExistence(timeout: 5), locale)
+            capture(XCUIScreen.main.screenshot(), named: "\(locale)-\(isPad ? "02" : "03")-transcript")
+            app.terminate()
+        }
+    }
+
+    private struct CaptureLocale: Decodable {
+        let notes: String
+        let region: String
+        let title: String
+        let libraryLabel: String
+        let transcriptLabel: String
+    }
+
+    private func capture(_ screenshot: XCUIScreenshot, named name: String) {
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = "JotleyStore-\(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     @MainActor func testCustomSummaryTemplateManagement() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Template test note","folder":"","tags":[],"transcript":"Maya reviews onboarding Friday. Alex tests accessibility.","summary":"Existing summary remains unchanged."}]"#
@@ -2056,6 +2118,101 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }
 
+    @MainActor func testTipAndPersonalSupportReviewScreens() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-selectedThemeColor", "Magenta"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_TIP_DESIGN_PREVIEW"] = "1"
+        app.launchEnvironment["JOTLEY_SUPPORT_DESIGN_PREVIEW"] = "1"
+        app.launchEnvironment["JOTLEY_SUPPORT_PREVIEW_HISTORY"] = "1"
+        let dark = UIDevice.current.userInterfaceIdiom == .pad
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = dark ? "Dark" : "Light"
+        app.launchEnvironment["PROTOMOTA_TEST_TIP_STATE"] = dark ? "previous" : "current"
+        app.launch()
+        openInlineSupportSettings(app)
+        revealSettingsAction("settingsTipJotley", in: app)
+        app.buttons["settingsTipJotley"].tap()
+        XCTAssertTrue(app.staticTexts["Small Tip"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["tipJarSuccessTitle"].exists)
+        attachSupportReview(dark ? "02-tip-badge-dark" : "01-tip-badge-light")
+        app.buttons["tipJarDone"].tap()
+        app.buttons["settingsDoneButton"].tap()
+        app.buttons["notesListSettingsButton"].tap()
+        revealSettingsAction("settingsTechnicalSupport", in: app)
+        app.buttons["settingsTechnicalSupport"].tap()
+        let buy = app.buttons["supportBuyAppStoreTicket"]
+        let supportForm = app.descendants(matching: .any)["supportAccountForm"].firstMatch
+        XCTAssertTrue(supportForm.waitForExistence(timeout: 8))
+        for _ in 0..<3 where !buy.isHittable { supportForm.swipeUp() }
+        XCTAssertTrue(buy.isHittable, app.debugDescription)
+        XCTAssertTrue(buy.label.contains("$9.99"))
+        attachSupportReview("03-personal-support-purchase")
+        buy.tap()
+        XCTAssertTrue(app.staticTexts["supportTicketReady"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["supportTicketBadge"].firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)["supportAppleContact"].firstMatch.exists)
+        XCTAssertFalse(app.textFields["Apple contact email"].exists)
+        attachSupportReview("04-ticket-ready-badge-and-request")
+        let subject = app.textFields["Subject"]
+        for _ in 0..<3 where !subject.isHittable { app.swipeUp() }
+        subject.tap(); subject.typeText("Help with MCP setup")
+        let request = app.textViews["supportRequestText"]
+        for _ in 0..<3 where !request.isHittable { app.swipeUp() }
+        request.tap(); request.typeText("I would like help connecting Jotley to my workspace.")
+        let submit = app.buttons["supportSubmitRequest"]
+        for _ in 0..<4 where !submit.isHittable { app.swipeUp() }
+        XCTAssertTrue(submit.isEnabled && submit.isHittable)
+        submit.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["supportRequestSent"].firstMatch.waitForExistence(timeout: 8))
+        attachSupportReview("05-support-request-sent")
+        app.buttons["supportAllTickets"].tap()
+        let sync = app.buttons["supportTicket-preview-sync"]
+        let older = app.buttons["supportTicket-preview-template"]
+        for _ in 0..<4 where !older.isHittable { supportForm.swipeUp() }
+        XCTAssertTrue(app.staticTexts["Help with MCP setup"].isHittable)
+        XCTAssertTrue(sync.isHittable)
+        XCTAssertTrue(older.isHittable)
+        attachSupportReview("06-multiple-support-tickets")
+
+        sync.tap()
+        let actions = app.buttons["supportTicketActions"]
+        XCTAssertTrue(actions.waitForExistence(timeout: 8))
+        actions.tap()
+        attachSupportReview("07-ticket-actions")
+        app.buttons["Mark as resolved"].tap()
+        let resolved = app.descendants(matching: .any)["supportResolvedTicket"].firstMatch
+        XCTAssertTrue(resolved.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Is iCloud sync turned on in Jotley on both devices?"].exists)
+        XCTAssertFalse(app.textViews["supportReplyText"].exists)
+        attachSupportReview("08-resolved-conversation")
+
+        actions.tap()
+        app.buttons["Delete conversation…"].tap()
+        let confirmation = app.alerts["Delete this conversation?"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 8))
+        attachSupportReview("09-delete-conversation-confirmation")
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(resolved.exists)
+        actions.tap()
+        app.buttons["Delete conversation…"].tap()
+        confirmation.buttons.matching(identifier: "supportConfirmDeleteConversation").firstMatch.tap()
+        XCTAssertTrue(supportForm.waitForExistence(timeout: 8))
+        for _ in 0..<4 where !older.isHittable { supportForm.swipeUp() }
+        XCTAssertTrue(older.isHittable)
+        XCTAssertTrue(app.staticTexts["Help with MCP setup"].isHittable)
+        XCTAssertFalse(sync.exists)
+        XCTAssertFalse(app.buttons["supportWriteRequest"].exists)
+        attachSupportReview("10-history-after-deleting-one-ticket")
+    }
+
+    @MainActor private func attachSupportReview(_ name: String) {
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     @MainActor func testSupportActionsLiveDirectlyInSettingsAndShareReturnsThere() throws {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Support verification","folder":"Work","tags":[],"transcript":"Local notes stay private.","summary":"A useful summary."}] "#
@@ -3131,6 +3288,39 @@ final class Jotley_iOSUITests: XCTestCase {
             XCTAssertTrue(settings.waitForExistence(timeout: 5))
         }
         XCUIDevice.shared.orientation = .portrait
+        if ProcessInfo.processInfo.environment["JOTLEY_CAPTURE_WEBSITE"] == "1" {
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                XCUIDevice.shared.orientation = .landscapeLeft
+                launch(); capture("website-ipad-summary")
+                app.terminate()
+                return
+            }
+            launch("Purple", "Dark"); capture("website-summary")
+            app.buttons["noteDetailShareButton"].tap()
+            let exportOptions = app.buttons["More Export Options"]
+            XCTAssertTrue(exportOptions.waitForExistence(timeout: 5))
+            exportOptions.tap()
+            let formatted = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "exportMarkdownButton", "Full Note (Formatted)")).firstMatch
+            XCTAssertTrue(formatted.waitForExistence(timeout: 5))
+            capture("website-export")
+            launch("Purple", "Dark"); library()
+            let search = app.textFields["notesListSearchField"]
+            XCTAssertTrue(search.waitForExistence(timeout: 5))
+            search.tap()
+            search.typeText("launch")
+            capture("website-search")
+            app.launchEnvironment["JOTLEY_SCREENSHOT_AUDIO_LEVELS"] =
+                ProcessInfo.processInfo.environment["JOTLEY_MARKETING_AUDIO_LEVELS"]
+            launch("Purple", "Dark")
+            app.buttons["notesListNewNoteButton"].firstMatch.tap()
+            XCTAssertTrue(app.buttons["transcriptionPauseButton"].waitForExistence(timeout: 10))
+            Thread.sleep(forTimeInterval: 4) // Let the waveform and transcript fill in.
+            capture("website-live")
+            capture("website-live-alternate")
+            app.buttons["transcriptionStopButton"].tap()
+            app.terminate()
+            return
+        }
         if ProcessInfo.processInfo.environment["JOTLEY_CAPTURE_NEUTRAL_ONLY"] == "1" {
             launch("Neutral"); capture("neutral")
             library(); capture("neutral-library")

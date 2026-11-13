@@ -150,15 +150,17 @@ extension NoteDetailView {
                             .disabled(!transcriptionManager.canStart || !hasTranscript)
                             .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
                     }
-                    Divider()
-                    Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
-                        .disabled(!transcriptionManager.canStart)
-                        .accessibilityIdentifier("noteDetailEditTranscriptButton")
                 }
+                if hasTranscript || Note.isMeaningfulSummaryText(note.summary) { Divider() }
                 if Note.isMeaningfulSummaryText(note.summary) {
                     Button("Edit Summary", systemImage: "pencil") { showingSummaryEditor = true }
                         .disabled(!transcriptionManager.canStart)
                         .accessibilityIdentifier("noteDetailEditSummaryButton")
+                }
+                if hasTranscript {
+                    Button("Edit Transcript", systemImage: "pencil") { showingTranscriptEditor = true }
+                        .disabled(!transcriptionManager.canStart)
+                        .accessibilityIdentifier("noteDetailEditTranscriptButton")
                 }
                 Button("Continue", systemImage: "mic.fill") { showingTranscription = true }
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
@@ -185,7 +187,7 @@ extension NoteDetailView {
                             .onChange(of: editedTitle) { _, value in note.title = value; transcriptionManager.saveEdits() }
                             .onSubmit { isEditingTitle = false; isTitleFieldFocused = false }
                     } else {
-                        Text(note.title ?? "Untitled").accessibilityIdentifier("noteDetailTitle")
+                        Text(note.titleOrUntitled).accessibilityIdentifier("noteDetailTitle")
                             .onTapGesture { editedTitle = note.title ?? ""; isEditingTitle = true; isTitleFieldFocused = true }
                     }
                 }

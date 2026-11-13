@@ -26,12 +26,14 @@ private struct SummaryObserverView: View {
     @State private var transcript = ""
     @StateObject private var stream = StreamingSummaryViewModel()
     var body: some View {
-        DetailTabPanel(note: note, selectedTab: .constant(DetailTab.summary.rawValue),
-            isGeneratingSummary: $state.generating, summaryGenerationError: $state.error,
-            editableSummary: $state.summary, isSummaryEditorFocused: $summaryFocused,
-            summaryInlineEditRequestCounter: $state.inlineEdit, editableTranscript: $transcript,
-            isTranscriptEditorFocused: $transcriptFocused,
-            showRawMarkdown: $state.rawMarkdown, streamingSummaryViewModel: stream)
+        ScrollView {
+            DetailTabPanel(note: note, selectedTab: .constant(DetailTab.summary.rawValue),
+                isGeneratingSummary: $state.generating, summaryGenerationError: $state.error,
+                editableSummary: $state.summary, isSummaryEditorFocused: $summaryFocused,
+                summaryInlineEditRequestCounter: $state.inlineEdit, editableTranscript: $transcript,
+                isTranscriptEditorFocused: $transcriptFocused,
+                showRawMarkdown: $state.rawMarkdown, streamingSummaryViewModel: stream)
+        }
     }
 }
 
@@ -152,7 +154,11 @@ private struct MacSupportPreviewRoot: View {
         do {
             try await verifyLanguageChoices()
             if CommandLine.arguments.contains("--languages-only") { return }
-            if CommandLine.arguments.contains("--note-menu-only") {
+            if CommandLine.arguments.contains("--summary-editor-only") {
+                let store = try SharedPersistenceController(inMemory: true)
+                let note = try store.create(title: "Summary editor fixture", text: "Sample note.") as! Note
+                try await verifySummaryPresentation(note: note)
+            } else if CommandLine.arguments.contains("--note-menu-only") {
                 guard let base = LocalAppModel.shared.store else { throw LocalError.message("Navigation store unavailable") }
                 let store = try SharedPersistenceController(inMemory: true, model: base.container.managedObjectModel)
                 let note = try store.create(title: "Navigation fixture", text: "Keep both editors available.") as! Note
@@ -1214,6 +1220,37 @@ private struct MacSupportPreviewRoot: View {
             throw LocalError.message("Typed summary Markdown was not saved as structured sections: label=\(editedLabel ?? "nil") body=\(editedBody ?? "nil") sections=\(edited.sections.map(\.title))")
         }
         print("PASS: Markdown typed into the Mac summary editor is saved and parses into structured sections.")
+        let longLine = "- Keep decisions and action items in the project notes so people can find them after the review."
+        let longAddition = "\n" + Array(repeating: longLine, count: 30).joined(separator: "\n") + "\n"
+        let insertion = NSRange(location: editor.string.utf16.count, length: 0)
+        editor.insertText(longAddition, replacementRange: insertion)
+        try await Task.sleep(for: .milliseconds(350))
+        func verifyEditorFits() throws -> CGFloat {
+            host.layoutSubtreeIfNeeded()
+            guard let manager = editor.layoutManager, let container = editor.textContainer else {
+                throw LocalError.message("Missing summary editor text layout.")
+            }
+            manager.ensureLayout(for: container)
+            let contentHeight = max(manager.usedRect(for: container).maxY, manager.extraLineFragmentRect.maxY)
+            guard abs(container.containerSize.width - editor.bounds.width) < 1,
+                  abs(ceil(contentHeight) - editor.bounds.height) < 1 else {
+                throw LocalError.message("Summary editor bounds \(editor.bounds.size) do not fit the text layout \(container.containerSize.width) × \(contentHeight).")
+            }
+            return editor.bounds.height
+        }
+        guard state.summary.hasSuffix(longAddition) else {
+            throw LocalError.message("The long paste did not reach the summary binding.")
+        }
+        let wideHeight = try verifyEditorFits()
+        window.setContentSize(NSSize(width: 450, height: 500))
+        try await Task.sleep(for: .milliseconds(350))
+        editor.setSelectedRange(NSRange(location: editor.string.utf16.count - longLine.utf16.count - 1,
+                                        length: longLine.utf16.count))
+        let narrowHeight = try verifyEditorFits()
+        guard narrowHeight > wideHeight, editor.selectedRange().length == longLine.utf16.count else {
+            throw LocalError.message("The summary did not reflow or retain the last-line selection.")
+        }
+        print("PASS: The Mac summary editor grows for pasted text and fits selected lines after narrowing the window.")
         state.summary = fenced
         try await Task.sleep(for: .milliseconds(200))
         state.generating = true
@@ -1306,6 +1343,66 @@ private struct MacSupportPreviewRoot: View {
 import XCTest
 
 final class JotleyLocalUITests: XCTestCase {
+    @MainActor func testLocalizedStorefrontCaptures() throws {
+        guard let fixture = ProcessInfo.processInfo.environment["JOTLEY_STORE_SCREENSHOT_FIXTURE"] else {
+            throw XCTSkip("Run scripts/capture-app-store.py to supply localized fixtures.")
+        }
+        struct CaptureLocale: Decodable {
+            let notes: String
+            let region: String
+            let transcriptLabel: String
+            let foldersLabel: String
+        }
+        let locales = try JSONDecoder().decode([String: CaptureLocale].self, from: Data(fixture.utf8))
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        for (locale, sample) in locales.sorted(by: { $0.key < $1.key }) {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = sample.notes
+            app.launchArguments = [
+                "-AppleLanguages", "(\(locale))", "-AppleLocale", sample.region,
+                "-jotleyWelcomeCompleted.v1", "YES", "-selectedThemeColor", "Purple",
+                "-selectedAppearanceMode", "Light", "-jotleyCompletedLocalSummaries", "0",
+                "-AppleWindowTabbingMode", "manual"
+            ]
+            app.launch()
+            let window = app.windows.firstMatch
+            if !window.waitForExistence(timeout: 2) {
+                app.typeKey("0", modifierFlags: [.command, .option])
+            }
+            XCTAssertTrue(window.waitForExistence(timeout: 10), locale)
+            XCTAssertEqual(window.frame.width, 1080, accuracy: 2, locale)
+            XCTAssertEqual(window.frame.height, 720, accuracy: 2, locale)
+            let transcript = app.buttons["noteDetailTranscriptTab"]
+            XCTAssertTrue(transcript.waitForExistence(timeout: 10), locale)
+            XCTAssertEqual(transcript.label, sample.transcriptLabel, locale)
+            XCTAssertTrue(app.staticTexts["noteDetailTitle"].exists, locale)
+            let folders = app.buttons.matching(NSPredicate(format: "label == %@", sample.foldersLabel)).firstMatch
+            let manage = app.buttons["notesListManageFoldersButton"]
+            if manage.exists {
+                folders.click()
+                XCTAssertTrue(manage.waitForNonExistence(timeout: 5), locale)
+            }
+            capture(window, named: "\(locale)-01-summary")
+
+            transcript.click()
+            XCTAssertTrue(app.staticTexts["00:00"].waitForExistence(timeout: 5), locale)
+            capture(window, named: "\(locale)-02-transcript")
+
+            app.buttons["noteDetailSummaryTab"].click()
+            if !manage.exists { folders.click() }
+            XCTAssertTrue(manage.waitForExistence(timeout: 5), locale)
+            capture(window, named: "\(locale)-03-folders")
+            app.terminate()
+        }
+    }
+
+    private func capture(_ window: XCUIElement, named name: String) {
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "JotleyStore-\(name)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     func testOriginalInterfaceCreatesAndPersistsLocalNoteWithoutAccount() {
         let app = XCUIApplication()
         app.launch()

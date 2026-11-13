@@ -6,7 +6,6 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
     @FocusState.Binding var isFocused: Bool
     let accentColor: NSColor
     let textColor: NSColor
-    @Binding var measuredHeight: CGFloat
     var fontSize = NSFont.systemFontSize
 
     func makeCoordinator() -> Coordinator {
@@ -16,7 +15,6 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSTextView {
         let textContainer = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
         textContainer.widthTracksTextView = true
-        textContainer.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textContainer.lineFragmentPadding = 0
 
         let layoutManager = NSLayoutManager()
@@ -32,7 +30,8 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
         textView.drawsBackground = false
         textView.backgroundColor = .clear
         textView.textContainerInset = NSSize(width: 0, height: 0)
-        textView.isVerticallyResizable = true
+        // SwiftUI owns the frame. AppKit must not grow it past the field border.
+        textView.isVerticallyResizable = false
         textView.isHorizontallyResizable = false
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.autoresizingMask = [.width]
@@ -43,16 +42,6 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
         textView.isRichText = false
 
         applyTheme(to: textView)
-
-        textView.onContentHeightChange = { newHeight in
-            DispatchQueue.main.async {
-                if abs(measuredHeight - newHeight) > 0.5 {
-                    measuredHeight = newHeight
-                }
-            }
-        }
-
-        textView.recalculateContentHeight()
 
         if isFocused {
             DispatchQueue.main.async {
@@ -78,8 +67,20 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
                 textView.window?.makeFirstResponder(textView)
             }
         }
+    }
 
-        textView.recalculateContentHeight()
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width.isFinite, width > 0,
+              let layoutManager = nsView.layoutManager, let container = nsView.textContainer else { return nil }
+
+        // SwiftUI can probe several widths. Restore the drawing width after
+        // measuring so an unused proposal cannot rewrap the visible text.
+        let drawingSize = container.containerSize
+        defer { container.containerSize = drawingSize }
+        container.containerSize = NSSize(width: width, height: drawingSize.height)
+        layoutManager.ensureLayout(for: container)
+        let height = max(layoutManager.usedRect(for: container).maxY, layoutManager.extraLineFragmentRect.maxY)
+        return CGSize(width: width, height: ceil(height))
     }
 
     private func applyTheme(to textView: SummaryInlineEditableTextView) {
@@ -103,7 +104,6 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
             if parent.text != textView.string {
                 parent.text = textView.string
             }
-            textView.recalculateContentHeight()
         }
 
         func textDidBeginEditing(_ notification: Notification) {
@@ -120,9 +120,6 @@ struct InlineEditableSummaryTextView: NSViewRepresentable {
     }
 }
 private final class SummaryInlineEditableTextView: NSTextView {
-    var onContentHeightChange: ((CGFloat) -> Void)?
-    private var lastReportedHeight: CGFloat = 0
-
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
@@ -131,28 +128,5 @@ private final class SummaryInlineEditableTextView: NSTextView {
             window?.makeFirstResponder(self)
         }
         super.mouseDown(with: event)
-    }
-
-    override func setFrameSize(_ newSize: NSSize) {
-        super.setFrameSize(newSize)
-        recalculateContentHeight()
-    }
-
-    override func layout() {
-        super.layout()
-        recalculateContentHeight()
-    }
-
-    func recalculateContentHeight() {
-        guard bounds.width > 1, let layoutManager, let textContainer else { return }
-
-        layoutManager.ensureLayout(for: textContainer)
-        let usedRect = layoutManager.usedRect(for: textContainer)
-        let measured = ceil(max(usedRect.maxY, layoutManager.extraLineFragmentRect.maxY) + textContainerInset.height * 2)
-
-        if abs(lastReportedHeight - measured) > 0.5 {
-            lastReportedHeight = measured
-            onContentHeightChange?(measured)
-        }
     }
 }

@@ -84,6 +84,14 @@ def main() -> None:
                          "com.apple.developer.aps-environment" if args.platform == "macos" else "aps-environment": args.environment})
     if args.platform == "macos":
         entitlements["com.apple.security.network.client"] = True
+        # These entitlements are also passed directly to codesign during packaging.
+        # Only Xcode expands build settings in an entitlements file.
+        installer_lookup = "com.apple.security.temporary-exception.mach-lookup.global-name"
+        if installer_lookup in entitlements:
+            entitlements[installer_lookup] = [
+                service.replace("$(PRODUCT_BUNDLE_IDENTIFIER)", args.bundle_id)
+                for service in entitlements[installer_lookup]
+            ]
         info["SUEnableDownloaderService"] = False
         if kind == "developer-id" and args.environment == "production":
             info["JotleyEnableSparkle"] = True

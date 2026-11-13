@@ -58,10 +58,11 @@ extension NotesListView {
             HStack(spacing: 8) {
                 ThemedTextField(
                     text: $searchText,
-                    placeholder: "Search..",
+                    placeholder: String(localized: "Search notes"),
                     font: NSFont.systemFont(ofSize: 14),
                     textColor: NSColor(Color.themeTextPrimary),
-                    minimumHeight: MacNoteHeaderLayout.controlHeight
+                    minimumHeight: MacNoteHeaderLayout.controlHeight,
+                    allowsEditing: !MacScreenshotFixture.isActive
                 )
                 .frame(height: MacNoteHeaderLayout.controlHeight)
                 .accessibilityIdentifier("notesListSearchField")
@@ -343,9 +344,9 @@ extension NotesListView {
         if date == .distantFuture { return nil }
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
-            return "Today"
+            return String(localized: "Today")
         } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
+            return String(localized: "Yesterday")
         } else {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "E, MMM d" // "Tue, Jan 23"

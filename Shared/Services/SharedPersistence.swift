@@ -333,7 +333,8 @@ public final class SharedPersistenceController: ObservableObject {
                 let primaryProject = project.count >= 3 && project.count <= 32 &&
                     project.split(whereSeparator: \.isWhitespace).count <= 4 &&
                     project.contains(where: \.isLetter) && Self.mentionsFolder(project, in: filingSource) ? project : nil
-                let broadNames = ["Work", "Personal", "Study", "Ideas", "General"]
+                let miscName = LocalNoteFolder.general.name ?? "Misc"
+                let broadNames = ["Work", "Personal", "Study", "Ideas", "General", miscName]
                 let projectFolders = folders.filter { folder in
                     let title = folder.text("name").trimmingCharacters(in: .whitespacesAndNewlines)
                     return title.count >= 3 && !broadNames.contains { $0.caseInsensitiveCompare(title) == .orderedSame } &&
@@ -344,22 +345,25 @@ public final class SharedPersistenceController: ObservableObject {
                 }
                 let existingProject = projectFolders.max { $0.text("name").count < $1.text("name").count }
                 let broadMatch = folders.first { $0.text("name").caseInsensitiveCompare(name) == .orderedSame }
-                let generalMatch = folders.first { $0.text("name").caseInsensitiveCompare("General") == .orderedSame }
+                let miscMatch = folders.first { $0.text("name").caseInsensitiveCompare(miscName) == .orderedSame }
                 let maxFolders = 10
                 var folder = explicitMatch ?? existingProject
                 if folder == nil {
-                    let canCreateProject = folders.count < maxFolders - 1 || (folders.count < maxFolders && generalMatch != nil)
+                    let canCreateProject = folders.count < maxFolders - 1 || (folders.count < maxFolders && miscMatch != nil)
                     if let primaryProject, canCreateProject {
                         createdFolder = insertAutoFolder(named: primaryProject)
                         folder = createdFolder
                     } else if let broadMatch {
                         folder = broadMatch
-                    } else if folders.count < maxFolders {
-                        let fallbackName = folders.count == maxFolders - 1 && generalMatch == nil ? "General" : name
-                        createdFolder = insertAutoFolder(named: fallbackName)
+                    } else if folders.count < maxFolders - 1 || (folders.count < maxFolders && miscMatch != nil) {
+                        createdFolder = insertAutoFolder(named: name)
                         folder = createdFolder
+                    } else if let miscMatch {
+                        folder = miscMatch
                     } else {
-                        folder = generalMatch
+                        // Libraries already at the limit still get one catch-all folder.
+                        createdFolder = insertAutoFolder(named: miscName)
+                        folder = createdFolder
                     }
                 }
                 if let folder {

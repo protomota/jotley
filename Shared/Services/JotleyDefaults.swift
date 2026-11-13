@@ -395,7 +395,6 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
     }
 }
 
-#if os(iOS)
 /// Menus render their own surface so native menu styles can't replace it.
 struct JotleyGlassMenuLabel<Outline: InsettableShape>: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
@@ -412,6 +411,7 @@ struct JotleyGlassMenuLabel<Outline: InsettableShape>: ViewModifier {
     }
 }
 
+#if os(iOS)
 struct JotleyFloatingMenuIcon: View {
     let systemImage: String
     var verticalIconOffset: CGFloat = 0
@@ -433,10 +433,13 @@ struct JotleyFloatingMenuIcon: View {
 #endif
 
 struct JotleyAboutLogo: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Image("jotley-brand-mark")
             .resizable().interpolation(.high).scaledToFit()
             .frame(width: 56, height: 56)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.38 : 0.24), radius: 3, y: 1)
             .accessibilityLabel("Jotley")
     }
 }
@@ -453,14 +456,14 @@ struct JotleyLibraryWelcome: View {
                 .foregroundStyle(Color.themeTextSecondary)
                 .accessibilityHidden(true)
             VStack(spacing: 10) {
-                Text(hasNotes ? "Select a note" : "Your words. Your device.")
+                Text(hasNotes ? LocalizedStringKey("Select a note") : LocalizedStringKey("Your words. Your device."))
                     .font(.custom("Comfortaa-Bold", size: 27, relativeTo: .title))
                     .foregroundStyle(Color.themeTextPrimary)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("libraryWelcomeHeading")
                 Text(hasNotes
-                     ? "Choose a note to read or edit the transcript, see the summary, or ask a question."
-                     : "Capture a thought, meeting, or lecture. Edit the transcript and get the key points with Apple Intelligence, right on your device.")
+                     ? LocalizedStringKey("Choose a note to read or edit the transcript, see the summary, or ask a question.")
+                     : LocalizedStringKey("Capture a thought, meeting, or lecture. Edit the transcript and get the key points with Apple Intelligence, right on your device."))
                     .font(.body)
                     .foregroundStyle(Color.themeTextSecondary)
                     .lineSpacing(3)
@@ -767,7 +770,7 @@ struct JotleyClearChatConfirmation: View {
     static let website = URL(string: "https://jotley.ai")!
     static let tipURL = URL(string: "https://buymeacoffee.com/protomotalab")!
     static let reviewURL = URL(string: "https://apps.apple.com/app/id6746770199?action=write-review")!
-    static let feedbackURL = URL(string: "mailto:jotly-support@protomota.com")!
+    static let feedbackURL = URL(string: "https://protomota.com/apps?app=jotley#feedback")!
     enum Action: String, CaseIterable { case review, tip, share, feedback, support }
     static let dismissingActions = Set(Action.allCases)
     enum Prompt { case review, support }
@@ -978,7 +981,7 @@ struct JotleySupportView: View {
     @State private var allowsWebsiteTips = false
     #endif
     @State private var contentHeight: CGFloat?
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
     #if os(macOS)
     @Environment(\.openURL) private var openURL
     @State private var shareAnchor = NSView()
@@ -1176,7 +1179,7 @@ struct JotleySupportView: View {
         }.foregroundStyle(Color.themeTextPrimary)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading).contentShape(Rectangle())
-            .background { supportActionBackground }
+            .overlay { supportActionOutline }
             .accessibilityValue(engagement.hasClicked(kind) ? "Clicked" : "Not clicked")
     }
     #endif
@@ -1216,16 +1219,13 @@ struct JotleySupportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12).frame(minHeight: 56)
-        .background { supportActionBackground }
+        .contentShape(Rectangle())
+        .overlay { supportActionOutline }
     }
-    @ViewBuilder private var supportActionBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 14)
-        if reduceTransparency {
-            shape.fill(Color.themeBackground)
-                .overlay { shape.fill(Color.themePrimaryAccent.opacity(0.12)) }
-        } else {
-            Color.clear.glassEffect(.regular.tint(Color.themePrimaryAccent.opacity(0.12)).interactive(), in: shape)
-        }
+    private var supportActionOutline: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .strokeBorder(theme.currentThemeColor.color(in: colorScheme).opacity(0.8), lineWidth: 1)
+            .allowsHitTesting(false)
     }
 
 }
@@ -1325,7 +1325,7 @@ struct JotleySupportLinks: View {
         }
         .buttonStyle(.plain)
     }
-    private func supportRow(_ title: String, systemImage: String) -> some View {
+    private func supportRow(_ title: LocalizedStringKey, systemImage: String) -> some View {
         MobileActionLabel(title, systemImage: systemImage)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())

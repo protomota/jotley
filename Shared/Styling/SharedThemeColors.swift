@@ -393,16 +393,20 @@ struct JotleyAccentIconLabel: View {
 
 struct JotleyNoteTagStyle: ViewModifier {
     @ObservedObject private var theme = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
     var horizontalPadding: CGFloat = 10
     var verticalPadding: CGFloat = 6
 
     func body(content: Content) -> some View {
-        content
-            .foregroundStyle(.white)
+        let accent = theme.currentThemeColor.color(in: colorScheme)
+        return content
+            .foregroundStyle(accent)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
-            // Use the saturated shade that supports white text in either appearance.
-            .background(theme.currentThemeColor.color(in: .light), in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(accent.opacity(0.48), lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
     }
 }
 
@@ -411,10 +415,10 @@ struct JotleyNoteTagStyle: ViewModifier {
 struct MobileActionLabel: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.colorScheme) private var colorScheme
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
 
-    init(_ title: String, systemImage: String) {
+    init(_ title: LocalizedStringKey, systemImage: String) {
         self.title = title
         self.systemImage = systemImage
     }

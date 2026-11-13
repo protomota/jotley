@@ -16,7 +16,6 @@ extension NoteDetailPlaceholderView {
         @State private var showExportSubmenu = false
         @State private var templateMenuFrame: CGRect = .zero
         private let mainMenuWidth: CGFloat = 260
-        private let templateSubmenuWidth: CGFloat = 260
         private let submenuGap: CGFloat = 2
 
         // Get the current template name from note.summaryType
@@ -216,16 +215,6 @@ extension NoteDetailPlaceholderView {
                     Divider()
                         .padding(.vertical, 4)
 
-                    if parent.hasContentToSummarize {
-                        MenuItemView(icon: "pencil", title: "Edit Transcript",
-                            disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
-                                viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy) {
-                            parent.selectedTab = DetailTab.transcript.rawValue
-                            parent.isEditingTranscript = true
-                            isPresented = false
-                        }.accessibilityIdentifier("noteDetailEditTranscriptMenuItem")
-                    }
-
                     if showsSummaryActions {
                         MenuItemView(
                             icon: "pencil",
@@ -236,6 +225,16 @@ extension NoteDetailPlaceholderView {
                             isPresented = false
                         }
                         .accessibilityIdentifier("noteDetailEditSummaryMenuItem")
+                    }
+
+                    if parent.hasContentToSummarize {
+                        MenuItemView(icon: "pencil", title: "Edit Transcript",
+                            disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
+                                viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy) {
+                            parent.selectedTab = DetailTab.transcript.rawValue
+                            parent.isEditingTranscript = true
+                            isPresented = false
+                        }.accessibilityIdentifier("noteDetailEditTranscriptMenuItem")
                     }
 
                     // Delete
@@ -266,8 +265,9 @@ extension NoteDetailPlaceholderView {
                     )
                     // The overlay only offers the shorter main menu's height; without this the rows are squeezed.
                     .fixedSize(horizontal: false, vertical: true)
+                    .modifier(MacNoteMenuSurface())
                     .offset(
-                        x: -(templateSubmenuWidth + submenuGap),
+                        x: -(TemplateSubmenu.width + submenuGap),
                         y: max(0, templateMenuFrame.minY - 8)
                     )
                 }

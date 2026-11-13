@@ -3,6 +3,23 @@ import AppKit
 
 extension NoteDetailPlaceholderView {
     var headerContent: some View {
+        Group {
+            if MacScreenshotFixture.isActive {
+                Text(note.titleOrUntitled)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.themeTextPrimary)
+                    .lineLimit(2)
+                    .padding(.horizontal, 2)
+            } else {
+                editableTitleField
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("noteDetailTitle")
+    }
+
+    private var editableTitleField: some View {
         ThemedTextField(
             text: $manualTitle,
             placeholder: "Enter a title...",
@@ -21,9 +38,6 @@ extension NoteDetailPlaceholderView {
             },
             maxLines: 2
         )
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityIdentifier("noteDetailTitle")
         .onAppear {
             manualTitle = note.titleOrUntitled
             // Load tags directly, they are already formatted and de-duplicated in CoreData
@@ -201,15 +215,11 @@ extension NoteDetailPlaceholderView {
     }
 
     func formatDatePart(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+        date.formatted(.dateTime.month(.abbreviated).day().year())
     }
 
     func formatTimePart(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: date)
+        date.formatted(.dateTime.hour().minute())
     }
 
     var contentArea: some View {

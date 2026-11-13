@@ -118,6 +118,7 @@ struct ThemedTextField: NSViewRepresentable {
     var onCommit: (() -> Void)?
     var maxLines: Int = 1
     var minimumHeight: CGFloat = 0
+    var allowsEditing = true
 
     @ObservedObject private var themeManager = ThemeManager.shared
 
@@ -125,9 +126,9 @@ struct ThemedTextField: NSViewRepresentable {
         let textField = ThemedNSTextField()
         if minimumHeight > 0 {
             textField.cell = ThemedTextFieldCell(textCell: "")
-            textField.isEditable = true
-            textField.isSelectable = true
         }
+        textField.isEditable = allowsEditing
+        textField.isSelectable = allowsEditing
         textField.minimumHeight = minimumHeight
         textField.delegate = context.coordinator
         textField.isBordered = false

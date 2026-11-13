@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB172A880000000000000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB172A880000000000000003 /* Localizable.xcstrings */; };
+		AB172A880000000000000002 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB172A880000000000000003 /* Localizable.xcstrings */; };
 		F50000000000000000000042 /* SupportTicketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000042; };
 		14E49C2F2E3A43839FA2E9CE /* LibraryBackupControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACE223E0670475E88103715; };
 		A49A9896C0D540ED9450D2D2 /* JotleySupporterCelebration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6302170B6FE4EB2A2F7C1D0; };
@@ -245,6 +247,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AB172A880000000000000003 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Shared/Localizable.xcstrings; sourceTree = SOURCE_ROOT; };
 		F60000000000000000000042 /* SupportTicketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTicketsView.swift; sourceTree = "<group>"; };
 		0ACE223E0670475E88103715 /* LibraryBackupControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupControls.swift; sourceTree = "<group>"; };
 		E6302170B6FE4EB2A2F7C1D0 /* JotleySupporterCelebration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleySupporterCelebration.swift; sourceTree = "<group>"; };
@@ -1298,6 +1301,21 @@
 			knownRegions = (
 				en,
 				Base,
+				da,
+				nl,
+				fr,
+				de,
+				it,
+				nb,
+				"pt-BR",
+				es,
+				sv,
+				tr,
+				vi,
+				"zh-Hans",
+				"zh-Hant",
+				ja,
+				ko,
 			);
 			mainGroup = F47AD9352BF5B61E005B75AC;
 			packageReferences = (
@@ -1345,6 +1363,7 @@
 				A2EA9284307B532700AAB201 /* Comfortaa-Bold.ttf in Resources */,
 				A2EA929E307BC9CF00AAB201 /* Rambo-BSD-2-Clause.txt in Resources */,
 				A2EA929C307BB12900AAB201 /* LICENSE in Resources */,
+				AB172A880000000000000001 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1372,6 +1391,7 @@
 				F10000000000000000000005,
 				A2EA916B307B452800AAB201 /* Preview Assets.xcassets in Resources */,
 				A2EA929D307BB12900AAB201 /* LICENSE in Resources */,
+				AB172A880000000000000002 /* Localizable.xcstrings in Resources */,
 				A2EA91FC307B487600AAB201 /* Comfortaa-OFL.txt in Resources */,
 				A2EA916C307B452800AAB201 /* Assets.xcassets in Resources */,
 				1FA1E1A17AA00E4B4E11A622 /* AppIcon.icon in Resources */,

@@ -25,7 +25,7 @@ struct iOSFolderDrawer: View {
             ScrollView {
                 VStack(spacing: 2) {
                     row(
-                        title: "All Notes",
+                        title: String(localized: "All Notes"),
                         systemImage: "tray.full",
                         count: nil,
                         isSelected: filterState.selectedFolder == .all
@@ -34,7 +34,7 @@ struct iOSFolderDrawer: View {
                     }
 
                     row(
-                        title: "Unfiled",
+                        title: String(localized: "Unfiled"),
                         systemImage: "tray",
                         count: nil,
                         isSelected: filterState.selectedFolder == .unfiled

@@ -71,6 +71,42 @@ struct Jotley_iOSTests {
     }
 
     #if DEBUG && targetEnvironment(simulator)
+    @MainActor @Test func shortNoteGetsSummaryTitleAndMiscWhenModelReturnsPlaceholders() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let manager = LiveTranscriptionManager(store: store)
+        let transcript = "The porch light flickers."
+        manager.simulatedSummaryGeneration = { _ in "## Summary\n" }
+        manager.simulatedTitleGeneration = { _ in throw LocalError.message("No title returned") }
+        manager.simulatedOrganization = { _, _ in LocalNoteOrganization(tags: [], folder: .unfiled) }
+
+        let note = try manager.createNote(text: transcript, title: "Untitled Note")
+        manager.summarize(note, template: .auto)
+        for _ in 0..<200 {
+            if manager.summaryNoteID == nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(manager.summaryNoteID == nil)
+        #expect(note.summary == transcript)
+        #expect(note.title == transcript)
+        #expect(note.folder?.name == "Misc")
+        #expect(note.tagNames.count == 5)
+        #expect(manager.errorMessage == nil)
+
+        let second = try manager.createNote(text: "Replace the porch light.", title: "Untitled Note")
+        manager.simulatedTitleGeneration = { _ in
+            try store.saveNoteChanges(second, values: ["title": "My own title"])
+            return "UNTITLED NOTE."
+        }
+        manager.summarize(second, template: .auto)
+        for _ in 0..<200 {
+            if manager.summaryNoteID == nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(second.title == "My own title")
+        #expect(second.folder?.objectID == note.folder?.objectID)
+    }
+
     @MainActor @Test func successfulSummaryReplacesTagsAndFallsBackWithoutOverwritingCancelledWork() async throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }

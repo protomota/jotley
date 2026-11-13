@@ -36,7 +36,7 @@ struct SettingsView: View {
                         Text("System").tag(AppearanceMode.system)
                     }
                 } label: {
-                    selectionLabel("Appearance Mode", value: themeManager.currentAppearanceMode.rawValue)
+                    selectionLabel("Appearance Mode", value: String(localized: String.LocalizationValue(themeManager.currentAppearanceMode.rawValue)))
                 }
                 .accessibilityIdentifier("settingsAppearanceModePicker")
                 .onChange(of: themeManager.currentAppearanceMode) { _, newValue in
@@ -222,7 +222,7 @@ struct SettingsView: View {
         return Image(uiImage: image.withRenderingMode(.alwaysOriginal)).renderingMode(.original)
     }
 
-    private func selectionLabel(_ title: String, value: String, swatch: Color? = nil) -> some View {
+    private func selectionLabel(_ title: LocalizedStringKey, value: String, swatch: Color? = nil) -> some View {
         HStack {
             Text(title).foregroundStyle(Color.themeTextPrimary)
             Spacer()

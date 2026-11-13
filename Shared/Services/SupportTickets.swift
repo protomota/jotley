@@ -125,9 +125,53 @@ final class JotleySupportStore: ObservableObject {
         return account.purchases.filter { purchase in purchase.status == "paid" && purchase.used != true && !account.tickets.contains { $0.purchase.id == purchase.id } }
     }
     var canBuy: Bool { account != nil && available && !busy && !pendingVerification && (Self.usesAppStore ? product != nil : checkoutAvailable) }
+    var ticketPrice: String? {
+        #if DEBUG && targetEnvironment(simulator)
+        if isDesignPreview { return "$9.99" }
+        #endif
+        return Self.usesAppStore ? product?.displayPrice : "$9.99"
+    }
+
+    #if DEBUG && targetEnvironment(simulator)
+    var isDesignPreview: Bool { ProcessInfo.processInfo.environment["JOTLEY_SUPPORT_DESIGN_PREVIEW"] == "1" }
+    private var previewsHistory: Bool { ProcessInfo.processInfo.environment["JOTLEY_SUPPORT_PREVIEW_HISTORY"] == "1" }
+
+    private var sampleHistory: [JotleySupportTicket] {
+        [
+            .init(id: "preview-sync", reference: "JT-1043", subject: "Notes not syncing to iPad",
+                  topic: "Sync and notes", status: "waiting_for_customer",
+                  purchase: .init(id: "preview-sync-purchase", provider: "app_store", status: "paid", used: true)),
+            .init(id: "preview-template", reference: "JT-1038", subject: "Customize my meeting summary",
+                  topic: "Summaries and templates", status: "resolved",
+                  purchase: .init(id: "preview-template-purchase", provider: "app_store", status: "paid", used: true)),
+        ]
+    }
+
+    func previewPurchasedTicket() {
+        guard isDesignPreview, let account else { return }
+        let purchase = JotleySupportPurchase(id: UUID().uuidString, provider: "app_store", status: "paid", used: false)
+        self.account = JotleySupportAccount(user: account.user, tickets: account.tickets, purchases: [purchase] + account.purchases, nextOffset: nil)
+        requestUnlocked = true
+    }
+
+    func previewSubmittedRequest(subject: String, topic: String, body: String) {
+        guard isDesignPreview, let account, let purchase = unusedPurchases.first else { return }
+        let ticket = JotleySupportTicket(id: purchase.id, reference: "JT-\(1046 + account.purchases.count)", subject: subject,
+                                         topic: topic, status: "open", purchase: purchase)
+        let consumed = JotleySupportPurchase(id: purchase.id, provider: purchase.provider, status: purchase.status, used: true)
+        self.account = JotleySupportAccount(user: account.user, tickets: [ticket] + account.tickets,
+                                           purchases: account.purchases.map { $0.id == consumed.id ? consumed : $0 }, nextOffset: nil)
+        messages = [.init(id: "preview-request-message", ticketId: ticket.id, senderRole: "customer", body: body, createdAt: "2026-11-13T09:00:00Z")]
+        selectedTicketID = ticket.id
+        requestUnlocked = false
+    }
+    #endif
     var hasEarlierMessages: Bool { messageBefore != nil }
     var selectedTicket: JotleySupportTicket? { account?.tickets.first { $0.id == selectedTicketID } }
     init() {
+        #if DEBUG && targetEnvironment(simulator)
+        if isDesignPreview { return }
+        #endif
         guard Self.usesAppStore else { return }
         transactionsTask = Task { [weak self] in
             for await verification in StoreKit.Transaction.updates {
@@ -219,6 +263,15 @@ final class JotleySupportStore: ObservableObject {
         }
     }
     func load() async {
+        #if DEBUG && targetEnvironment(simulator)
+        if isDesignPreview {
+            available = true
+            let tickets = previewsHistory ? sampleHistory : []
+            account = JotleySupportAccount(user: .init(id: "preview", email: "customer@example.com", isStaff: false),
+                                           tickets: tickets, purchases: tickets.map(\.purchase), nextOffset: nil)
+            return
+        }
+        #endif
         await perform {
             struct Configuration: Decodable { let configured: Bool; let nativeConfigured: Bool?; let macBrowserConfigured: Bool?; let checkoutConfigured: Bool? }
             let configuration: Configuration = try await self.api("configuration", authenticated: false)
@@ -231,7 +284,12 @@ final class JotleySupportStore: ObservableObject {
         }
     }
     func refresh() async {
-        guard !busy, session != nil else { return }
+        #if DEBUG && targetEnvironment(simulator)
+        if isDesignPreview { return }
+        #endif
+        guard !busy else { return }
+        if !available || (Self.usesAppStore && product == nil) { await load(); return }
+        guard session != nil else { return }
         do {
             try await refreshAccount()
             if let id = selectedTicketID { try await loadMessages(id, reset: false) }
@@ -243,7 +301,61 @@ final class JotleySupportStore: ObservableObject {
     }
     func open(_ ticket: JotleySupportTicket) async {
         selectedTicketID = ticket.id; messages = []; messageBefore = nil
+        #if DEBUG && targetEnvironment(simulator)
+        if isDesignPreview {
+            let request = ticket.id == "preview-template"
+                ? "How can I make my meeting notes end with next steps?"
+                : "My notes show up on my iPhone but not on my iPad."
+            let reply = ticket.id == "preview-template"
+                ? "Create a meeting template in Settings and add an Action Items section. Then select it before generating your next summary."
+                : "Is iCloud sync turned on in Jotley on both devices?"
+            messages = [
+                .init(id: "preview-question", ticketId: ticket.id, senderRole: "customer", body: request, createdAt: "2026-11-12T09:00:00Z"),
+                .init(id: "preview-answer", ticketId: ticket.id, senderRole: "support", body: reply, createdAt: "2026-11-12T11:00:00Z"),
+            ]
+            return
+        }
+        #endif
         await perform { try await self.loadMessages(ticket.id, reset: true) }
+    }
+    func resolveTicket(_ ticket: JotleySupportTicket) async {
+        await changeTicket(ticket, deleting: false)
+    }
+    func deleteConversation(_ ticket: JotleySupportTicket) async {
+        await changeTicket(ticket, deleting: true)
+    }
+    private func changeTicket(_ ticket: JotleySupportTicket, deleting: Bool) async {
+        await perform {
+            #if DEBUG && targetEnvironment(simulator)
+            if !self.isDesignPreview {
+                try await self.sendTicketChange(ticket.id, deleting: deleting)
+            }
+            #else
+            try await self.sendTicketChange(ticket.id, deleting: deleting)
+            #endif
+            guard let current = self.account, current.tickets.contains(where: { $0.id == ticket.id }) else { return }
+            let otherTickets = current.tickets.filter { $0.id != ticket.id }
+            let tickets = deleting ? otherTickets : [
+                JotleySupportTicket(id: ticket.id, reference: ticket.reference, subject: ticket.subject,
+                                    topic: ticket.topic, status: "resolved", purchase: ticket.purchase)
+            ] + otherTickets
+            self.account = JotleySupportAccount(user: current.user, tickets: tickets, purchases: current.purchases,
+                                               nextOffset: deleting ? current.nextOffset.map { max(0, $0 - 1) } : current.nextOffset)
+            if deleting {
+                self.replyDrafts[ticket.id] = nil
+                if self.pendingReply?.ticket == ticket.id { self.pendingReply = nil }
+                if self.selectedTicketID == ticket.id {
+                    self.selectedTicketID = nil; self.messages = []; self.messageBefore = nil
+                }
+                self.notice = "Conversation deleted."
+            }
+        }
+    }
+    private func sendTicketChange(_ ticketID: String, deleting: Bool) async throws {
+        struct Result: Decodable { let updated: Bool }
+        let input = deleting ? ["ticketID": ticketID, "confirmation": "delete-conversation"] : ["ticketID": ticketID]
+        let result: Result = try await api(deleting ? "tickets/delete" : "tickets/resolve", body: input)
+        guard result.updated else { throw SupportFailure.message("The ticket could not be updated. Please try again.") }
     }
     func buyAppStoreTicket() async {
         guard let product, product.id == Self.productID, canBuy else { return }
@@ -282,7 +394,9 @@ final class JotleySupportStore: ObservableObject {
         }
     }
     func reply() async {
-        guard let id = selectedTicketID, let body = replyDrafts[id]?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty else { return }
+        guard let ticket = selectedTicket, ticket.status != "resolved",
+              let body = replyDrafts[ticket.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty else { return }
+        let id = ticket.id
         if pendingReply?.ticket != id || pendingReply?.body != body { pendingReply = (id, body, UUID().uuidString) }
         guard let attempt = pendingReply else { return }
         await perform {
@@ -313,8 +427,10 @@ final class JotleySupportStore: ObservableObject {
         guard session?.userID == owner, refreshed.user.id.lowercased() == owner?.lowercased() else { return }
         // Keep older pages and an open conversation visible when polling page one.
         let previous = account?.tickets ?? []
-        let merged = refreshed.tickets + previous.filter { old in !refreshed.tickets.contains { $0.id == old.id } }
-        account = JotleySupportAccount(user: refreshed.user, tickets: merged, purchases: refreshed.purchases, nextOffset: previous.count > 50 ? account?.nextOffset : refreshed.nextOffset)
+        let keepOlderPages = previous.count > 50 && refreshed.nextOffset != nil
+        let merged = refreshed.tickets + (keepOlderPages ? previous.filter { old in !refreshed.tickets.contains { $0.id == old.id } } : [])
+        account = JotleySupportAccount(user: refreshed.user, tickets: merged, purchases: refreshed.purchases,
+                                       nextOffset: keepOlderPages ? account?.nextOffset : refreshed.nextOffset)
         JotleySupporterStore.shared.recognizeSupportPurchases(refreshed.purchases)
     }
     func moreTickets() async {

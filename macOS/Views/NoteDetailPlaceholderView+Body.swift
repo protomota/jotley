@@ -145,12 +145,12 @@ extension NoteDetailPlaceholderView {
                 if presentation == .create {
                     NewSummaryTemplateView(onSaved: { templatePresentation = nil }, onUse: { definition in
                         templatePresentation = nil
-                        Task { await handleSummarizeAction(templateKey: definition.key) }
+                        selectSummaryTemplate(definition)
                     })
                 } else {
                     SummaryTemplatesView(onUse: { definition in
                         templatePresentation = nil
-                        Task { await handleSummarizeAction(templateKey: definition.key) }
+                        selectSummaryTemplate(definition)
                     })
                 }
             }
@@ -161,6 +161,7 @@ extension NoteDetailPlaceholderView {
             transcriptFollow = MacTranscriptFollowState()
             isEditingTranscript = false
             showActionsPopover = false
+            showsSummaryTemplatePicker = false
         }
         .onChange(of: viewModel.recorder.isRecording) { _, isRecordingNow in
 
@@ -243,68 +244,97 @@ extension NoteDetailPlaceholderView {
                 // Per-note saved-audio loading flag (not a persisted placeholder) so the
                 // action footer stays hidden while saved audio is being transcribed.
                 let isLoading = viewModel.isTranscriptLoading(for: note)
-                let supportsTranscription = true
                 let hasContent = !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 let isGenerating = viewModel.isGeneratingSummary && viewModel.generatingSummaryNoteID == note.objectID
 
-                if !isLoading && (supportsTranscription || hasContent) {
-                    HStack(spacing: 12) {
-                        if supportsTranscription {
-                            Button {
-                                Task { @MainActor in
-                                    await viewModel.resumeTranscriptionOnNote(note: note)
-                                }
-                            } label: {
-                                Label {
-                                    Text("Continue Transcription").modifier(JotleyNoteFooterTextStyle())
-                                } icon: {
-                                    Image(systemName: "mic.fill")
-                                }
-                                .font(.system(size: 13, weight: .semibold))
-                            }
-                            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
-                            .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
-                            .accessibilityIdentifier("noteDetailTranscriptResumeButton")
-                        }
-
+                if !isLoading {
+                    VStack(spacing: 10) {
                         if hasContent && !note.hasMeaningfulSummaryText {
-                            Button {
-                                // Always generate with Auto. A specific template is
-                                // chosen from the template menu (actions popover),
-                                // which appears once a summary exists.
-                                Task { @MainActor in
-                                    await handleSummarizeAction(templateKey: "default-summary")
-                                }
-                            } label: {
-                                HStack(spacing: 8) {
-                                    if isGenerating {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                            .tint(.themePrimaryAccent)
-                                    } else {
-                                        Image(systemName: "sparkles")
-                                            .font(.system(size: 13, weight: .semibold))
-                                    }
-
-                                    Text(isGenerating ? "Generating..." : "Generate Summary")
+                            HStack(spacing: 8) {
+                                summaryTemplateButton
+                                Button {
+                                    Task { await handleSummarizeAction(templateKey: summaryTemplateKey) }
+                                } label: {
+                                    Text("Generate Summary")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                            }
-                            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
-                            .disabled(isGenerating)
-                            .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
-                            if isGenerating {
-                                Button { viewModel.cancelInference() } label: {
-                                    Text("Cancel").modifier(JotleyNoteFooterTextStyle())
-                                }.jotleyDismissButtonStyle()
+                                .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+                                .disabled(isGenerating || (try? templateCatalog.resolve(summaryTemplateKey)) == nil)
+                                .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
                             }
                         }
+
+                        Button {
+                            Task { @MainActor in
+                                await viewModel.resumeTranscriptionOnNote(note: note)
+                            }
+                        } label: {
+                            Label {
+                                Text("Continue Transcription").modifier(JotleyNoteFooterTextStyle())
+                            } icon: {
+                                Image(systemName: "waveform")
+                            }
+                            .font(.system(size: 13, weight: .medium))
+                        }
+                        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+                        .matchedGeometryEffect(id: "transcription-footer", in: transcriptionFooterNamespace)
+                        .accessibilityIdentifier("noteDetailTranscriptResumeButton")
                     }
                     .modifier(MacNoteFooterPlacement())
 
                 }
             }
 
+    }
+
+    private var summaryTemplateKey: String { note.summaryType ?? LocalSummaryTemplate.auto.key }
+
+    private var summaryTemplateButton: some View {
+        let title = templateCatalog.title(for: summaryTemplateKey)
+        return Button {
+            showsSummaryTemplatePicker.toggle()
+        } label: {
+            Label {
+                Text(title).modifier(JotleyNoteFooterTextStyle())
+            } icon: {
+                Image(systemName: "sparkles")
+            }
+            .font(.system(size: 13, weight: .medium))
+            .lineLimit(1)
+            .frame(maxWidth: 160)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+        .accessibilityLabel("Templates: \(title)")
+        .accessibilityIdentifier("noteDetailTemplatesButton")
+        .popover(isPresented: $showsSummaryTemplatePicker, arrowEdge: .bottom) {
+            TemplateSubmenu(
+                note: note,
+                availableTemplates: availableTemplates,
+                onSelectTemplate: { key in
+                    showsSummaryTemplatePicker = false
+                    if let definition = try? templateCatalog.resolve(key) {
+                        selectSummaryTemplate(definition)
+                    }
+                },
+                onManageTemplates: { create in
+                    showsSummaryTemplatePicker = false
+                    templatePresentation = create ? .create : .manage
+                }
+            )
+            .padding(6)
+            .presentationBackground(Color.themeContentBackground)
+        }
+    }
+
+    private func selectSummaryTemplate(_ template: SummaryTemplateDefinition) {
+        guard summaryTemplateKey != template.key else { return }
+        if note.hasMeaningfulSummaryText {
+            Task { await handleSummarizeAction(templateKey: template.key) }
+        } else {
+            note.summaryType = template.key
+            saveContext()
+        }
     }
 }
 

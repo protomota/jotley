@@ -59,8 +59,9 @@ public extension Note {
     }
 
     var titleOrUntitled: String {
-        guard let trimmedTitle = self.title?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmedTitle.isEmpty else {
-            return "Untitled Note"
+        guard let trimmedTitle = self.title?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmedTitle.isEmpty, trimmedTitle != "Untitled", trimmedTitle != "Untitled Note" else {
+            return String(localized: "Untitled Note")
         }
         return trimmedTitle
     }

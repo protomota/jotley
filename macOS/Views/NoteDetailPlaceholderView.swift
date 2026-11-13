@@ -34,6 +34,7 @@ struct NoteDetailPlaceholderView: View {
     // New state for template selection
     @ObservedObject var templateCatalog = SummaryTemplateStore.shared
     @State var templatePresentation: SummaryTemplatePresentation?
+    @State var showsSummaryTemplatePicker = false
     var availableTemplates: [Template] {
         templateCatalog.definitions.map { Template(key: $0.key, title: $0.title, description: $0.prompt, category: $0.isCustom ? "My Templates" : LocalSummaryTemplate.resolve($0.key).category) }
     }

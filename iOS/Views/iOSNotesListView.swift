@@ -376,7 +376,7 @@ private struct LocalSearchField: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> Field {
         let field = Field()
-        field.placeholder = "Search notes"
+        field.placeholder = String(localized: "Search notes")
         field.accessibilityIdentifier = "notesListSearchField"
         field.font = .preferredFont(forTextStyle: .body)
         field.adjustsFontForContentSizeCategory = true
