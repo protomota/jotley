@@ -2,6 +2,15 @@ import AuthenticationServices
 import SwiftUI
 import StoreKit
 
+struct ProtomotaAppHelpLink: View {
+    var body: some View {
+        Link(destination: URL(string: "https://protomota.com/support?app=jotley")!) {
+            Label("Get App Help", systemImage: "questionmark.circle")
+        }
+        .accessibilityIdentifier("settingsProtomotaAppHelp")
+    }
+}
+
 struct JotleyTechnicalSupportButton: View {
     @State private var showingSupport = false
     var body: some View {

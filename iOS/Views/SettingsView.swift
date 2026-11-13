@@ -180,7 +180,10 @@ struct SettingsView: View {
             }
             Section("Backup & Restore") { LibraryBackupControls() }
             Section("Notifications") { JotleySummaryNotificationSettings() }
-            Section("Personal support") { JotleyTechnicalSupportButton() }
+            Section("Support") {
+                ProtomotaAppHelpLink()
+                JotleyTechnicalSupportButton()
+            }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
                 JotleyAboutLogo()

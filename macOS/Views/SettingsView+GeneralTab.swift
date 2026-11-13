@@ -158,6 +158,7 @@ extension SettingsView {
                         Divider()
                         Button("Welcome to Jotley", systemImage: "sparkles") { onShowWelcome() }
                             .accessibilityIdentifier("settingsWelcomeJotley")
+                        ProtomotaAppHelpLink()
                         JotleyTechnicalSupportButton()
                         JotleySupportLinks()
                     }
