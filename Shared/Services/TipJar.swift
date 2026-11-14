@@ -182,6 +182,7 @@ struct TipJarView: View {
     let privacyURL: URL
     var onTipCompleted: () -> Void = {}
     @StateObject private var store = TipJarStore()
+    @ObservedObject private var supporter = JotleySupporterStore.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var previewCelebration: JotleySupporterStore.Celebration?
@@ -197,7 +198,8 @@ struct TipJarView: View {
 
     private var successConfirmation: some View {
         VStack(spacing: 10) {
-            JotleySupporterEmblem()
+            JotleySupporterHeart(animationID: previewCelebration?.id ??
+                (supporter.celebration?.kind == .tip ? supporter.celebration?.id : nil))
             Text("Jotley Supporter")
                 .font(.subheadline.weight(.semibold))
                 .accessibilityIdentifier("jotleySupporterBadge")

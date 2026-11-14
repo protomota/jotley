@@ -26,8 +26,22 @@ struct JotleySupportTicket: Decodable, Identifiable {
     let subject: String
     let topic: String
     let status: String
-    let purchase: JotleySupportPurchase
+    let purchase: JotleySupportPurchase?
+
+    var canReply: Bool { status != "resolved" && (purchase?.status ?? "paid") == "paid" }
 }
+
+enum JotleySupportURLs {
+    private static let origin = "https://protomota.com"
+    static let help = URL(string: origin + "/support?app=jotley")!
+    static let macSignIn = URL(string: origin + "/support/mac")!
+    static let privacy = origin + "/privacy"
+
+    static func api(_ path: String) -> URL? {
+        URL(string: origin + "/api/support/" + path)
+    }
+}
+
 struct JotleySupportMessage: Decodable, Identifiable {
     let id: String
     let ticketId: String
@@ -122,7 +136,7 @@ final class JotleySupportStore: ObservableObject {
     }()
     var unusedPurchases: [JotleySupportPurchase] {
         guard let account else { return [] }
-        return account.purchases.filter { purchase in purchase.status == "paid" && purchase.used != true && !account.tickets.contains { $0.purchase.id == purchase.id } }
+        return account.purchases.filter { purchase in purchase.status == "paid" && purchase.used != true && !account.tickets.contains { $0.purchase?.id == purchase.id } }
     }
     var canBuy: Bool { account != nil && available && !busy && !pendingVerification && (Self.usesAppStore ? product != nil : checkoutAvailable) }
     var ticketPrice: String? {
@@ -201,7 +215,7 @@ final class JotleySupportStore: ObservableObject {
             let generation = self.authenticationGeneration
             let verifier = Self.nonce()
             let state = Self.nonce()
-            var components = URLComponents(string: "https://jotley.ai/support/mac")!
+            var components = URLComponents(url: JotleySupportURLs.macSignIn, resolvingAgainstBaseURL: false)!
             components.fragment = "challenge=\(Self.hashedNonce(verifier))&state=\(state)"
             let callback = try await self.openAuthentication(components.url!)
             let result = URLComponents(url: callback, resolvingAgainstBaseURL: false)
@@ -269,7 +283,7 @@ final class JotleySupportStore: ObservableObject {
             if ProcessInfo.processInfo.environment["JOTLEY_SUPPORT_PREVIEW_SIGNED_OUT"] == "1" { return }
             let tickets = previewsHistory ? sampleHistory : []
             account = JotleySupportAccount(user: .init(id: "preview", email: "customer@example.com", isStaff: false),
-                                           tickets: tickets, purchases: tickets.map(\.purchase), nextOffset: nil)
+                                           tickets: tickets, purchases: tickets.compactMap(\.purchase), nextOffset: nil)
             return
         }
         #endif
@@ -395,7 +409,7 @@ final class JotleySupportStore: ObservableObject {
         }
     }
     func reply() async {
-        guard let ticket = selectedTicket, ticket.status != "resolved",
+        guard let ticket = selectedTicket, ticket.canReply,
               let body = replyDrafts[ticket.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty else { return }
         let id = ticket.id
         if pendingReply?.ticket != id || pendingReply?.body != body { pendingReply = (id, body, UUID().uuidString) }
@@ -498,7 +512,7 @@ final class JotleySupportStore: ObservableObject {
             guard session != nil else { throw SupportFailure.message("Sign in with Apple to continue.") }
             if (session?.expiresAt ?? 0) < Date().timeIntervalSince1970 + 45 { try await renewSession() }
         }
-        guard let url = URL(string: "https://jotley.ai/api/support/" + path) else { throw SupportFailure.message("Support is unavailable.") }
+        guard let url = JotleySupportURLs.api(path) else { throw SupportFailure.message("Support is unavailable.") }
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         if let body {

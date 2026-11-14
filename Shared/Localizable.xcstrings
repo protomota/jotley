@@ -1,6 +1,107 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "One ticket covers one Jotley issue across iPhone, iPad, and Mac. You’ll get help in a private conversation with Protomota Support.": {
+      "extractionState": "manual",
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Én supportsag dækker ét Jotley-problem på tværs af iPhone, iPad og Mac. Du får hjælp i en privat samtale med Protomota Support."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Supportticket gilt für ein Jotley-Problem auf iPhone, iPad und Mac. Du erhältst Hilfe in einem privaten Gespräch mit dem Protomota-Support."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One ticket covers one Jotley issue across iPhone, iPad, and Mac. You’ll get help in a private conversation with Protomota Support."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada solicitud de soporte cubre un problema de Jotley en el iPhone, el iPad y el Mac. Recibirás ayuda en una conversación privada con el equipo de soporte de Protomota."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un ticket couvre un problème avec Jotley sur iPhone, iPad et Mac. Vous recevrez de l’aide dans une conversation privée avec l’assistance Protomota."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un ticket copre un problema di Jotley su iPhone, iPad e Mac. Riceverai assistenza in una conversazione privata con il supporto Protomota."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1件のチケットで、iPhone、iPad、MacでのJotleyに関する1つの問題に対応します。Protomotaサポートとの非公開のやり取りでサポートを受けられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원 티켓 하나로 iPhone, iPad 및 Mac에서 발생한 Jotley 문제 하나를 해결할 수 있습니다. Protomota 지원팀과의 비공개 대화에서 도움을 받을 수 있습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Én brukerstøttesak dekker ett Jotley-problem på iPhone, iPad og Mac. Du får hjelp i en privat samtale med Protomotas brukerstøtte."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eén supportticket is voor één probleem met Jotley op iPhone, iPad en Mac. Je krijgt hulp in een privégesprek met Protomota Support."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada chamado cobre um problema do Jotley no iPhone, iPad e Mac. Você recebe ajuda em uma conversa privada com o suporte da Protomota."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ett supportärende gäller ett problem med Jotley på iPhone, iPad och Mac. Du får hjälp i en privat konversation med Protomotas support."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir destek talebi iPhone, iPad ve Mac’teki tek bir Jotley sorununu kapsar. Protomota Destek ile özel bir görüşmede yardım alırsınız."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi yêu cầu hỗ trợ áp dụng cho một vấn đề của Jotley trên iPhone, iPad và Mac. Bạn sẽ được trợ giúp trong cuộc trò chuyện riêng với bộ phận hỗ trợ Protomota."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每张支持工单可处理 Jotley 在 iPhone、iPad 和 Mac 上的一个问题。你可以通过与 Protomota 支持团队的私密对话获得帮助。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每張支援單可處理 Jotley 在 iPhone、iPad 和 Mac 上的一個問題。你可以透過與 Protomota 支援團隊的私人對話取得協助。"
+          }
+        }
+      }
+    },
     "More Free Apps by Protomota": {
       "extractionState": "manual",
       "localizations": {

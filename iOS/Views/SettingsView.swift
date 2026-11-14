@@ -186,8 +186,8 @@ struct SettingsView: View {
             }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
-                JotleyAboutLogo()
                 JotleySupporterBadge()
+                JotleyAboutLogo()
                 Button { onShowWelcome() } label: {
                     MobileActionLabel("Welcome to Jotley", systemImage: "sparkles")
                 }.accessibilityIdentifier("settingsWelcomeJotley")

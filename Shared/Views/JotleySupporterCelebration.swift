@@ -7,7 +7,9 @@ struct JotleySupporterBadge: View {
             Label {
                 Text("Jotley Supporter")
             } icon: {
-                JotleySupporterEmblem(size: 30)
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(Color.themePrimaryAccent)
+                    .accessibilityHidden(true)
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.primary)
@@ -18,17 +20,15 @@ struct JotleySupporterBadge: View {
     }
 }
 
-struct JotleySupporterEmblem: View {
-    var size: CGFloat = 120
+struct JotleySupporterHeart: View {
     var animationID: UUID?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Image("SupporterBadge")
-            .resizable()
-            .interpolation(.high)
-            .scaledToFit()
-            .frame(width: size, height: size)
+        Image(systemName: "heart.fill")
+            .font(.system(size: 64))
+            .foregroundStyle(Color.themePrimaryAccent)
+            .frame(width: 120, height: 120)
             .keyframeAnimator(initialValue: 1.0, trigger: reduceMotion ? nil : animationID) { badge, scale in
                 badge.scaleEffect(scale)
             } keyframes: { _ in

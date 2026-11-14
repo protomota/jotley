@@ -8,7 +8,21 @@ final class SupportClientTests: XCTestCase {
         let account = try decoder.decode(JotleySupportAccount.self, from: Data(json.utf8))
         XCTAssertEqual(account.user.email, "customer@private.icloud.com")
         XCTAssertFalse(account.user.isStaff)
-        XCTAssertEqual(account.tickets.first?.purchase.id, account.purchases.first?.id)
+        XCTAssertEqual(account.tickets.first?.purchase?.id, account.purchases.first?.id)
+    }
+
+    func testSharedSupportTicketWithoutAPurchaseCanBeAnswered() throws {
+        let json = #"{"id":"ticket","reference":"JT-0123456789AB","subject":"Set up sync","topic":"Sync","status":"open","purchase":null}"#
+        let ticket = try JSONDecoder().decode(JotleySupportTicket.self, from: Data(json.utf8))
+        XCTAssertNil(ticket.purchase)
+        XCTAssertTrue(ticket.canReply)
+    }
+
+    func testSupportUsesProtomotaForBothNativeRequestsAndMacSignIn() {
+        XCTAssertEqual(JotleySupportURLs.api("messages?ticket=example")?.absoluteString,
+                       "https://protomota.com/api/support/messages?ticket=example")
+        XCTAssertEqual(JotleySupportURLs.macSignIn.absoluteString, "https://protomota.com/support/mac")
+        XCTAssertEqual(JotleySupportURLs.help.absoluteString, "https://protomota.com/support?app=jotley")
     }
     func testMessageTransportPreservesHumanRoleAndMultilineText() throws {
         let json = #"{"id":"message","ticket_id":"ticket","sender_role":"support","body":"Hi, I’m Brad.\nLet’s connect Jotley.","created_at":"2026-11-10T12:00:00.123Z"}"#

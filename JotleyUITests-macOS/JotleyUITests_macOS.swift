@@ -1343,6 +1343,31 @@ private struct MacSupportPreviewRoot: View {
 import XCTest
 
 final class JotleyLocalUITests: XCTestCase {
+    @MainActor func testPersonalSupportCoverage() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Launch planning","folder":"Work","tags":[],"transcript":"Review the next steps.","summary":"Share the launch plan."}]"#
+        app.launchArguments = ["-AppleLanguages", "(en)", "-jotleyWelcomeCompleted.v1", "YES", "-selectedAppearanceMode", "Dark"]
+        app.launch()
+        let settings = app.buttons["notesListSettingsButton"]
+        if !settings.waitForExistence(timeout: 3) { app.typeKey("0", modifierFlags: [.command, .option]) }
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.click()
+        let mcp = app.buttons["settingsMCPSection"]
+        XCTAssertTrue(mcp.waitForExistence(timeout: 10))
+        mcp.click()
+        let support = app.buttons["settingsTechnicalSupport"]
+        if !support.isHittable { app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -430) }
+        XCTAssertTrue(support.isHittable)
+        support.click()
+        let heading = app.staticTexts["Personal technical support"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 10))
+        let coverage = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "One ticket covers one Jotley issue")).firstMatch
+        XCTAssertTrue(coverage.exists)
+        let sheet = app.sheets.containing(.staticText, identifier: "Personal technical support").firstMatch
+        capture(sheet.exists ? sheet : app.windows.firstMatch, named: "mac-personal-support")
+    }
+
     @MainActor func testLocalizedStorefrontCaptures() throws {
         guard let fixture = ProcessInfo.processInfo.environment["JOTLEY_STORE_SCREENSHOT_FIXTURE"] else {
             throw XCTSkip("Run scripts/capture-app-store.py to supply localized fixtures.")

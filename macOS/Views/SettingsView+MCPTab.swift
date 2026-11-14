@@ -80,7 +80,7 @@ extension SettingsView {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Need a hand?").font(.headline)
-                    Text("Get personal help with MCP setup or another Jotley issue. One ticket opens a private conversation with Jotley Support.").font(.callout).foregroundStyle(.secondary)
+                    Text(JotleySupportCopy.ticketCoverage).font(.callout).foregroundStyle(.secondary)
                     JotleyTechnicalSupportButton()
                 }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))

@@ -2,10 +2,14 @@ import AuthenticationServices
 import SwiftUI
 import StoreKit
 
+enum JotleySupportCopy {
+    static let ticketCoverage: LocalizedStringKey = "One ticket covers one Jotley issue across iPhone, iPad, and Mac. You’ll get help in a private conversation with Protomota Support."
+}
+
 struct ProtomotaAppHelpLink: View {
     var body: some View {
-        Link(destination: URL(string: "https://protomota.com/support?app=jotley")!) {
-            Label("Get App Help", systemImage: "questionmark.circle")
+        Link(destination: JotleySupportURLs.help) {
+            JotleyAccentIconLabel(title: "Get App Help", systemImage: "headphones")
         }
         .accessibilityIdentifier("settingsProtomotaAppHelp")
     }
@@ -15,7 +19,7 @@ struct JotleyTechnicalSupportButton: View {
     @State private var showingSupport = false
     var body: some View {
         Button { showingSupport = true } label: {
-            Label("Personal Technical Support", systemImage: "person.bubble.left.and.bubble.right")
+            JotleyAccentIconLabel(title: "Personal Technical Support", systemImage: "person.bubble.left.and.bubble.right")
         }
         .accessibilityIdentifier("settingsTechnicalSupport")
         .sheet(isPresented: $showingSupport) { JotleySupportTicketsView() }
@@ -115,13 +119,17 @@ struct JotleySupportTicketsView: View {
             }
         }
     }
+    private var ticketCoverage: Text {
+        Text(JotleySupportCopy.ticketCoverage)
+    }
+
     private var accountView: some View {
         Form {
             Section {
                 Label("Personal help from a real person", systemImage: "person.bubble.left.and.bubble.right")
                     .font(.headline)
                 JotleySupporterBadge()
-                Text("Get help with one Jotley issue, including MCP setup. Each ticket opens a private conversation with Jotley Support.")
+                ticketCoverage
                 if let price = store.ticketPrice {
                     Text("\(price) per ticket · One-time purchase").font(.callout.weight(.semibold))
                 }
@@ -210,7 +218,7 @@ struct JotleySupportTicketsView: View {
                     Text("Personal technical support")
                         .font(.title.bold())
                         .accessibilityAddTraits(.isHeader)
-                    Text("Get help with a Jotley issue, including MCP setup. Each ticket opens a private conversation and includes follow-up replies.")
+                    ticketCoverage
                         .foregroundStyle(.secondary)
                     if let price = store.ticketPrice {
                         Text("\(price) per ticket · One-time purchase")
@@ -259,7 +267,7 @@ struct JotleySupportTicketsView: View {
     }
 
     private var supportPrivacyLink: some View {
-        supportLink("Support privacy", symbol: "lock.shield", url: "https://jotley.ai/privacy")
+        supportLink("Support privacy", symbol: "lock.shield", url: JotleySupportURLs.privacy)
     }
 
     private var appleAccountLink: some View {
@@ -407,7 +415,7 @@ struct JotleySupportTicketsView: View {
                     Spacer()
                     Button("Send reply", systemImage: "paperplane.fill") { Task { await store.reply() } }
                         .buttonStyle(JotleyGlassButtonStyle())
-                        .disabled(store.busy || (store.replyDrafts[ticket.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ticket.purchase.status != "paid")
+                        .disabled(store.busy || (store.replyDrafts[ticket.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !ticket.canReply)
                         .accessibilityIdentifier("supportSendReply")
                 }
         }.padding()
@@ -473,7 +481,7 @@ private struct SupportTicketReadyHeader: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            JotleySupporterEmblem(animationID: revealID)
+            JotleySupporterHeart(animationID: revealID)
             Text("Your support ticket is ready").font(.title3.bold())
                 .accessibilityIdentifier("supportTicketReady")
             Text("Send your request below. We’ll email confirmation to your Apple account address.")

@@ -134,10 +134,19 @@ extension SettingsView {
                         }
                     }
                     VStack(alignment: .leading, spacing: 16) {
+                        Text("Support").font(.headline)
+                        ProtomotaAppHelpLink()
+                        JotleyTechnicalSupportButton()
+                    }
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Support Jotley").font(.headline)
+                        JotleySupportLinks()
+                    }
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("About")
                             .font(.headline)
-                        JotleyAboutLogo()
                         JotleySupporterBadge()
+                        JotleyAboutLogo()
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -158,9 +167,6 @@ extension SettingsView {
                         Divider()
                         Button("Welcome to Jotley", systemImage: "sparkles") { onShowWelcome() }
                             .accessibilityIdentifier("settingsWelcomeJotley")
-                        ProtomotaAppHelpLink()
-                        JotleyTechnicalSupportButton()
-                        JotleySupportLinks()
                     }
 
                 }
