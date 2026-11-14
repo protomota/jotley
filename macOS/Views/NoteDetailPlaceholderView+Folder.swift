@@ -68,19 +68,12 @@ struct FolderChipView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: note.folder == nil ? "folder" : "folder.fill")
-                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(theme.currentThemeColor.color(in: colorScheme))
                 Text(note.folder?.displayName ?? "No Folder")
-                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(colorScheme == .dark ? Color.white : Color.black)
                     .lineLimit(1)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.themeAccent.opacity(0.35))
-            )
+            .noteMetadataPill()
         }
         .menuStyle(.button).buttonStyle(.plain)
         .fixedSize()

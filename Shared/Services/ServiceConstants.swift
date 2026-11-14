@@ -515,23 +515,20 @@ struct TranscriptEditDraft: Equatable {
         return savedUtterances.map(\.text).joined(separator: "\n\n")
     }
     func matchCount(for query: TranscriptFindQuery) -> Int {
-        guard let pattern = query.pattern else { return 0 }
         if !hasTimestamps {
-            let text = editorText
-            return pattern.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
+            return query.matchCount(in: editorText)
         }
+        guard let pattern = query.pattern else { return 0 }
         return segments.reduce(0) { $0 + pattern.numberOfMatches(in: $1.text, range: NSRange($1.text.startIndex..., in: $1.text)) }
     }
 
     mutating func replaceAll(_ query: TranscriptFindQuery, with replacement: String) {
-        guard let pattern = query.pattern else { return }
-        let literal = NSRegularExpression.escapedTemplate(for: replacement)
         if !hasTimestamps {
-            let text = editorText
-            editorText = pattern.stringByReplacingMatches(in: text,
-                range: NSRange(text.startIndex..., in: text), withTemplate: literal)
+            editorText = query.replacingMatches(in: editorText, with: replacement)
             return
         }
+        guard let pattern = query.pattern else { return }
+        let literal = NSRegularExpression.escapedTemplate(for: replacement)
         for index in segments.indices {
             let text = segments[index].text
             segments[index].text = pattern.stringByReplacingMatches(in: text,
@@ -551,6 +548,15 @@ struct TranscriptFindQuery {
     var text = ""
     var matchCase = false
     var wholeWords = true
+
+    func matchCount(in text: String) -> Int {
+        pattern?.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text)) ?? 0
+    }
+
+    func replacingMatches(in text: String, with replacement: String) -> String {
+        pattern?.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text),
+            withTemplate: NSRegularExpression.escapedTemplate(for: replacement)) ?? text
+    }
 
     var pattern: NSRegularExpression? {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }

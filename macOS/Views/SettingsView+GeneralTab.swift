@@ -5,7 +5,7 @@ extension SettingsView {
     var generalView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 28) {
                     Text("General")
                         .font(.title2)
                         .fontWeight(.semibold)

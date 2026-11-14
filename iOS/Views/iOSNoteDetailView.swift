@@ -16,6 +16,8 @@ struct NoteDetailByIdView: View {
 
 struct NoteDetailView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.colorScheme) private var colorScheme
+    var headerIconColor: Color { themeManager.currentThemeColor.glassForeground(in: colorScheme) }
     @ObservedObject var note: Note
     var newTranscriptionAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
@@ -117,14 +119,17 @@ struct MobileNoteTextEditor: View {
             Group {
                 if field == .transcript {
                     VStack(alignment: .leading, spacing: 12) {
-                        TranscriptFindReplace(draft: $transcriptDraft)
+                        NoteFindReplace(transcript: $transcriptDraft)
                         if !transcriptDraft.hasTimestamps {
                             Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
                         }
                         editor(text: $transcriptDraft.editorText)
                     }
                 } else {
-                    editor(text: $text)
+                    VStack(alignment: .leading, spacing: 12) {
+                        NoteFindReplace(summary: $text)
+                        editor(text: $text)
+                    }
                 }
             }
                 .font(.body).foregroundStyle(Color.themeTextPrimary)

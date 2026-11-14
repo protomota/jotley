@@ -405,11 +405,12 @@ final class Jotley_iOSUITests: XCTestCase {
         app.buttons["onboardingContinue"].tap(); expectTitle("Find the useful parts.")
         title.swipeLeft(); expectTitle("Start with your language.")
         title.swipeLeft(); expectTitle("Give your words a place.")
+        title.swipeLeft(); expectTitle("Summary notifications")
         title.swipeLeft(); expectTitle("Free software.\nSupported by people.")
         XCTAssertFalse(app.alerts.firstMatch.exists, "Swiping must not request microphone access")
         title.swipeLeft(); expectTitle("Free software.\nSupported by people.")
         XCTAssertTrue(app.buttons["onboardingContinue"].exists, "Swiping past the end must not finish setup")
-        app.buttons["onboardingBack"].tap(); expectTitle("Give your words a place.")
+        app.buttons["onboardingBack"].tap(); expectTitle("Summary notifications")
     }
 
     @MainActor private func onboardingTitle(_ text: String, in app: XCUIApplication) -> String {
@@ -523,9 +524,11 @@ final class Jotley_iOSUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-selectedThemeColor", "Purple"]
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Keep this note","folder":"","tags":[],"transcript":"Existing notes stay safe.","summary":""}]"###
+        app.launchEnvironment["JOTLEY_TIP_DESIGN_PREVIEW"] = "1"
         app.launchEnvironment["JOTLEY_TEST_ONBOARDING"] = "1"
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
         for country in ["USA", "GBR"] {
+            app.launchEnvironment["JOTLEY_TEST_RESET_NOTIFICATIONS"] = "1"
             app.launchEnvironment["JOTLEY_TEST_STOREFRONT"] = country
             app.launchEnvironment["JOTLEY_TEST_RESET_ONBOARDING"] = "1"
             app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = country == "USA" ? "Dark" : "Light"
@@ -535,6 +538,24 @@ final class Jotley_iOSUITests: XCTestCase {
             for _ in 0..<3 { app.buttons["onboardingContinue"].tap() }
             if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
             else { app.buttons["onboardingContinue"].tap() }
+            let notifications = app.switches["onboardingSummaryNotificationsToggle"]
+            XCTAssertTrue(notifications.waitForExistence(timeout: 5))
+            XCTAssertEqual(notifications.value as? String, "1")
+            let notificationScreen = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            notificationScreen.name = "Onboarding notifications enabled - \(country)"
+            notificationScreen.lifetime = .keepAlways
+            add(notificationScreen)
+            notifications.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            let switchedOff = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "value == %@", "0"), object: notifications)
+            XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 4), .completed)
+            if country == "USA" {
+                let optedOut = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                optedOut.name = "Onboarding notifications disabled"
+                optedOut.lifetime = .keepAlways
+                add(optedOut)
+            }
+            app.buttons["onboardingContinue"].tap()
             XCTAssertEqual(title.label, "Free software.\nSupported by people.")
             let tip = app.buttons["onboardingTipJotley"]
             XCTAssertTrue(tip.waitForExistence(timeout: 5))
@@ -559,13 +580,14 @@ final class Jotley_iOSUITests: XCTestCase {
             }
             let back = app.buttons["onboardingBack"]
             XCTAssertTrue(back.isHittable); back.tap()
-            XCTAssertEqual(title.label, onboardingTitle("Give your words a place.", in: app))
-            if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
-            else { app.buttons["onboardingContinue"].tap() }
+            XCTAssertEqual(title.label, "Summary notifications")
+            XCTAssertEqual(notifications.value as? String, "0")
+            app.buttons["onboardingContinue"].tap()
             app.buttons["onboardingContinue"].tap()
             XCTAssertTrue(app.staticTexts["Keep this note"].waitForExistence(timeout: 8))
             app.terminate()
             app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_ONBOARDING")
+            app.launchEnvironment.removeValue(forKey: "JOTLEY_TEST_RESET_NOTIFICATIONS")
             app.launch()
             showNotesLibrary(app)
             XCTAssertTrue(app.buttons["notesListSettingsButton"].waitForExistence(timeout: 10))
@@ -740,6 +762,60 @@ final class Jotley_iOSUITests: XCTestCase {
             last.tap()
             XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 10))
             XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Scroll note 20")
+        }
+    }
+
+    @MainActor func testNoteHeaderActionsScrollWithTranscript() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? ""
+        let useLandscape = model.hasPrefix("iPad") || model.hasPrefix("iPhone18,8")
+        XCUIDevice.shared.orientation = useLandscape ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let transcript = (1...25).map {
+            "Paragraph \($0): Review the next steps and keep a clear record of the conversation."
+        }.joined(separator: "\n\n")
+        let fixture: [[String: Any]] = [["title": "Launch planning", "folder": "Work", "tags": [String](),
+                                         "transcript": transcript, "summary": ""]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchArguments = ["-selectedThemeColor", "Magenta", "-jotleyWelcomeCompleted.v1", "YES"]
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+
+        for appearance in ["Dark", "Light"] {
+            app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = appearance
+            app.launch()
+            let title = app.staticTexts["noteDetailTitle"]
+            if !title.exists {
+                showNotesLibrary(app)
+                let row = app.buttons.containing(.staticText, identifier: "Launch planning").firstMatch
+                XCTAssertTrue(row.waitForExistence(timeout: 15), app.debugDescription); row.tap()
+            }
+            let share = app.buttons["noteDetailShareButton"]
+            let more = app.buttons["noteDetailMoreActionsButton"]
+            XCTAssertTrue(share.waitForExistence(timeout: 10) && share.isHittable && more.isHittable)
+            let scroll = app.scrollViews.containing(.staticText, identifier: "noteDetailTitle").firstMatch
+            XCTAssertTrue(scroll.exists)
+
+            func capture(_ state: String) {
+                let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                shot.name = "Note header actions - \(appearance) - \(state)"
+                shot.lifetime = .keepAlways
+                add(shot)
+            }
+
+            capture("Top")
+            share.tap()
+            XCTAssertTrue(app.buttons["shareNoteButton"].waitForExistence(timeout: 5))
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6)).tap()
+            more.tap()
+            XCTAssertTrue(app.buttons["noteDetailEditTranscriptButton"].waitForExistence(timeout: 5))
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.6)).tap()
+            scroll.swipeUp(velocity: .slow)
+            XCTAssertFalse(share.isHittable)
+            XCTAssertFalse(more.isHittable)
+            capture("Scrolled")
+            scroll.swipeDown(velocity: .slow)
+            XCTAssertTrue(share.isHittable && more.isHittable)
         }
     }
 
@@ -3014,6 +3090,49 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["00:00"].exists)
         XCTAssertTrue(app.staticTexts["00:25"].exists)
         Thread.sleep(forTimeInterval: 1.5)
+    }
+
+    @MainActor func testSummaryFindReplaceSavesEditedMarkdown() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES", "-selectedThemeColor", "Magenta"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = ###"[{"title":"Launch plan","folder":"Work","tags":[],"transcript":"The team agreed to review the launch.","summary":"## Action Items\n- **Alex**: Review the launch.\n- Ask Alex for feedback. Keep Alexa as written."}]"###
+        app.launch()
+
+        let more = app.buttons["noteDetailMoreActionsButton"]
+        XCTAssertTrue(more.waitForExistence(timeout: 15))
+        more.tap()
+        app.buttons["noteDetailEditSummaryButton"].tap()
+        let panel = app.buttons["summaryFindReplace"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        panel.tap()
+        let openPanel = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        openPanel.name = "Find and Replace in Edit Summary"
+        openPanel.lifetime = .keepAlways
+        add(openPanel)
+
+        let find = app.textFields["summaryFindField"]
+        find.tap(); find.typeText("Alex")
+        let replacement = app.textFields["summaryReplaceField"]
+        replacement.tap(); replacement.typeText("Sam")
+        XCTAssertTrue(app.staticTexts["2 matches in this summary"].exists)
+        let replace = app.buttons["summaryReplaceAllButton"]
+        if !replace.isHittable { app.swipeUp(velocity: .slow) }
+        replace.tap()
+        XCTAssertTrue(app.staticTexts["Replaced 2 matches."].waitForExistence(timeout: 5))
+        let editor = app.textViews["summaryEditorText"]
+        XCTAssertEqual(editor.value as? String, "## Action Items\n- **Sam**: Review the launch.\n- Ask Sam for feedback. Keep Alexa as written.")
+        let result = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        result.name = "Two matches replaced in the summary"
+        result.lifetime = .keepAlways
+        add(result)
+        app.buttons["summaryEditorSaveButton"].tap()
+        XCTAssertTrue(more.waitForExistence(timeout: 5))
+        more.tap()
+        app.buttons["noteDetailEditSummaryButton"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertEqual(editor.value as? String, "## Action Items\n- **Sam**: Review the launch.\n- Ask Sam for feedback. Keep Alexa as written.")
     }
 
     @MainActor func testFloatingGlassWhileScrollingNotes() throws {

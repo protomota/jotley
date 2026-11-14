@@ -50,13 +50,6 @@ extension NoteDetailView {
         }
         .preference(key: NoteFooterContentKey.self,
                     value: newTranscriptionAction != nil ? note.id.map { [$0: AnyView(noteActionsFooter)] } ?? [:] : [:])
-        .toolbar {
-            if !usesInlineNoteActions {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    noteHeaderActions
-                }.sharedBackgroundVisibility(.hidden)
-            }
-        }
         .sheet(isPresented: $showingTranscriptEditor, onDismiss: { selectedTab = "Transcript" }) { MobileNoteTextEditor(note: note, field: .transcript) }
         .sheet(isPresented: $showingSummaryEditor, onDismiss: { selectedTab = hasSummary ? "Summary" : "Transcript" }) { MobileNoteTextEditor(note: note, field: .summary) }
         .sheet(item: $templatePresentation) { presentation in
@@ -100,7 +93,6 @@ extension NoteDetailView {
         .observeThemeChanges()
     }
     private var isWritingVisibleSummary: Bool { summaryIsRunning && selectedTab == "Summary" }
-    private var usesInlineNoteActions: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
     private var noteHeaderActions: some View {
         HStack(spacing: 10) {
@@ -126,9 +118,11 @@ extension NoteDetailView {
                     }
                 }
             } label: {
-                JotleyFloatingMenuIcon(systemImage: "square.and.arrow.up", verticalIconOffset: -1.5)
+                noteHeaderMenuIcon("square.and.arrow.up", verticalOffset: -1.5)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
             .accessibilityLabel("Share Actions").accessibilityIdentifier("noteDetailShareButton")
             Menu {
                 Button { showingAskAI = true } label: {
@@ -167,12 +161,21 @@ extension NoteDetailView {
                     .accessibilityIdentifier("noteDetailContinueTranscriptionMenuButton")
                 Divider()
                 Button("Delete Note", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
-            } label: { JotleyFloatingMenuIcon(systemImage: "ellipsis") }
-            .buttonStyle(.plain)
+            } label: { noteHeaderMenuIcon("ellipsis") }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
             .accessibilityLabel("More Actions")
             .accessibilityIdentifier("noteDetailMoreActionsButton")
         }
         .menuIndicator(.hidden)
+    }
+
+    private func noteHeaderMenuIcon(_ systemImage: String, verticalOffset: CGFloat = 0) -> some View {
+        let symbol = UIImage(systemName: systemImage, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold))
+        return Image(uiImage: (symbol ?? UIImage()).withTintColor(UIColor(headerIconColor), renderingMode: .alwaysOriginal))
+            .offset(y: verticalOffset)
+            .frame(width: 26, height: 26)
     }
 
     private var noteHeaderSection: some View {
@@ -192,8 +195,8 @@ extension NoteDetailView {
                     }
                 }
                 .font(.title2.bold()).foregroundColor(Color(uiColor: .label))
-                .frame(maxWidth: .infinity, minHeight: usesInlineNoteActions ? 44 : nil, alignment: .leading)
-                if usesInlineNoteActions { noteHeaderActions.fixedSize(horizontal: true, vertical: false) }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                noteHeaderActions.fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal)
             if let timestamp = note.timestamp {

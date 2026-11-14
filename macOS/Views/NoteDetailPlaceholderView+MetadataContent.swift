@@ -106,11 +106,10 @@ extension NoteDetailPlaceholderView {
                 showAddTagPopover = true
             } label: {
                 JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle.fill")
-                    .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
+                    .noteMetadataPill()
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("noteDetailAddTagButton")
             .popover(isPresented: $showAddTagPopover, arrowEdge: .bottom) {
                 AddTagPopoverView(
                     note: note,
@@ -133,18 +132,15 @@ extension NoteDetailPlaceholderView {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "tag")
-                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Color.themePrimaryAccent)
                     Text("\(currentTags.count) \(currentTags.count == 1 ? "tag" : "tags")")
-                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.primary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(isTagsExpanded ? 90 : 0))
                 }
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .noteMetadataPill()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("noteDetailTagCount")
@@ -166,9 +162,8 @@ extension NoteDetailPlaceholderView {
                 Button {
                     showAddTagPopover = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(Color.themePrimaryAccent)
-                        .font(.body)
+                    JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle.fill")
+                        .noteMetadataPill()
                 }
                 .buttonStyle(.plain)
                 .popover(isPresented: $showAddTagPopover, arrowEdge: .bottom) {
@@ -194,27 +189,19 @@ extension NoteDetailPlaceholderView {
     var createdDateText: some View {
         HStack(spacing: 4) {
             Image(systemName: "calendar")
-                .font(.system(size: 11, weight: .medium))
 
             HStack(spacing: 6) {
                 Text(formatDatePart(note.timestampOrNow))
-                    .font(.system(size: 11, weight: .medium))
 
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 1, height: 12)
 
                 Text(formatTimePart(note.timestampOrNow))
-                    .font(.system(size: 11, weight: .medium))
             }
         }
         .foregroundColor(Color.gray)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .overlay(
-            Capsule()
-                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-        )
+        .noteMetadataPill()
     }
 
     func formatDatePart(_ date: Date) -> String {
@@ -284,5 +271,19 @@ extension NoteDetailPlaceholderView {
         case .none:
             return .constant(false)
         }
+    }
+}
+
+extension View {
+    func noteMetadataPill() -> some View {
+        self
+            .font(.system(size: 11, weight: .medium))
+            .padding(.horizontal, 8)
+            .frame(minHeight: 22)
+            .background {
+                Capsule()
+                    .strokeBorder(Color.gray.opacity(0.5), lineWidth: 1)
+            }
+            .contentShape(Capsule())
     }
 }

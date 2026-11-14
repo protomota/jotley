@@ -52,7 +52,7 @@ import AppKit
     }
     func install() { center?.delegate = self }
     func refreshAuthorization() async { authorizationStatus = await authorization() }
-    // Start the system consent request alongside inference, never at app launch.
+    // Ask during onboarding, from Settings, or when a summary is requested.
     func prepareForSummary() {
         guard isEnabled, permissionTask == nil else { return }
         permissionTask = Task {
@@ -203,7 +203,6 @@ struct JotleyTranscriptEdgeFade: ViewModifier {
     private struct Edges: Equatable { var top = false; var bottom = false }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var edges = Edges()
-    var background: Color
     var topFadeHeight: CGFloat = 64
     var showsBottomFade = true
     var isEnabled = true
@@ -219,36 +218,37 @@ struct JotleyTranscriptEdgeFade: ViewModifier {
             } action: { _, newEdges in
                 edges = newEdges
             }
-            .overlay(alignment: .top) {
-                GeometryReader { geometry in
-                    fade(toward: .bottom, height: min(topFadeHeight, geometry.size.height / 3),
-                         visible: isEnabled && edges.top)
+            .mask {
+                if isEnabled {
+                    GeometryReader { geometry in
+                        VStack(spacing: 0) {
+                            fade(toward: .bottom, height: min(topFadeHeight, geometry.size.height * 0.44),
+                                 visible: edges.top)
+                            Color.black
+                            if showsBottomFade {
+                                fade(toward: .top, height: min(18, geometry.size.height * 0.1),
+                                     visible: edges.bottom)
+                            }
+                        }
+                    }
+                } else {
+                    Color.black
                 }
-                .allowsHitTesting(false)
-            }
-            .overlay(alignment: .bottom) {
-                if showsBottomFade { fade(toward: .top, height: 18, visible: isEnabled && edges.bottom) }
             }
     }
 
+    private static let smoothStops: [Gradient.Stop] = (0...12).map { step in
+        let position = CGFloat(step) / 12
+        let opacity = position * position * position * (position * (6 * position - 15) + 10)
+        return .init(color: .black.opacity(Double(opacity)), location: position)
+    }
+
     private func fade(toward endPoint: UnitPoint, height: CGFloat, visible: Bool) -> some View {
-        LinearGradient(
-            stops: [
-                .init(color: background, location: 0),
-                .init(color: background.opacity(0.90), location: 0.20),
-                .init(color: background.opacity(0.65), location: 0.40),
-                .init(color: background.opacity(0.35), location: 0.60),
-                .init(color: background.opacity(0.10), location: 0.80),
-                .init(color: background.opacity(0), location: 1)
-            ],
-            startPoint: endPoint == .bottom ? .top : .bottom,
-            endPoint: endPoint
-        )
+        LinearGradient(stops: Self.smoothStops,
+                       startPoint: endPoint == .bottom ? .top : .bottom, endPoint: endPoint)
+            .overlay { Color.black.opacity(visible ? 0 : 1) }
             .frame(height: height)
-            .opacity(visible ? 1 : 0)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: visible)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: visible)
     }
 }
 
@@ -356,13 +356,12 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
         let dark = colorScheme == .dark
         let darkSurface = dark || usesDarkSurface
         let surface = Color(white: darkSurface ? 0.18 : 0.96)
-        let surfaceOpacity = darkSurface ? 0.78 : 0.68
         ZStack {
             if reduceTransparency {
                 shape.fill(surface)
             } else {
-                shape.fill(.ultraThinMaterial)
-                    .overlay { shape.fill(surface.opacity(surfaceOpacity)) }
+                Color.clear.glassEffect(.clear, in: shape)
+                    .overlay { shape.fill(surface.opacity(0.85)) }
             }
         }
         .overlay { shape.strokeBorder(.white.opacity(darkSurface ? 0.16 : 0.70), lineWidth: 1) }
@@ -452,7 +451,7 @@ struct JotleyLibraryWelcome: View {
                     .accessibilityIdentifier("libraryWelcomeHeading")
                 Text(hasNotes
                      ? LocalizedStringKey("Choose a note to read or edit the transcript, see the summary, or ask a question.")
-                     : LocalizedStringKey("Capture a thought, meeting, or lecture. Edit the transcript and get the key points with Apple Intelligence, right on your device."))
+                     : LocalizedStringKey("Capture thoughts and meetings. Edit transcripts and get key points with Apple Intelligence on your device."))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
@@ -473,17 +472,48 @@ struct JotleyLibraryWelcome: View {
     }
 }
 
-struct TranscriptFindReplace: View {
+struct NoteFindReplace: View {
     private enum Field { case find, replacement }
-    @Binding var draft: TranscriptEditDraft
+    private enum Target {
+        case transcript(Binding<TranscriptEditDraft>)
+        case summary(Binding<String>)
+    }
+    private let target: Target
     @State private var query = TranscriptFindQuery()
     @State private var replacement = ""
     @State private var replacedCount: Int?
     @State private var isExpanded = false
     @FocusState private var focus: Field?
 
+    init(transcript: Binding<TranscriptEditDraft>) {
+        target = .transcript(transcript)
+    }
+
+    init(summary: Binding<String>) {
+        target = .summary(summary)
+    }
+
+    private var identifierPrefix: String {
+        if case .summary = target { return "summary" }
+        return "transcript"
+    }
+
+    private var matchCount: Int {
+        switch target {
+        case .transcript(let draft): draft.wrappedValue.matchCount(for: query)
+        case .summary(let text): query.matchCount(in: text.wrappedValue)
+        }
+    }
+
+    private func replaceAll() {
+        switch target {
+        case .transcript(let draft): draft.wrappedValue.replaceAll(query, with: replacement)
+        case .summary(let text): text.wrappedValue = query.replacingMatches(in: text.wrappedValue, with: replacement)
+        }
+    }
+
     var body: some View {
-        let matches = draft.matchCount(for: query)
+        let matches = matchCount
         VStack(alignment: .leading, spacing: 10) {
             Button {
                 isExpanded.toggle()
@@ -498,7 +528,7 @@ struct TranscriptFindReplace: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("transcriptFindReplace")
+            .accessibilityIdentifier("\(identifierPrefix)FindReplace")
             .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             if isExpanded {
                 VStack(alignment: .leading, spacing: 14) {
@@ -521,18 +551,20 @@ struct TranscriptFindReplace: View {
                     HStack(spacing: 12) {
                         if let replacedCount {
                             Text("Replaced \(replacedCount) \(replacedCount == 1 ? "match" : "matches").")
+                        } else if case .summary = target {
+                            Text("\(matches) \(matches == 1 ? "match" : "matches") in this summary")
                         } else {
                             Text("\(matches) \(matches == 1 ? "match" : "matches") in this transcript")
                         }
                         Spacer()
                         Button("Replace All") {
-                            draft.replaceAll(query, with: replacement)
+                            replaceAll()
                             replacedCount = matches
                             focus = nil
                         }
                         .buttonStyle(JotleyGlassButtonStyle())
                         .disabled(matches == 0)
-                        .accessibilityIdentifier("transcriptReplaceAllButton")
+                        .accessibilityIdentifier("\(identifierPrefix)ReplaceAllButton")
                     }
                     .font(.callout)
                     .foregroundStyle(Color.themeTextSecondary)
@@ -554,11 +586,11 @@ struct TranscriptFindReplace: View {
     }
 
     private var findField: some View {
-        field("Find", prompt: "Text to find", text: $query.text, target: .find, id: "transcriptFindField")
+        field("Find", prompt: "Text to find", text: $query.text, target: .find, id: "\(identifierPrefix)FindField")
     }
 
     private var replacementField: some View {
-        field("Replace with", prompt: "Replacement text", text: $replacement, target: .replacement, id: "transcriptReplaceField")
+        field("Replace with", prompt: "Replacement text", text: $replacement, target: .replacement, id: "\(identifierPrefix)ReplaceField")
     }
 
     private func field(_ title: String, prompt: String, text: Binding<String>, target: Field, id: String) -> some View {
@@ -758,7 +790,6 @@ struct JotleyClearChatConfirmation: View {
     static let stoppedKey = "jotleySupportAutomaticRemindersStopped.v1"
     static let website = URL(string: "https://jotley.ai")!
     static let tipURL = URL(string: "https://buymeacoffee.com/protomotalab")!
-    static let reviewURL = URL(string: "https://apps.apple.com/app/id6746770199?action=write-review")!
     static let feedbackURL = URL(string: "https://protomota.com/apps?app=jotley#feedback")!
     enum Action: String, CaseIterable { case review, tip, share, feedback, support }
     static let dismissingActions = Set(Action.allCases)
@@ -960,7 +991,7 @@ enum JotleyWebsiteTipPolicy {
     }
 }
 
-// Apple's review page, with no custom stars, rating incentives or payment gates.
+// Optional ways to support the app without payment gates.
 struct JotleySupportView: View {
     @ObservedObject var engagement = JotleyEngagement.shared
     var isAutomatic = false
@@ -1018,11 +1049,11 @@ struct JotleySupportView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.bottom, 6)
                     VStack(spacing: 12) {
-                        Link(destination: JotleyEngagement.reviewURL) {
-                            actionLabel("Rate & Review Jotley", subtitle: "On the App Store", icon: "star")
+                        Link(destination: JotleyEngagement.feedbackURL) {
+                            actionLabel("Share Your Experience", subtitle: "Open the Jotley form on Protomota", icon: "star")
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Rate and review Jotley on the App Store")
+                        .accessibilityLabel("Share your Jotley experience on Protomota")
                         .accessibilityIdentifier("jotleySupportReview")
                         JotleyTipButton {
                             actionLabel("Tip the Developer", subtitle: "Optional · One-time App Store purchase", icon: "heart.circle")
@@ -1086,15 +1117,15 @@ struct JotleySupportView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Your rating and review make a difference.")
+                        Text("Tell us about your experience.")
                             .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
                         Text("All Jotley note-taking features are free. Tips and personal technical support are optional paid purchases. Your ratings, reviews, sharing and feedback help more people discover Jotley and help us keep building. Thank you for your support.")
                             .font(.system(size: 16)).foregroundStyle(Color.themeTextSecondary).lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     VStack(spacing: 10) {
-                        Button { visit(.review, url: JotleyEngagement.reviewURL) } label: {
-                            macAction("Rate & Review Jotley", detail: "Leave a rating and share your experience",
+                        Button { visit(.review, url: JotleyEngagement.feedbackURL) } label: {
+                            macAction("Share Your Experience", detail: "Open the Jotley form on Protomota",
                                       icon: "star.bubble", kind: .review)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportReview")
                         if allowsWebsiteTips {
@@ -1268,10 +1299,10 @@ struct JotleySupportLinks: View {
                 #if os(macOS)
                 Button {
                     JotleyEngagement.shared.recordClick(.review)
-                    openURL(JotleyEngagement.reviewURL)
+                    openURL(JotleyEngagement.feedbackURL)
                 } label: { reviewLabel }
                 #else
-                Link(destination: JotleyEngagement.reviewURL) { reviewLabel }
+                Link(destination: JotleyEngagement.feedbackURL) { reviewLabel }
                 #endif
             }
             .accessibilityIdentifier("settingsRateJotley")
@@ -1290,8 +1321,8 @@ struct JotleySupportLinks: View {
     #if os(iOS)
     private var mobileRows: some View {
         Group {
-            Button { visit(.review, url: JotleyEngagement.reviewURL) } label: {
-                supportRow("Rate on the App Store", systemImage: "star")
+            Button { visit(.review, url: JotleyEngagement.feedbackURL) } label: {
+                supportRow("Share Your Experience", systemImage: "star")
             }
             .accessibilityIdentifier("settingsRateJotley")
             JotleyTipButton {
@@ -1325,7 +1356,7 @@ struct JotleySupportLinks: View {
     }
     #endif
     private var reviewLabel: some View {
-        Label("Rate & Review Jotley on the App Store", systemImage: "star")
+        Label("Share Your Experience", systemImage: "star")
             .font(.body.weight(.semibold)).frame(minHeight: 44)
     }
     private var supportTitle: String {
@@ -1400,6 +1431,7 @@ struct JotleyOnboardingView: View {
     let onFinish: () -> Void
     @AppStorage(JotleyOnboarding.completedKey) private var completed = false
     @AppStorage("transcriptionLanguage") private var language = "en-US"
+    @AppStorage(JotleySummaryNotifications.enabledKey) private var summaryNotificationsEnabled = JotleySummaryNotifications.enabledByDefault
     @ObservedObject private var theme = ThemeManager.shared
     @ScaledMetric(relativeTo: .largeTitle) private var regularIconSize: CGFloat = 88
     @ScaledMetric(relativeTo: .title2) private var denseIconSize: CGFloat = 68
@@ -1435,12 +1467,13 @@ struct JotleyOnboardingView: View {
     #endif
     private var steps: [String] {
         #if os(macOS)
-        ["Welcome", "Intelligence", "Language", "Microphone", "System audio", "Support"]
+        ["Welcome", "Intelligence", "Language", "Microphone", "System audio", "Notifications", "Support"]
         #else
-        ["Welcome", "Intelligence", "Language", "Microphone", "Support"]
+        ["Welcome", "Intelligence", "Language", "Microphone", "Notifications", "Support"]
         #endif
     }
     private var supportStep: Int { steps.count - 1 }
+    private var notificationsStep: Int { supportStep - 1 }
     private var isSupportStep: Bool { step == supportStep }
     private var accent: Color { theme.currentThemeColor.color(in: colorScheme) }
     private var ink: Color { colorScheme == .dark ? Color(white: 0.94) : Color(red: 0.14, green: 0.11, blue: 0.19) }
@@ -1448,6 +1481,7 @@ struct JotleyOnboardingView: View {
     private var muted: Color { ink.opacity(colorScheme == .dark ? 0.76 : 0.68) }
     private var onboardingBackground: Color { colorScheme == .dark ? .themeDarkBackground : .themeLightBackground }
     private func title(for page: Int, twoLines: Bool = false) -> String {
+        if page == notificationsStep { return "Summary notifications" }
         if twoLines && page != supportStep {
             return switch page {
             case 0: "Stay in the\nconversation."
@@ -1467,6 +1501,7 @@ struct JotleyOnboardingView: View {
         }
     }
     private func subtitle(for page: Int) -> String {
+        if page == notificationsStep { return "Get a local alert when your summary is saved." }
         if page == supportStep { return "All note-taking features are free.\nPaid support and tips are optional." }
         return switch page {
         case 0: "Your thoughts become clear notes.\nYou get to be there for the moment."
@@ -1649,7 +1684,7 @@ struct JotleyOnboardingView: View {
             }
             switch page {
             case let value where value == supportStep:
-                Text("Enjoying Jotley? An optional tip supports development. A rating or review helps more people discover it.")
+                Text("Enjoying Jotley? An optional tip supports development. You can also share feedback on Protomota.")
                     .font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: 10) {
                     #if os(iOS)
@@ -1674,9 +1709,9 @@ struct JotleyOnboardingView: View {
                     #endif
                     Button {
                         JotleyEngagement.shared.recordClick(.review)
-                        openURL(JotleyEngagement.reviewURL)
+                        openURL(JotleyEngagement.feedbackURL)
                     } label: {
-                        Label("Rate & Review Jotley", systemImage: "star")
+                        Label("Share Your Experience", systemImage: "star")
                             .font(.body.weight(.semibold)).foregroundStyle(actionInk).frame(maxWidth: .infinity)
                     }
                     .accessibilityIdentifier("onboardingReviewJotley")
@@ -1732,6 +1767,19 @@ struct JotleyOnboardingView: View {
                 #else
                 feature("Bring your meetings along", detail: "Mac can also transcribe audio from apps, without saving an audio file. macOS asks for any extra access when you use that feature.", icon: "desktopcomputer", dense: dense, scale: scale)
                 #endif
+            case notificationsStep:
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle("Notify when a summary is ready", isOn: $summaryNotificationsEnabled)
+                        .toggleStyle(.switch)
+                        .tint(accent)
+                        .accessibilityIdentifier("onboardingSummaryNotificationsToggle")
+                    Text("Local alerts contain no note text and work offline. You can change this in Settings.")
+                        .font(.footnote)
+                        .foregroundStyle(muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(dense ? 12 : 16)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
             default:
                 #if os(macOS)
                 status("A separate macOS permission",
@@ -1818,6 +1866,7 @@ struct JotleyOnboardingView: View {
     }
     private func illustrationAsset(for page: Int) -> String {
         if page == supportStep { return "onboarding-support" }
+        if page == notificationsStep { return "onboarding-intelligence" }
         return switch page {
         case 0: "onboarding-welcome"
         case 1: "onboarding-intelligence"
@@ -1869,12 +1918,18 @@ struct JotleyOnboardingView: View {
                 }
                 Button {
                     if isSupportStep { finish() }
+                    else if step == notificationsStep {
+                        if !completed && summaryNotificationsEnabled {
+                            JotleySummaryNotifications.shared.prepareForSummary()
+                        }
+                        changeStep(supportStep)
+                    }
                     else if step == 3 {
                         if microphoneAllowed || microphoneDenied { advancePastMicrophone() }
                         else { allowMicrophone() }
                     } else if step == 4 {
                         #if os(macOS)
-                        if systemAudioRequested { changeStep(supportStep) } else { requestSystemAudio() }
+                        if systemAudioRequested { changeStep(notificationsStep) } else { requestSystemAudio() }
                         #endif
                     } else { changeStep(step + 1) }
                 } label: {
@@ -1904,7 +1959,7 @@ struct JotleyOnboardingView: View {
             } else {
                 #if os(macOS)
                 if step == 4 {
-                    Button("Use Microphone Only") { includeSystemAudio = false; changeStep(supportStep) }
+                    Button("Use Microphone Only") { includeSystemAudio = false; changeStep(notificationsStep) }
                         .accessibilityLabel("Use Microphone Only")
                         .accessibilityIdentifier("onboardingMicrophoneOnly")
                 } else { Color.clear.allowsHitTesting(false).accessibilityHidden(true) }
@@ -1934,7 +1989,7 @@ struct JotleyOnboardingView: View {
         #if os(macOS)
         changeStep(4)
         #else
-        changeStep(supportStep)
+        changeStep(notificationsStep)
         #endif
     }
     private func swipePage(forward: Bool) {

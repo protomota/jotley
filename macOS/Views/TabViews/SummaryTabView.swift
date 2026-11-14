@@ -117,12 +117,19 @@ struct SummaryTabView: View {
                                 Button {
                                     finishInlineEditing()
                                 } label: {
-                                    Label("Done", systemImage: "checkmark")
+                                    Label {
+                                        Text("Done")
+                                    } icon: {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(Color.themePrimaryAccent)
+                                    }
                                 }
                                 .jotleyDismissButtonStyle()
                                 .accessibilityIdentifier("noteDetailSummaryDoneButton")
                             }
                             .padding(.horizontal, 8)
+
+                            NoteFindReplace(summary: $editableSummary)
 
                             ZStack(alignment: .topLeading) {
                                 InlineEditableSummaryTextView(

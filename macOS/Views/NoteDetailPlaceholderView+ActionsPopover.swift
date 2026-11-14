@@ -12,6 +12,7 @@ extension NoteDetailPlaceholderView {
         @ObservedObject var viewModel: NotesListViewModel
         let note: Note
         @Binding var isPresented: Bool
+        @AppStorage(SummaryDisplayStyle.preferenceKey) private var summaryStyle: SummaryDisplayStyle = .cards
         @State private var showTemplateSubmenu = false
         @State private var showExportSubmenu = false
         @State private var templateMenuFrame: CGRect = .zero
@@ -84,9 +85,38 @@ extension NoteDetailPlaceholderView {
         var body: some View {
             VStack(spacing: 0) {
                 if !isRecordingThisNote {
-                    SummaryDisplayStylePicker()
-                        .pickerStyle(.menu)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
+                    HStack(spacing: 10) {
+                        Text("Summary Style")
+                            .accessibilityHidden(true)
+                        Spacer(minLength: 0)
+                        Menu {
+                            SummaryDisplayStylePicker()
+                                .pickerStyle(.inline)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(summaryStyle.title)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 30)
+                            .modifier(JotleyGlassMenuLabel(shape: Capsule()))
+                            .contentShape(Capsule())
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.plain)
+                        .menuIndicator(.hidden)
+                        .accessibilityLabel("Summary Style")
+                        .accessibilityValue(summaryStyle.title)
+                        .accessibilityIdentifier("noteDetailSummaryStyleMenu")
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                 }
                 if isRecordingThisNote {
                     MenuItemView(

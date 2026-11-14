@@ -51,14 +51,19 @@ struct LocalMacTranscriptEditor: View {
             HStack {
                 Spacer()
                 Button(action: finish) {
-                    Label("Done", systemImage: "checkmark")
+                    Label {
+                        Text("Done")
+                    } icon: {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(Color.themePrimaryAccent)
+                    }
                 }
                 .jotleyDismissButtonStyle()
                 .keyboardShortcut(.return, modifiers: .command)
                 .disabled(!canSave)
                 .accessibilityIdentifier("transcriptEditorSaveButton")
             }
-            TranscriptFindReplace(draft: $draft)
+            NoteFindReplace(transcript: $draft)
             if !draft.hasTimestamps {
                 Text("Timing is unavailable for this transcript.").font(.caption).foregroundStyle(Color.themeTextSecondary)
             }

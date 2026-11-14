@@ -94,8 +94,8 @@ extension NoteDetailPlaceholderView {
                             .id(detailScrollBottomAnchorID)
                     }
                     .coordinateSpace(name: "scroll")
-                    .modifier(JotleyTranscriptEdgeFade(background: .themeContentBackground,
-                        showsBottomFade: false, isEnabled: isRecordingThisNote && selectedTab == DetailTab.transcript.rawValue))
+                    .modifier(JotleyTranscriptEdgeFade(showsBottomFade: false,
+                        isEnabled: isRecordingThisNote && selectedTab == DetailTab.transcript.rawValue))
                     .onScrollPhaseChange { _, phase in
                         transcriptFollow.scrollPhaseChanged(isUserScrolling: phase != .idle && phase != .animating)
                     }

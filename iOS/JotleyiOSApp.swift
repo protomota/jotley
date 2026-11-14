@@ -18,6 +18,9 @@ struct JotleyiOSApp: App {
                 if ProcessInfo.processInfo.environment["JOTLEY_TEST_RESET_ONBOARDING"] == "1" {
                     UserDefaults.standard.removeObject(forKey: JotleyOnboarding.completedKey)
                 }
+                if ProcessInfo.processInfo.environment["JOTLEY_TEST_RESET_NOTIFICATIONS"] == "1" {
+                    UserDefaults.standard.removeObject(forKey: JotleySummaryNotifications.enabledKey)
+                }
                 if let data = ProcessInfo.processInfo.environment["JOTLEY_SCREENSHOT_DATA"]?.data(using: .utf8) {
                     // Explicit simulator-only fixtures use a disposable in-memory store.
                     // No fixture path or data-loading hook is compiled into shipping builds.

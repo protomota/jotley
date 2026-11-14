@@ -13,8 +13,8 @@ struct LiveTranscriptionView: View {
     @State private(set) var hasStartedTranscription = false
     var isResuming: Bool { existingNote != nil && !isNewTranscription }
     private var transcriptFadeHeight: CGFloat {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return 64 }
-        return colorScheme == .light ? 104 : 84
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return 100 }
+        return colorScheme == .light ? 136 : 120
     }
     var body: some View {
         GeometryReader { geometry in
@@ -62,7 +62,7 @@ struct LiveTranscriptionView: View {
                 // Fill from the top until the cards outgrow the viewport, then
                 // keep the latest words visible at the bottom as before.
                 .defaultScrollAnchor(.topLeading, for: .alignment)
-                .modifier(JotleyTranscriptEdgeFade(background: .themeBackground, topFadeHeight: transcriptFadeHeight))
+                .modifier(JotleyTranscriptEdgeFade(topFadeHeight: transcriptFadeHeight))
                 .onChange(of: transcriptionManager.liveUtterances) { _, _ in
                     proxy.scrollTo("liveTranscriptBottom", anchor: .bottom)
                 }
