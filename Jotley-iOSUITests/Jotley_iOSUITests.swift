@@ -2118,6 +2118,41 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["jotleySupportTitle"].exists)
     }
 
+    @MainActor func testSupportSignInAppearance() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-selectedThemeColor", "Magenta"]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = "[]"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = UIDevice.current.userInterfaceIdiom == .pad ? "Dark" : "Light"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SUPPORT_DESIGN_PREVIEW"] = "1"
+        app.launchEnvironment["JOTLEY_SUPPORT_PREVIEW_SIGNED_OUT"] = "1"
+        app.launch()
+        let settings = app.buttons["notesListSettingsButton"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+        XCTAssertTrue(form.waitForExistence(timeout: 8))
+        let support = app.buttons["settingsTechnicalSupport"]
+        let feedback = app.buttons["settingsFeedbackJotley"]
+        for _ in 0..<24 where !support.isHittable {
+            let above = support.exists ? support.frame.midY < form.frame.midY : feedback.isHittable
+            let start = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.37 : 0.73))
+            let end = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.73 : 0.37))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
+        }
+        XCTAssertTrue(support.isHittable)
+        support.tap()
+        XCTAssertTrue(app.staticTexts["Personal technical support"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["supportRefresh"].isHittable)
+        let signIn = app.descendants(matching: .any)["supportSignInWithApple"].firstMatch
+        XCTAssertTrue(signIn.isHittable)
+        app.buttons["supportRefresh"].tap()
+        XCTAssertTrue(signIn.isHittable)
+        attachSupportReview("support-sign-in")
+        app.buttons["supportDone"].tap()
+        XCTAssertTrue(app.buttons["settingsDoneButton"].isHittable)
+    }
+
     @MainActor func testTipAndPersonalSupportReviewScreens() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-selectedThemeColor", "Magenta"]

@@ -266,6 +266,7 @@ final class JotleySupportStore: ObservableObject {
         #if DEBUG && targetEnvironment(simulator)
         if isDesignPreview {
             available = true
+            if ProcessInfo.processInfo.environment["JOTLEY_SUPPORT_PREVIEW_SIGNED_OUT"] == "1" { return }
             let tickets = previewsHistory ? sampleHistory : []
             account = JotleySupportAccount(user: .init(id: "preview", email: "customer@example.com", isStaff: false),
                                            tickets: tickets, purchases: tickets.map(\.purchase), nextOffset: nil)

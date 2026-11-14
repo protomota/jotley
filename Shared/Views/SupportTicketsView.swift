@@ -42,8 +42,10 @@ struct JotleySupportTicketsView: View {
             Group {
                 if let ticket = store.selectedTicket {
                     conversation(ticket)
-                } else {
+                } else if store.account != nil {
                     accountView
+                } else {
+                    signInView
                 }
             }
             .navigationTitle("Jotley Support")
@@ -55,9 +57,15 @@ struct JotleySupportTicketsView: View {
                 }
                 .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .primaryAction) {
-                    Button { Task { await store.refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
-                        .disabled(store.busy).accessibilityIdentifier("supportRefresh")
+                    Button { Task { await store.refresh() } } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .jotleyDismissButtonStyle(inToolbar: true)
+                    .disabled(store.busy)
+                    .accessibilityIdentifier("supportRefresh")
                 }
+                .sharedBackgroundVisibility(.hidden)
             }
             .safeAreaInset(edge: .bottom) {
                 if let notice = store.notice {
@@ -170,56 +178,139 @@ struct JotleySupportTicketsView: View {
                         Button("Load more tickets") { Task { await store.moreTickets() } }.disabled(store.busy)
                     }
                 }
-            } else {
-                Section("Sign in to continue") {
-                    Text("Use Sign in with Apple to purchase a ticket and keep your conversation available in the app and on the website. Hide My Email works too.")
-                    #if os(macOS) && !STORE_BUILD
-                    Button { Task { await store.signInInBrowser() } } label: {
-                        Label(store.busy ? "Connecting…" : "Continue with Apple in Browser", systemImage: "apple.logo")
-                    }
-                    .buttonStyle(JotleyGlassButtonStyle())
-                    .disabled(!store.available || store.busy)
-                    .accessibilityIdentifier("supportSignInWithApple")
-                    #else
-                    SignInWithAppleButton(.signIn) { request in
-                        nonce = JotleySupportStore.nonce()
-                        request.requestedScopes = [.email]
-                        request.nonce = JotleySupportStore.hashedNonce(nonce)
-                    } onCompletion: { result in
-                        switch result {
-                        case .success(let authorization):
-                            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                                  let token = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) else {
-                                store.notice = "Apple sign-in could not finish. Please try again."; return
-                            }
-                            Task { await store.signIn(token: token, nonce: nonce) }
-                        case .failure(let error):
-                            if (error as? ASAuthorizationError)?.code != .canceled { store.notice = "Apple sign-in could not finish. Please try again." }
-                        }
-                    }
-                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                    .frame(maxWidth: 340).frame(height: 46)
-                    .disabled(!store.available || store.busy)
-                    .accessibilityIdentifier("supportSignInWithApple")
-                    #endif
-                    if !store.available { Text("Personal support is currently unavailable. Please try again later.").font(.caption).foregroundStyle(.secondary) }
-                }
             }
             Section {
                 Text("All note-taking features are free. Personal support and tips are optional paid purchases. Bug reports and purchase help do not require a paid ticket.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text("Your notes stay on your device. Only the text you choose to submit is shared with support.")
                     .font(.caption).foregroundStyle(.secondary)
-                Link("Support privacy", destination: URL(string: "https://jotley.ai/privacy")!)
+                supportPrivacyLink
             }
             Section("Apple authorization") {
-                Link("Manage Sign in with Apple", destination: URL(string: "https://account.apple.com/account/manage/section/sign-in-and-security")!)
+                appleAccountLink
                 Text("After deleting your support account, open Apple Account → Sign-In and Security → Sign in with Apple → Jotley → Stop Using Sign in with Apple to remove Apple’s authorization too.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .accessibilityIdentifier("supportAccountForm")
+    }
+
+    private var signInView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Image(systemName: "lifepreserver")
+                        .font(.title2)
+                        .foregroundStyle(Color.themePrimaryAccent)
+                        .frame(width: 44, height: 44)
+                        .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityHidden(true)
+                    Text("Personal technical support")
+                        .font(.title.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Get help with a Jotley issue, including MCP setup. Each ticket opens a private conversation and includes follow-up replies.")
+                        .foregroundStyle(.secondary)
+                    if let price = store.ticketPrice {
+                        Text("\(price) per ticket · One-time purchase")
+                            .font(.callout.weight(.semibold))
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Sign in to continue")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Use your Apple account to buy a ticket and follow replies. Hide My Email works too.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    appleSignInControl
+                    if !store.available && !store.busy {
+                        Text("Personal support is currently unavailable. Please try again later.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(.primary.opacity(0.12))
+                        .allowsHitTesting(false)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Personal support is optional. Bug reports and purchase help don’t require a paid ticket.")
+                        .foregroundStyle(.secondary)
+                    Text("Your notes stay on your device. Only what you send in a ticket is shared with support.")
+                        .foregroundStyle(.secondary)
+                    supportPrivacyLink
+                    appleAccountLink
+                }
+                .font(.callout)
+            }
+            .frame(maxWidth: 520, alignment: .leading)
+            .padding(22)
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityIdentifier("supportSignInScreen")
+    }
+
+    private var supportPrivacyLink: some View {
+        supportLink("Support privacy", symbol: "lock.shield", url: "https://jotley.ai/privacy")
+    }
+
+    private var appleAccountLink: some View {
+        supportLink("Manage Sign in with Apple", symbol: "apple.logo", url: "https://account.apple.com/account/manage/section/sign-in-and-security")
+    }
+
+    private func supportLink(_ title: LocalizedStringKey, symbol: String, url: String) -> some View {
+        Link(destination: URL(string: url)!) {
+            HStack(spacing: 10) {
+                JotleyAccentIconLabel(title: title, systemImage: symbol)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var appleSignInControl: some View {
+        #if os(macOS) && !STORE_BUILD
+        Button { Task { await store.signInInBrowser() } } label: {
+            Label(store.busy ? "Connecting…" : "Continue with Apple in Browser", systemImage: "apple.logo")
+        }
+        .buttonStyle(JotleyGlassButtonStyle())
+        .disabled(!store.available || store.busy)
+        .accessibilityIdentifier("supportSignInWithApple")
+        #else
+        SignInWithAppleButton(.signIn) { request in
+            nonce = JotleySupportStore.nonce()
+            request.requestedScopes = [.email]
+            request.nonce = JotleySupportStore.hashedNonce(nonce)
+        } onCompletion: { result in
+            switch result {
+            case .success(let authorization):
+                guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                      let token = credential.identityToken.flatMap({ String(data: $0, encoding: .utf8) }) else {
+                    store.notice = "Apple sign-in could not finish. Please try again."; return
+                }
+                Task { await store.signIn(token: token, nonce: nonce) }
+            case .failure(let error):
+                if (error as? ASAuthorizationError)?.code != .canceled { store.notice = "Apple sign-in could not finish. Please try again." }
+            }
+        }
+        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+        .clipShape(Capsule())
+        .frame(maxWidth: 340).frame(height: 46)
+        .disabled(!store.available || store.busy)
+        .accessibilityIdentifier("supportSignInWithApple")
+        #endif
     }
 
     private var canBuyTicket: Bool {
