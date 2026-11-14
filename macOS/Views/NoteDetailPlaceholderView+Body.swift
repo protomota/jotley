@@ -349,6 +349,7 @@ struct MacSummaryActionsFooter: View {
                 Text("Ask AI").modifier(JotleyNoteFooterTextStyle())
             } icon: {
                 Image(systemName: "bubble.left.and.bubble.right")
+                    .foregroundStyle(Color.themePrimaryAccent)
             }
             .font(.system(size: 13, weight: .medium))
         }

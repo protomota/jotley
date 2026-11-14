@@ -325,6 +325,7 @@ extension NoteDetailView {
                     Text("Ask AI").modifier(JotleyNoteFooterTextStyle())
                 } icon: {
                     Image(systemName: "bubble.left.and.bubble.right")
+                        .foregroundStyle(Color.themePrimaryAccent)
                 }
             }
             .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
