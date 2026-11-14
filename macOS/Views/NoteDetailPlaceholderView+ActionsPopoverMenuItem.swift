@@ -49,10 +49,10 @@ extension NoteDetailPlaceholderView {
                     if let badge = badge {
                         Text(badge)
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(Color.themePrimaryAccent)
+                            .foregroundStyle(Color.primary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.themePrimaryAccent.opacity(0.1))
+                            .background(Color.primary.opacity(0.07))
                             .cornerRadius(4)
                     }
 
@@ -78,7 +78,7 @@ extension NoteDetailPlaceholderView {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(isHovered ? Color.themePrimaryAccent.opacity(0.15) : Color.clear)
+                .background(isHovered ? Color.themeSelectionBackground : Color.clear)
                 .cornerRadius(8)
                 .contentShape(Rectangle())
             }

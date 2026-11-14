@@ -105,10 +105,7 @@ struct SummaryTabView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color.orange.opacity(0.12))
-                        )
+                        .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
                     }
 
                     ZStack(alignment: .topLeading) {

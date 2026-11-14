@@ -280,7 +280,7 @@ struct TipJarView: View {
         #else
         .frame(idealHeight: 540, maxHeight: 650)
         #endif
-        .tint(accent)
+        .tint(Color.themeActionText)
         .jotleySupporterCelebration(.tip, previewEvent: previewCelebration)
         .interactiveDismissDisabled(store.purchasingID != nil)
         .task {

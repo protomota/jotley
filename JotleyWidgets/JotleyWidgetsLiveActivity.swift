@@ -30,13 +30,18 @@ struct RecordingLiveActivity: Widget {
                 Spacer()
                 RecordingControls(context: context)
             }.padding(20).foregroundStyle(.white)
-                .activityBackgroundTint(Color(red: 0.08, green: 0.08, blue: 0.1))
+                .activityBackgroundTint(Color(white: 0.08))
                 .widgetURL(recordingURL("transcription", id: context.attributes.recordingId))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label(context.state.isRecording ? "Transcribing" : "Paused", systemImage: "mic.fill")
-                        .font(.caption).foregroundStyle(recordingAccent)
+                    Label {
+                        Text(context.state.isRecording ? "Transcribing" : "Paused")
+                            .foregroundStyle(.white)
+                    } icon: {
+                        Image(systemName: "mic.fill").foregroundStyle(recordingAccent)
+                    }
+                    .font(.caption)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     RecordingDuration(state: context.state).font(.headline.monospacedDigit())

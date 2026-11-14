@@ -4,8 +4,7 @@ import SwiftUI
 // MARK: - Brand Colors
 private extension Color {
     static let jotleyPurple = Color(red: 0.576, green: 0.2, blue: 0.918) // #9333EA
-    static let jotleyDark = Color(red: 0.08, green: 0.08, blue: 0.1)
-    static let jotleyCardBg = Color(red: 0.12, green: 0.12, blue: 0.14)
+    static let jotleyDark = Color(white: 0.08)
 }
 
 // MARK: - Widget Timeline Provider
@@ -38,14 +37,7 @@ struct QuickRecordSmallView: View {
             Color.jotleyDark
 
             VStack(spacing: 12) {
-                // Record button with glow
                 ZStack {
-                    // Outer glow
-                    Circle()
-                        .fill(Color.jotleyPurple.opacity(0.3))
-                        .frame(width: 72, height: 72)
-                        .blur(radius: 8)
-
                     // Main button
                     Circle()
                         .fill(
@@ -56,13 +48,15 @@ struct QuickRecordSmallView: View {
                             )
                         )
                         .frame(width: 56, height: 56)
-                        .shadow(color: Color.jotleyPurple.opacity(0.5), radius: 8, y: 4)
+                        .overlay(Circle().strokeBorder(.white.opacity(0.18)))
+                        .shadow(color: .black.opacity(0.30), radius: 3, y: 2)
 
                     // Mic icon
                     Image(systemName: "mic.fill")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
+                .frame(width: 72, height: 72)
 
                 // Label
                 Text("Transcribe")
@@ -84,12 +78,6 @@ struct QuickRecordMediumView: View {
                 // Left - Record button
                 VStack(spacing: 10) {
                     ZStack {
-                        // Outer glow
-                        Circle()
-                            .fill(Color.jotleyPurple.opacity(0.3))
-                            .frame(width: 64, height: 64)
-                            .blur(radius: 8)
-
                         // Main button
                         Circle()
                             .fill(
@@ -100,12 +88,14 @@ struct QuickRecordMediumView: View {
                                 )
                             )
                             .frame(width: 52, height: 52)
-                            .shadow(color: Color.jotleyPurple.opacity(0.5), radius: 8, y: 4)
+                            .overlay(Circle().strokeBorder(.white.opacity(0.18)))
+                            .shadow(color: .black.opacity(0.30), radius: 3, y: 2)
 
                         Image(systemName: "mic.fill")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundColor(.white)
                     }
+                    .frame(width: 64, height: 64)
 
                     Text("Transcribe live")
                         .font(.system(size: 11, weight: .medium, design: .rounded))

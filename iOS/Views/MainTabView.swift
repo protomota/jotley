@@ -125,7 +125,7 @@ struct MainTabView: View {
             .ignoresSafeArea(.container, edges: usesCornerCaptureButton ? .bottom : [])
         }
         .navigationSplitViewStyle(.balanced)
-        .tint(Color.themePrimaryAccent)
+        .tint(Color.themeActionText)
         .overlayPreferenceValue(NoteFooterContentKey.self, alignment: .bottom) { footers in
             if usesWindowFooter {
                 Group {

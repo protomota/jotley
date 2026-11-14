@@ -399,14 +399,12 @@ extension NotesListView {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .background(
+            .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+            .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.themePrimaryAccent.opacity(0.16))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.themePrimaryAccent.opacity(0.38), lineWidth: 1)
-            )
+                    .strokeBorder(.primary.opacity(0.16))
+                    .allowsHitTesting(false)
+            }
         }
         .buttonStyle(.plain)
         .help(isSelected ? "Transcription is active on this note" : "Jump back to active transcription")

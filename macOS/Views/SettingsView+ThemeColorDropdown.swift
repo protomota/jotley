@@ -109,7 +109,7 @@ struct SettingsDropdown<Value: Hashable>: View {
             .padding(.horizontal, 12)
             .frame(height: rowHeight)
             .background(
-                hoveredOption == option || focusedOption == option ? accent.opacity(0.2) : .clear,
+                hoveredOption == option || focusedOption == option ? Color.themeSelectionBackground : .clear,
                 in: RoundedRectangle(cornerRadius: 6)
             )
             .contentShape(Rectangle())

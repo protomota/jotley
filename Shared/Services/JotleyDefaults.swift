@@ -184,21 +184,8 @@ struct JotleyTranscriptCard: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         let accent = theme.currentThemeColor.color(in: colorScheme)
         return content.background {
-            if accentOutline {
-                shape.fill(Color(white: colorScheme == .dark ? 0.18 : 0.94))
-                    .shadow(color: .black.opacity(reduceTransparency ? 0 : 0.08), radius: 6, y: 3)
-            } else if reduceTransparency {
-                shape.fill(Color.themeContentBackground)
-                    .overlay { shape.fill(Color.gray.opacity(0.08)) }
-            } else {
-                Color.clear.glassEffect(.clear, in: shape)
-                    .overlay {
-                        shape.fill(LinearGradient(
-                            colors: [Color.gray.opacity(0.06), Color.gray.opacity(0.02)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                    }
-                    .shadow(color: .black.opacity(0.08), radius: 6, y: 3)
-            }
+            shape.fill(Color(white: colorScheme == .dark ? 0.18 : 0.95))
+                .shadow(color: .black.opacity(reduceTransparency ? 0 : 0.08), radius: 3, y: 1)
         }
         .overlay {
             shape.strokeBorder(
@@ -314,14 +301,13 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     var circular = false
     var diameter: CGFloat? = nil
-    var prominent = false
     var keepsDisabledSurfaceVisible = false
     var floatsOverContent = false
 
     private var theme: ThemeColor { themeManager.currentThemeColor }
-    private var usesAccentFill: Bool { prominent && !theme.usesDarkGlass(in: colorScheme) }
     private var glassInk: Color {
-        usesAccentFill ? theme.textOnAccent(in: colorScheme) : theme.glassForeground(in: colorScheme)
+        if circular { return theme.glassForeground(in: colorScheme) }
+        return theme.usesDarkGlass(in: colorScheme) ? .white : .primary
     }
 
     private var controlHeight: CGFloat {
@@ -352,7 +338,6 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     private func background<S: InsettableShape>(in shape: S) -> some View {
         JotleyFloatingGlassSurface(
             shape: shape,
-            fill: usesAccentFill ? theme.color(in: colorScheme) : nil,
             usesDarkSurface: theme.usesDarkGlass(in: colorScheme)
         )
     }
@@ -365,16 +350,15 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let shape: Outline
-    var fill: Color? = nil
     var usesDarkSurface = false
 
     var body: some View {
         let dark = colorScheme == .dark
         let darkSurface = dark || usesDarkSurface
-        let surface = fill ?? Color(white: darkSurface ? 0.18 : 0.96)
-        let surfaceOpacity = usesDarkSurface ? 0.76 : (dark ? 0.58 : 0.46)
+        let surface = Color(white: darkSurface ? 0.18 : 0.96)
+        let surfaceOpacity = darkSurface ? 0.78 : 0.68
         ZStack {
-            if reduceTransparency || fill != nil {
+            if reduceTransparency {
                 shape.fill(surface)
             } else {
                 shape.fill(.ultraThinMaterial)
@@ -439,7 +423,7 @@ struct JotleyAboutLogo: View {
         Image("jotley-brand-mark")
             .resizable().interpolation(.high).scaledToFit()
             .frame(width: 56, height: 56)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.38 : 0.24), radius: 3, y: 1)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.16), radius: 2, y: 1)
             .accessibilityLabel("Jotley")
     }
 }
@@ -451,10 +435,15 @@ struct JotleyLibraryWelcome: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: hasNotes ? "doc.text.magnifyingglass" : "note.text")
-                .font(.system(size: 36, weight: .light))
-                .foregroundStyle(Color.themeTextSecondary)
-                .accessibilityHidden(true)
+            if hasNotes {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundStyle(Color.themeTextSecondary)
+                    .accessibilityHidden(true)
+            } else {
+                JotleyAboutLogo()
+                    .accessibilityHidden(true)
+            }
             VStack(spacing: 10) {
                 Text(hasNotes ? LocalizedStringKey("Select a note") : LocalizedStringKey("Your words. Your device."))
                     .font(.custom("Comfortaa-Bold", size: 27, relativeTo: .title))
@@ -1455,9 +1444,9 @@ struct JotleyOnboardingView: View {
     private var isSupportStep: Bool { step == supportStep }
     private var accent: Color { theme.currentThemeColor.color(in: colorScheme) }
     private var ink: Color { colorScheme == .dark ? Color(white: 0.94) : Color(red: 0.14, green: 0.11, blue: 0.19) }
-    private var actionInk: Color { theme.currentThemeColor.glassForeground(in: colorScheme) }
+    private var actionInk: Color { .primary }
     private var muted: Color { ink.opacity(colorScheme == .dark ? 0.76 : 0.68) }
-    private var onboardingBackground: Color { colorScheme == .dark ? Color(red: 0.065, green: 0.055, blue: 0.085) : Color(red: 0.985, green: 0.98, blue: 0.995) }
+    private var onboardingBackground: Color { colorScheme == .dark ? .themeDarkBackground : .themeLightBackground }
     private func title(for page: Int, twoLines: Bool = false) -> String {
         if twoLines && page != supportStep {
             return switch page {

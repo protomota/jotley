@@ -66,8 +66,13 @@ extension SettingsView {
                             .accessibilityIdentifier("mcpLastTool")
                     }
                 }
-                .padding(18).background(Color.themePrimaryAccent.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.themePrimaryAccent.opacity(0.14), lineWidth: 1))
+                .padding(18)
+                .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(.primary.opacity(0.12))
+                        .allowsHitTesting(false)
+                }
 
                 if let error = mcp.errorMessage {
                     Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.callout).textSelection(.enabled)
@@ -78,7 +83,7 @@ extension SettingsView {
                     Text("Get personal help with MCP setup or another Jotley issue. One ticket opens a private conversation with Jotley Support.").font(.callout).foregroundStyle(.secondary)
                     JotleyTechnicalSupportButton()
                 }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.themePrimaryAccent.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
+                    .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
 
                 mcpDesktopSetup
 
@@ -109,7 +114,7 @@ extension SettingsView {
     func mcpSetupStep<Content: View>(_ number: Int, title: String, detail: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)").font(.system(.caption, design: .rounded).bold())
-                .foregroundStyle(Color.themePrimaryAccent).frame(width: 25, height: 25)
+                .foregroundStyle(.primary).frame(width: 25, height: 25)
                 .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
             VStack(alignment: .leading, spacing: 8) {
                 Text(title).font(.callout.bold())

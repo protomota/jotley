@@ -304,9 +304,9 @@ extension Color {
         ThemeManager.shared.currentThemeColor.textOnAccent(in: shouldUseDarkTheme() ? .dark : .light)
     }
 
-    /// Use the same readable accent for action labels, icons, and controls.
+    /// Neutral foreground for action text in either appearance.
     static var themeActionText: Color {
-        themePrimaryAccent
+        .primary
     }
 
     // iOS specific colors that adapt to light/dark mode
@@ -354,7 +354,7 @@ extension View {
 }
 
 extension View {
-    /// Use the same accent and glass surface for Done and Cancel across platforms.
+    /// Use the same label and glass surface for Done and Cancel across platforms.
     func jotleyDismissButtonStyle(expandsHorizontally: Bool = false, inToolbar: Bool = false) -> some View {
         font(.subheadline.weight(.semibold))
             .buttonStyle(JotleyGlassButtonStyle(diameter: inToolbar ? 32 : nil, floatsOverContent: true))
@@ -400,7 +400,7 @@ struct JotleyNoteTagStyle: ViewModifier {
     func body(content: Content) -> some View {
         let accent = theme.currentThemeColor.color(in: colorScheme)
         return content
-            .foregroundStyle(accent)
+            .foregroundStyle(Color.primary)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .overlay {
@@ -411,10 +411,8 @@ struct JotleyNoteTagStyle: ViewModifier {
 }
 
 #if os(iOS)
-/// Match compact action text and icons to the selected accent.
+/// Match compact action icons to the selected accent.
 struct MobileActionLabel: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-    @Environment(\.colorScheme) private var colorScheme
     let title: LocalizedStringKey
     let systemImage: String
 
@@ -424,8 +422,7 @@ struct MobileActionLabel: View {
     }
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .foregroundStyle(themeManager.currentThemeColor.color(in: colorScheme))
+        JotleyAccentIconLabel(title: title, systemImage: systemImage)
     }
 }
 #endif

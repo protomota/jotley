@@ -130,7 +130,7 @@ struct FilterAndSortPopoverView: View {
                 }
             }
             .padding(3)
-            .background(Color.themePrimaryAccent.opacity(0.10), in: Capsule())
+            .background(Color.primary.opacity(0.06), in: Capsule())
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tag match")
 

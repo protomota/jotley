@@ -13,18 +13,11 @@ extension NoteDetailPlaceholderView {
                     .foregroundColor(Color.themePrimaryAccent)
                 Text("Transcribing")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color.themePrimaryAccent)
+                    .foregroundStyle(.primary)
             }
             .padding(.horizontal, 8)
             .frame(height: 24)
-            .background(
-                Capsule()
-                    .fill(Color.themePrimaryAccent.opacity(0.14))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.themePrimaryAccent.opacity(0.35), lineWidth: 1)
-            )
+            .background { JotleyFloatingGlassSurface(shape: Capsule()) }
         }
         .buttonStyle(PlainButtonStyle())
         .floatingTooltip("Jump to active transcription")

@@ -29,7 +29,7 @@ extension SettingsView {
 
                 Text(section.rawValue)
                     .font(.system(size: 14))
-                    .foregroundColor(isSelected ? .themePrimaryAccent : .themeTextSecondary)
+                    .foregroundColor(isSelected ? .themeTextPrimary : .themeTextSecondary)
 
                 Spacer()
             }

@@ -134,17 +134,20 @@ extension NoteDetailPlaceholderView {
                 HStack(spacing: 4) {
                     Image(systemName: "tag")
                         .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Color.themePrimaryAccent)
                     Text("\(currentTags.count) \(currentTags.count == 1 ? "tag" : "tags")")
                         .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.primary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(isTagsExpanded ? 90 : 0))
                 }
-                .foregroundStyle(Color.themeActionText)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("noteDetailTagCount")
         }
     }
 

@@ -139,9 +139,9 @@ private struct SupporterConfetti: View {
             sparkle.translateBy(x: x, y: y)
             sparkle.rotate(by: .radians(progress * 0.45))
             var glow = sparkle
-            glow.opacity = shimmer * 0.32
-            glow.addFilter(.blur(radius: 5))
-            glow.fill(sparklePath(radius: radius * 1.6), with: .color(accent))
+            glow.opacity = shimmer * 0.16
+            glow.addFilter(.blur(radius: 3))
+            glow.fill(sparklePath(radius: radius * 1.3), with: .color(.white))
             sparkle.opacity = shimmer * 0.9
             sparkle.fill(sparklePath(radius: radius), with: .color(index.isMultiple(of: 3) ? accent : .white))
         }

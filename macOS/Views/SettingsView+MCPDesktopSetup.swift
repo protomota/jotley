@@ -62,7 +62,7 @@ extension SettingsView {
 
     private var mcpTryPrompt: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Ask your agent").font(.caption.bold()).foregroundStyle(Color.themePrimaryAccent)
+            Text("Ask your agent").font(.caption.bold())
             Text("Search my Jotley notes for release planning and tell me who owns each action.")
                 .font(.callout).textSelection(.enabled)
             Button(mcpCopiedItem == "question" ? "Copied ✓" : "Copy request") {

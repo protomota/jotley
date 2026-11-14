@@ -74,7 +74,7 @@ struct JotleySupportTicketsView: View {
                 }
             }
         }
-        .tint(Color.themePrimaryAccent)
+        .tint(Color.themeActionText)
         .jotleySupporterCelebration(.support)
         #if os(macOS)
         .frame(minWidth: 760, idealWidth: 840, minHeight: 650)
@@ -200,8 +200,9 @@ struct JotleySupportTicketsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Image(systemName: "lifepreserver")
-                        .font(.title2)
+                    Image(systemName: "lifepreserver.fill")
+                        .symbolRenderingMode(.monochrome)
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Color.themePrimaryAccent)
                         .frame(width: 44, height: 44)
                         .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
