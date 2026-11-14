@@ -273,6 +273,7 @@ extension NoteDetailPlaceholderView {
                                 Text("Continue Transcription").modifier(JotleyNoteFooterTextStyle())
                             } icon: {
                                 Image(systemName: "waveform")
+                                    .foregroundStyle(Color.themePrimaryAccent)
                             }
                             .font(.system(size: 13, weight: .medium))
                         }

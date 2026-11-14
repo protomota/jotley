@@ -22,9 +22,13 @@ struct NoteDetailView: View {
     var newTranscriptionAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
     @Environment(\.dismiss) var dismiss
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var actionsFooterHeight: CGFloat = 150
     @State var followsLiveSummary = true
     @State var summaryScrollPosition = ScrollPosition()
+    @State var jumpScrollPhase: ScrollPhase = .idle
+    @State var jumpScrollAnchor: CGFloat = 0
+    @State var jumpDestination: VerticalEdge?
     @State var selectedTab = "Transcript"
     @State var isEditingTitle = false
     @State var editedTitle = ""

@@ -8,6 +8,17 @@ import CoreData
 
 import SwiftUI
 
+struct NoteScrollRange: Equatable {
+    let offset: CGFloat
+    let maximumOffset: CGFloat
+
+    init(_ geometry: ScrollGeometry) {
+        maximumOffset = max(0, geometry.contentSize.height + geometry.contentInsets.top
+                            + geometry.contentInsets.bottom - geometry.containerSize.height)
+        offset = min(maximumOffset, max(0, geometry.contentOffset.y + geometry.contentInsets.top))
+    }
+}
+
 struct NoteFooterContentKey: PreferenceKey {
     static var defaultValue: [UUID: AnyView] = [:]
     static func reduce(value: inout [UUID: AnyView], nextValue: () -> [UUID: AnyView]) {

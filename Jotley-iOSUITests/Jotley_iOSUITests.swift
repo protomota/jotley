@@ -765,6 +765,80 @@ final class Jotley_iOSUITests: XCTestCase {
         }
     }
 
+    @MainActor func testNoteScrollJumpFollowsDirection() throws {
+        XCUIDevice.shared.orientation = UIDevice.current.userInterfaceIdiom == .pad ? .landscapeLeft : .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        let transcript = (1...24).map { "Transcript paragraph \($0). Review the launch plan and share the latest draft." }
+            .joined(separator: "\n\n")
+        let summary = "## Launch checklist\n" + (1...28).map { "- Checkpoint \($0). Review the next steps and share the launch plan with the team." }
+            .joined(separator: "\n")
+        let fixture = [["title": "Launch planning", "folder": "Work", "tags": ["Planning"],
+                        "transcript": transcript, "summary": summary] as [String: Any]]
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Dark"
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchArguments = ["-selectedThemeColor", "Magenta", "-jotleyWelcomeCompleted.v1", "YES"]
+        app.launch()
+        if !app.staticTexts["noteDetailTitle"].exists {
+            showNotesLibrary(app)
+            let row = app.buttons.containing(.staticText, identifier: "Launch planning").firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10))
+            row.tap()
+        }
+
+        let title = app.staticTexts["noteDetailTitle"]
+        let scroll = app.scrollViews.containing(.staticText, identifier: "noteDetailTitle").firstMatch
+        let top = app.buttons["noteDetailJumpTop"]
+        let bottom = app.buttons["noteDetailJumpBottom"]
+        for tab in ["Summary", "Transcript"] {
+            let tabButton = app.buttons["noteDetail\(tab)Tab"]
+            XCTAssertTrue(tabButton.isHittable)
+            if tab == "Transcript" {
+                tabButton.tap()
+                XCTAssertTrue(tabButton.isSelected)
+                XCTAssertFalse(app.buttons["noteDetailSummaryTab"].isSelected)
+                XCTAssertFalse(app.staticTexts["Launch checklist"].exists)
+                XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Transcript paragraph 1.")).firstMatch.isHittable)
+                XCTAssertTrue(app.buttons["noteDetailContinueTranscriptionButton"].isHittable)
+                capture(XCUIScreen.main.screenshot(), named: "Continue Transcription theme icon")
+            }
+            XCTAssertFalse(top.exists || bottom.exists)
+
+            // Scroll inside the note pane, clear of the sidebar and footer.
+            let lower = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.66))
+            let upper = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.3))
+            lower.press(forDuration: 0.12, thenDragTo: upper, withVelocity: .slow, thenHoldForDuration: 0.12)
+            XCTAssertTrue(bottom.waitForExistence(timeout: 4) && bottom.isHittable)
+            XCTAssertFalse(top.exists)
+            capture(XCUIScreen.main.screenshot(), named: "\(tab) jump to bottom")
+            bottom.tap()
+            XCTAssertTrue(bottom.waitForNonExistence(timeout: 4))
+            capture(XCUIScreen.main.screenshot(), named: "\(tab) at bottom")
+            let lastText = tab == "Summary" ? "Checkpoint 28." : "Transcript paragraph 24."
+            let lastLine = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", lastText)).firstMatch
+            let reachedBottom = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                lastLine.exists && lastLine.isHittable
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [reachedBottom], timeout: 4), .completed, app.debugDescription)
+
+            upper.press(forDuration: 0.12, thenDragTo: lower, withVelocity: .slow, thenHoldForDuration: 0.12)
+            XCTAssertTrue(top.waitForExistence(timeout: 4) && top.isHittable)
+            XCTAssertFalse(bottom.exists)
+            capture(XCUIScreen.main.screenshot(), named: "\(tab) jump to top")
+            top.tap()
+            XCTAssertTrue(top.waitForNonExistence(timeout: 4))
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in title.isHittable }, object: nil)], timeout: 4), .completed)
+        }
+        let summaryTab = app.buttons["noteDetailSummaryTab"]
+        summaryTab.tap()
+        XCTAssertTrue(summaryTab.isSelected)
+        XCTAssertFalse(app.buttons["noteDetailTranscriptTab"].isSelected)
+        XCTAssertTrue(app.staticTexts["Launch checklist"].isHittable)
+        XCTAssertTrue(app.buttons["noteDetailSummaryAskAIButton"].isHittable)
+        capture(XCUIScreen.main.screenshot(), named: "Summary tab with summary content")
+    }
+
     @MainActor func testNoteHeaderActionsScrollWithTranscript() throws {
         continueAfterFailure = false
         let app = XCUIApplication()

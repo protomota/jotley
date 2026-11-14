@@ -713,6 +713,7 @@ struct NoteContentSwitch: View {
     var showsSummary: Bool
     var showsTranscript: Bool = true
     var summaryIsGenerating = false
+    var animatesSelection = true
     @Namespace private var highlight
     @ObservedObject private var theme = ThemeManager.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -734,9 +735,11 @@ struct NoteContentSwitch: View {
                     .frame(minWidth: 92)
                     .background {
                         if selection == tab {
-                            Capsule().fill(Color.themeBackground)
-                                .overlay { Capsule().strokeBorder(Color.themePrimaryAccent.opacity(0.60)) }
-                                .matchedGeometryEffect(id: "selectedTab", in: highlight)
+                            if animatesSelection {
+                                selectionHighlight.matchedGeometryEffect(id: "selectedTab", in: highlight)
+                            } else {
+                                selectionHighlight
+                            }
                         }
                     }
                     .contentShape(Capsule())
@@ -750,8 +753,13 @@ struct NoteContentSwitch: View {
         .background(Color.themeTextPrimary.opacity(0.08), in: Capsule())
         .modifier(JotleyControlShadow())
         .fixedSize(horizontal: true, vertical: false)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: selection)
+        .animation(animatesSelection && !reduceMotion ? .easeInOut(duration: 0.18) : nil, value: selection)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Note view")
+    }
+
+    private var selectionHighlight: some View {
+        Capsule().fill(Color.themeBackground)
+            .overlay { Capsule().strokeBorder(Color.themePrimaryAccent.opacity(0.60)) }
     }
 }

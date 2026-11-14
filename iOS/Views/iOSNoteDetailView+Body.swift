@@ -24,12 +24,21 @@ extension NoteDetailView {
             .padding(.bottom, actionsFooterHeight + 16)
         }
         .scrollPosition($summaryScrollPosition)
+        .onScrollGeometryChange(for: NoteScrollRange.self) { geometry in
+            NoteScrollRange(geometry)
+        } action: { _, range in
+            updateScrollJump(range)
+        }
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentSize.height } action: { previous, height in
             guard isWritingVisibleSummary, followsLiveSummary, previous != height else { return }
             // Move only after the new text has a measured height.
             summaryScrollPosition.scrollTo(edge: .bottom)
         }
         .onScrollPhaseChange { _, phase, context in
+            jumpScrollPhase = phase
+            if phase == .interacting {
+                jumpScrollAnchor = NoteScrollRange(context.geometry).offset
+            }
             guard isWritingVisibleSummary else { return }
             if phase == .interacting {
                 followsLiveSummary = false
@@ -43,6 +52,13 @@ extension NoteDetailView {
         }
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
+        .overlay(alignment: .bottomTrailing) {
+            if let jumpDestination {
+                scrollJumpButton(to: jumpDestination)
+                    .padding(.trailing, newTranscriptionAction == nil ? 16 : 24)
+                    .padding(.bottom, actionsFooterHeight + 8)
+            }
+        }
         .overlay(alignment: .bottom) {
             if newTranscriptionAction == nil {
                 noteActionsFooter
@@ -86,6 +102,7 @@ extension NoteDetailView {
         } message: { Text("This permanently deletes the note.") }
         .onAppear { currentTags = note.tagNames; if hasSummary { selectedTab = "Summary" } }
         .onChange(of: note.tagNames) { _, tags in currentTags = tags }
+        .onChange(of: selectedTab) { _, _ in jumpDestination = nil }
         .onChange(of: isTitleFieldFocused) { _, focused in if !focused { isEditingTitle = false } }
         .onChange(of: hasSummary) { _, available in if !available { selectedTab = "Transcript" } }
         .onChange(of: summaryIsRunning) { _, running in if running { selectedTab = "Summary" } }
@@ -93,6 +110,39 @@ extension NoteDetailView {
         .observeThemeChanges()
     }
     private var isWritingVisibleSummary: Bool { summaryIsRunning && selectedTab == "Summary" }
+
+    private func updateScrollJump(_ range: NoteScrollRange) {
+        if jumpScrollPhase == .interacting {
+            let travel = range.offset - jumpScrollAnchor
+            if abs(travel) >= 12 {
+                jumpDestination = travel > 0 ? .bottom : .top
+                jumpScrollAnchor = range.offset
+            }
+        }
+        // Hide at either destination and on pages that fit in the viewport.
+        guard let jumpDestination else { return }
+        let remaining = jumpDestination == .top ? range.offset : range.maximumOffset - range.offset
+        if range.maximumOffset <= 24 || remaining <= 12 {
+            self.jumpDestination = nil
+        }
+    }
+
+    private func scrollJumpButton(to destination: VerticalEdge) -> some View {
+        Button {
+            jumpDestination = nil
+            if isWritingVisibleSummary { followsLiveSummary = false }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                summaryScrollPosition.scrollTo(edge: destination == .top ? .top : .bottom)
+            }
+            if isWritingVisibleSummary && destination == .bottom { followsLiveSummary = true }
+        } label: {
+            Image(systemName: destination == .top ? "arrow.up" : "arrow.down")
+                .font(.system(size: 16, weight: .semibold))
+        }
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
+        .accessibilityLabel(destination == .top ? Text("Jump to top") : Text("Jump to bottom"))
+        .accessibilityIdentifier(destination == .top ? "noteDetailJumpTop" : "noteDetailJumpBottom")
+    }
 
     private var noteHeaderActions: some View {
         HStack(spacing: 10) {
@@ -232,7 +282,7 @@ extension NoteDetailView {
     }
     private var noteTabPickerSection: some View {
         HStack {
-            NoteContentSwitch(selection: $selectedTab, showsSummary: hasSummary)
+            NoteContentSwitch(selection: $selectedTab, showsSummary: hasSummary, animatesSelection: false)
             Spacer()
         }.padding(.horizontal).padding(.bottom,16)
     }
@@ -298,6 +348,7 @@ extension NoteDetailView {
                     summaryTemplateButton
                     primarySummaryButton
                 }
+                .frame(maxWidth: UIDevice.current.userInterfaceIdiom == .pad ? 384 : .infinity)
             }
             contextualActionsRow
         }
@@ -346,6 +397,7 @@ extension NoteDetailView {
                     Text("Continue Transcription").modifier(JotleyNoteFooterTextStyle())
                 } icon: {
                     Image(systemName: "waveform")
+                        .foregroundStyle(Color.themePrimaryAccent)
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
