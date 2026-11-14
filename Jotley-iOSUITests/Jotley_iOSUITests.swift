@@ -2095,9 +2095,14 @@ final class Jotley_iOSUITests: XCTestCase {
     @MainActor private func revealSettingsAction(_ identifier: String, in app: XCUIApplication) {
         let action = app.buttons[identifier]
         let form = app.descendants(matching: .any)["settingsForm"].firstMatch
-        for _ in 0..<12 where !action.isHittable {
-            if action.exists && action.frame.maxY < form.frame.minY { form.swipeDown() }
-            else { form.swipeUp() }
+        let feedback = app.buttons["settingsFeedbackJotley"]
+        for _ in 0..<24 where !action.isHittable {
+            let above = action.exists
+                ? action.frame.midY < form.frame.midY
+                : identifier == "settingsTechnicalSupport" && feedback.isHittable
+            let start = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.37 : 0.73))
+            let end = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.73 : 0.37))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
         }
         XCTAssertTrue(action.isHittable, app.debugDescription)
     }

@@ -447,14 +447,14 @@ struct JotleyLibraryWelcome: View {
             VStack(spacing: 10) {
                 Text(hasNotes ? LocalizedStringKey("Select a note") : LocalizedStringKey("Your words. Your device."))
                     .font(.custom("Comfortaa-Bold", size: 27, relativeTo: .title))
-                    .foregroundStyle(Color.themeTextPrimary)
+                    .foregroundStyle(.primary)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("libraryWelcomeHeading")
                 Text(hasNotes
                      ? LocalizedStringKey("Choose a note to read or edit the transcript, see the summary, or ask a question.")
                      : LocalizedStringKey("Capture a thought, meeting, or lecture. Edit the transcript and get the key points with Apple Intelligence, right on your device."))
                     .font(.body)
-                    .foregroundStyle(Color.themeTextSecondary)
+                    .foregroundStyle(.secondary)
                     .lineSpacing(3)
             }
             Button(action: onStart) {
