@@ -118,11 +118,11 @@ extension NoteDetailView {
                     }
                 }
             } label: {
-                noteHeaderMenuIcon("square.and.arrow.up", verticalOffset: -1.5)
+                noteHeaderMenuLabel
             }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
-            .controlSize(.large)
+            .overlay { noteHeaderMenuIcon("square.and.arrow.up", verticalOffset: -1.5) }
             .accessibilityLabel("Share Actions").accessibilityIdentifier("noteDetailShareButton")
             Menu {
                 Button { showingAskAI = true } label: {
@@ -161,21 +161,27 @@ extension NoteDetailView {
                     .accessibilityIdentifier("noteDetailContinueTranscriptionMenuButton")
                 Divider()
                 Button("Delete Note", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
-            } label: { noteHeaderMenuIcon("ellipsis") }
+            } label: { noteHeaderMenuLabel }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
-            .controlSize(.large)
+            .overlay { noteHeaderMenuIcon("ellipsis") }
             .accessibilityLabel("More Actions")
             .accessibilityIdentifier("noteDetailMoreActionsButton")
         }
         .menuIndicator(.hidden)
     }
 
+    private var noteHeaderMenuLabel: some View {
+        Color.clear.frame(width: 24, height: 24)
+    }
+
     private func noteHeaderMenuIcon(_ systemImage: String, verticalOffset: CGFloat = 0) -> some View {
-        let symbol = UIImage(systemName: systemImage, withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold))
-        return Image(uiImage: (symbol ?? UIImage()).withTintColor(UIColor(headerIconColor), renderingMode: .alwaysOriginal))
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(headerIconColor)
             .offset(y: verticalOffset)
-            .frame(width: 26, height: 26)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private var noteHeaderSection: some View {
