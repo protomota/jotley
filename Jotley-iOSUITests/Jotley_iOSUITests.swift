@@ -2445,6 +2445,19 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
     }
 
+    @MainActor func testSettingsShowsProtomotaAppsLink() {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Settings preview","folder":"Work","tags":[],"transcript":"Sample transcript.","summary":""}] "#
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        openInlineSupportSettings(app)
+        let link = app.staticTexts["More Free Apps by Protomota"]
+        let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+        for _ in 0..<3 where !link.isHittable { form.swipeUp() }
+        XCTAssertTrue(link.isHittable, app.debugDescription)
+        attachSupportReview("Jotley Settings - More Free Apps")
+    }
+
     @MainActor func testTipSuccessConfirmationKeepsAnotherTipOptional() throws {
         guard ProcessInfo.processInfo.environment["PROTOMOTA_RUN_SANDBOX_CATALOG_TESTS"] == "1" else {
             throw XCTSkip("Explicitly enable the real catalog for success-presentation previews")

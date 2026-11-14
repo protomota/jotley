@@ -789,6 +789,7 @@ struct JotleyClearChatConfirmation: View {
     static let presentedCountKey = "jotleySupportPresentedSummaryCount.v1"
     static let stoppedKey = "jotleySupportAutomaticRemindersStopped.v1"
     static let website = URL(string: "https://jotley.ai")!
+    static let protomotaAppsURL = URL(string: "https://protomota.com/apps")!
     static let tipURL = URL(string: "https://buymeacoffee.com/protomotalab")!
     static let feedbackURL = URL(string: "https://protomota.com/apps?app=jotley#feedback")!
     enum Action: String, CaseIterable { case review, tip, share, feedback, support }
@@ -1308,8 +1309,11 @@ struct JotleySupportLinks: View {
             .accessibilityIdentifier("settingsRateJotley")
             Button(supportTitle) { showingSupport = true }
                 .frame(minHeight: 44).accessibilityIdentifier("settingsSupportJotleyCard")
-            Link("Jotley's Website", destination: JotleyEngagement.website)
-                .frame(minHeight: 44)
+            Link(destination: JotleyEngagement.protomotaAppsURL) {
+                JotleyAccentIconLabel(title: "More Free Apps by Protomota", systemImage: "arrow.up.right")
+            }
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("settingsProtomotaApps")
         }
         .buttonStyle(.plain)
         #if os(iOS)
@@ -1338,10 +1342,10 @@ struct JotleySupportLinks: View {
                 supportRow("Send Feedback", systemImage: "bubble.left.and.bubble.right")
             }
             .accessibilityIdentifier("settingsFeedbackJotley")
-            Link(destination: JotleyEngagement.website) {
-                supportRow("Jotley's Website", systemImage: "globe")
+            Link(destination: JotleyEngagement.protomotaAppsURL) {
+                supportRow("More Free Apps by Protomota", systemImage: "arrow.up.right")
             }
-            .accessibilityIdentifier("settingsJotleyWebsite")
+            .accessibilityIdentifier("settingsProtomotaApps")
         }
         .buttonStyle(.plain)
     }
