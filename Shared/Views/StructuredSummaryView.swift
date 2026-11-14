@@ -179,7 +179,7 @@ struct StructuredSummary {
         guard line.marker == nil, !plain.isEmpty, plain.count <= 60 else { return false }
         return line.text.runs.allSatisfy { run in
             run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true
-                || String(line.text[run.range].characters).allSatisfy { $0.isWhitespace || $0 == ":" }
+                || String(line.text[run.range].characters).allSatisfy { $0.isWhitespace || $0 == ":" || $0 == "：" }
         }
     }
 
@@ -194,14 +194,14 @@ struct StructuredSummary {
 
     static func headingTitle(_ plain: String) -> String {
         var title = plain
-        while title.hasSuffix(":") { title.removeLast() }
+        while title.last == ":" || title.last == "：" { title.removeLast() }
         return title.trimmingCharacters(in: .whitespaces)
     }
 
     /// "**Owner**: task" or "Topic: detail" becomes a short label and a body.
     /// Long prefixes are ordinary sentences, so they stay intact.
     static func split(_ text: AttributedString) -> (AttributedString?, AttributedString) {
-        guard let colon = text.characters.firstIndex(of: ":") else { return (nil, text) }
+        guard let colon = text.characters.firstIndex(where: { $0 == ":" || $0 == "：" }) else { return (nil, text) }
         let prefix = String(text.characters[..<colon]).trimmingCharacters(in: .whitespaces)
         let afterColon = text.characters.index(after: colon)
         let rest = String(text.characters[afterColon...]).trimmingCharacters(in: .whitespaces)
@@ -230,7 +230,10 @@ struct StructuredSummary {
     static func style(for title: String?) -> Style {
         let title = (title ?? "").lowercased()
         func has(_ words: [String]) -> Bool { words.contains { title.contains($0) } }
-        if has(["action", "next step", "to-do", "todo", "task", "follow-up", "follow up", "owner", "assignment", "remind"]) { return .checklist }
+        if has(["action", "next step", "to-do", "todo", "task", "follow-up", "follow up", "owner", "assignment", "remind",
+                "handlingspunkt", "actiepunt", "à mener", "à faire", "aufgabe", "azion", "da fare", "oppgave", "ação", "ações",
+                "tarea", "att göra", "uppgift", "yapılacak", "görev", "việc cần làm", "待办", "待辦", "アクション", "やること",
+                "실행 항목", "할 일"]) { return .checklist }
         if has(["question", "unresolved", "open item", "unknown"]) { return .questions }
         if has(["risk", "blocker", "concern", "issue", "challenge"]) { return .risks }
         if title.isEmpty { return .plain }

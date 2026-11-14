@@ -1636,14 +1636,14 @@ struct JotleyOnboardingView: View {
                         Image(illustrationAsset(for: page)).resizable().interpolation(.high).antialiased(true).scaledToFit()
                             .frame(width: 68, height: 68).accessibilityHidden(true)
                     }
-                    Text(title(for: page, twoLines: twoLineTitle)).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
+                    Text(LocalizedStringKey(title(for: page, twoLines: twoLineTitle))).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("onboardingTitle")
                 }
                 .frame(height: (inlineArtwork ? 68 : 88) * scale, alignment: .topLeading)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("onboardingHeading")
-                Text(dense && page == 2 ? "Choose your Apple Intelligence language." : subtitle(for: page)).font(dense ? .callout : .body).foregroundStyle(muted)
+                Text(LocalizedStringKey(dense && page == 2 ? "Choose your Apple Intelligence language." : subtitle(for: page))).font(dense ? .callout : .body).foregroundStyle(muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: (dense ? 48 : 64) * scale, alignment: .topLeading)
             }
@@ -1719,7 +1719,7 @@ struct JotleyOnboardingView: View {
                         .buttonStyle(JotleyGlassButtonStyle()).foregroundStyle(actionInk)
                         .accessibilityIdentifier("onboardingSpeechSetup")
                 }
-                Text(dense ? "Change your language or finish setup later in Settings." : "You can change your language or finish setup in Settings at any time.").font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(dense ? "Change your language or finish setup later in Settings." : "You can change your language or finish setup in Settings at any time.")).font(.footnote).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("onboardingLanguageHint")
             case 3:
                 status(microphoneAllowed ? "Microphone access is enabled" : (microphoneDenied ? "Microphone access is off" : "You’re in control"),
@@ -1754,7 +1754,7 @@ struct JotleyOnboardingView: View {
             HStack(spacing: 12) {
                 Image(systemName: "globe").font(.title2).foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Transcription language").font(dense ? .footnote : .callout).foregroundStyle(muted)
+                    Text("Transcription Language").font(dense ? .footnote : .callout).foregroundStyle(muted)
                     Text(languages.first(where: { $0.id == language })?.name ?? "Choose a supported language").font((dense ? Font.callout : .body).weight(.semibold)).foregroundStyle(ink)
                 }
                 Spacer()
@@ -1766,7 +1766,7 @@ struct JotleyOnboardingView: View {
         .accessibilityIdentifier("onboardingLanguagePicker")
         .popover(isPresented: $showingLanguages, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Transcription language").font(.headline).foregroundStyle(ink)
+                Text("Transcription Language").font(.headline).foregroundStyle(ink)
                 ScrollView {
                     LazyVStack(spacing: 3) {
                         ForEach(languages) { item in
@@ -1799,8 +1799,8 @@ struct JotleyOnboardingView: View {
             Image(systemName: icon).font(.system(size: 21 * scale, weight: .medium)).foregroundStyle(accent).frame(width: 28 * scale)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
-                Text(detail).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(title)).font(dense ? .subheadline.weight(.semibold) : .headline)
+                Text(LocalizedStringKey(detail)).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
             }
         }.accessibilityElement(children: .combine)
     }
@@ -1809,8 +1809,8 @@ struct JotleyOnboardingView: View {
             Image(systemName: ready ? "checkmark.circle.fill" : "info.circle").foregroundStyle(ready ? .green : accent)
                 .font(.title3).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(dense ? .subheadline.weight(.semibold) : .headline)
-                Text(detail).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(title)).font(dense ? .subheadline.weight(.semibold) : .headline)
+                Text(LocalizedStringKey(detail)).font(dense ? .footnote : .callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
             }
         }.padding((dense ? 12 : 16) * scale).frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
@@ -1856,7 +1856,7 @@ struct JotleyOnboardingView: View {
                 ForEach(0..<steps.count, id: \.self) { index in
                     Capsule().fill(index == step ? accent : ink.opacity(0.13)).frame(width: index == step ? 25 : 6, height: 6)
                 }
-                Text("\(step + 1) of \(steps.count) · \(steps[step])").font(.caption).foregroundStyle(muted).padding(.leading, 5)
+                Text("\(step + 1) of \(steps.count) · \(String(localized: String.LocalizationValue(steps[step])))").font(.caption).foregroundStyle(muted).padding(.leading, 5)
                     .frame(width: 130 * scale, alignment: .leading)
             }
             .padding(.leading, actionInset)
@@ -1880,7 +1880,7 @@ struct JotleyOnboardingView: View {
                 } label: {
                     HStack(spacing: 9) {
                         if requestingMicrophone { ProgressView().controlSize(.small).tint(actionInk) }
-                        Text(primaryTitle)
+                        Text(LocalizedStringKey(primaryTitle))
                             .font(.body.weight(.semibold))
                     }.frame(maxWidth: .infinity).foregroundStyle(actionInk)
                 }
