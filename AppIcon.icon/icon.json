@@ -18,10 +18,7 @@
     {
       "appearance" : "dark",
       "value" : {
-        "linear-gradient" : [
-          "extended-gray:0.50000,1.00000",
-          "extended-gray:0.25000,1.00000"
-        ],
+        "automatic-gradient" : "extended-gray:0.50000,1.00000",
         "orientation" : {
           "start" : {
             "x" : 0.5,
@@ -46,7 +43,7 @@
             },
             {
               "appearance" : "dark",
-              "value" : "automatic"
+              "value" : "none"
             }
           ],
           "glass" : false,

@@ -428,6 +428,7 @@ struct JotleyAboutLogo: View {
 
     var body: some View {
         Image("jotley-brand-mark")
+            .renderingMode(.original)
             .resizable().interpolation(.high).scaledToFit()
             .frame(width: size, height: size)
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.16), radius: 2, y: 1)

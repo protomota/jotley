@@ -1,12 +1,13 @@
 import { execFileSync } from 'node:child_process';
 
-// The download button's dark and light brand tokens, in top-to-bottom order.
-const top = [0x8b, 0x5c, 0xf6];
-const bottom = [0x7c, 0x3a, 0xed];
-const [input, output] = process.argv.slice(2);
-if (!input || !output || input === output) {
-  throw new Error('Usage: node scripts/apply-brand-palette.mjs INPUT.png OUTPUT.png');
+const [input, output, mode, ...extra] = process.argv.slice(2);
+if (!input || !output || input === output || (mode && mode !== '--solid') || extra.length) {
+  throw new Error('Usage: node scripts/apply-brand-palette.mjs INPUT.png OUTPUT.png [--solid]');
 }
+
+// The app icon uses the light brand purple. Website artwork can use the download button gradient.
+const bottom = [0x7c, 0x3a, 0xed];
+const top = mode === '--solid' ? bottom : [0x8b, 0x5c, 0xf6];
 
 const [width, height] = execFileSync('magick', ['identify', '-format', '%w %h', input])
   .toString().trim().split(/\s+/).map(Number);
