@@ -303,10 +303,12 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     var diameter: CGFloat? = nil
     var keepsDisabledSurfaceVisible = false
     var floatsOverContent = false
+    var usesTranslucentMaterial = false
+    var usesAccentForeground = false
 
     private var theme: ThemeColor { themeManager.currentThemeColor }
     private var glassInk: Color {
-        if circular { return theme.glassForeground(in: colorScheme) }
+        if circular || usesAccentForeground { return theme.glassForeground(in: colorScheme) }
         return theme.usesDarkGlass(in: colorScheme) ? .white : .primary
     }
 
@@ -338,7 +340,8 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     private func background<S: InsettableShape>(in shape: S) -> some View {
         JotleyFloatingGlassSurface(
             shape: shape,
-            usesDarkSurface: theme.usesDarkGlass(in: colorScheme)
+            usesDarkSurface: theme.usesDarkGlass(in: colorScheme),
+            usesTranslucentMaterial: usesTranslucentMaterial
         )
     }
 }
@@ -351,6 +354,7 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let shape: Outline
     var usesDarkSurface = false
+    var usesTranslucentMaterial = false
 
     var body: some View {
         let dark = colorScheme == .dark
@@ -359,6 +363,9 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
         ZStack {
             if reduceTransparency {
                 shape.fill(surface)
+            } else if usesTranslucentMaterial {
+                let material = Glass.regular.interactive()
+                Color.clear.glassEffect(usesDarkSurface ? material.tint(.black.opacity(0.55)) : material, in: shape)
             } else {
                 Color.clear.glassEffect(.clear, in: shape)
                     .overlay { shape.fill(surface.opacity(0.85)) }
@@ -416,12 +423,13 @@ struct JotleyFloatingMenuIcon: View {
 #endif
 
 struct JotleyAboutLogo: View {
+    var size: CGFloat = 56
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Image("jotley-brand-mark")
             .resizable().interpolation(.high).scaledToFit()
-            .frame(width: 56, height: 56)
+            .frame(width: size, height: size)
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.16), radius: 2, y: 1)
             .accessibilityLabel("Jotley")
     }
@@ -998,9 +1006,6 @@ struct JotleySupportView: View {
     var isAutomatic = false
     let dismiss: () -> Void
     @ObservedObject private var theme = ThemeManager.shared
-    #if os(macOS)
-    @State private var allowsWebsiteTips = false
-    #endif
     @State private var contentHeight: CGFloat?
     @Environment(\.colorScheme) private var colorScheme
     #if os(macOS)
@@ -1009,78 +1014,60 @@ struct JotleySupportView: View {
     @State private var didReset = false
     #endif
     var body: some View {
+        supportCard
+            .environment(\.colorScheme, theme.effectiveColorScheme ?? colorScheme)
+    }
+    @ViewBuilder private var supportCard: some View {
         #if os(macOS)
         macCard
         #else
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "waveform")
-                    .font(cardFont(.title3.weight(.medium), macSize: 22, weight: .medium))
-                    .foregroundColor(.themePrimaryAccent)
-                    .frame(width: 40, height: 40)
-                    .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Jotley").font(cardFont(.headline, macSize: 18, weight: .semibold)).foregroundColor(.themeTextPrimary)
-                    Text("Free note-taking · Optional paid support")
-                        .font(cardFont(.caption, macSize: 14)).foregroundColor(.themeTextSecondary)
-                }
-                Spacer(minLength: 0)
-                Button(action: dismiss) {
-                    Image(systemName: "xmark").font(cardFont(.subheadline.weight(.semibold), macSize: 16, weight: .semibold))
-                        .foregroundColor(.themeTextSecondary).frame(width: 44, height: 44)
-                        .background(Color.themeBackground, in: Circle())
-                }
-                .buttonStyle(.plain).accessibilityLabel("Close support message")
-                .accessibilityIdentifier("jotleySupportClose")
+            HStack(spacing: 8) {
+                JotleyAboutLogo(size: 44)
+                Text("Free software.\nSupported by people.")
+                    .font(.system(.title2, design: .rounded).weight(.semibold))
+                    .foregroundStyle(Color.themeTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("jotleySupportTitle")
+                    .accessibilityAddTraits(.isHeader)
+                closeButton(diameter: 44)
             }
-            .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 20)
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 14)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Free software.\nSupported by people.")
-                        .font(cardFont(.title2.weight(.bold), macSize: 28, weight: .bold)).foregroundColor(.themeTextPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("jotleySupportTitle")
-                        .accessibilityAddTraits(.isHeader)
-                    Text("Your rating and review help others discover Jotley. Protomota Software makes Jotley free for personal and paid work.")
-                        .font(cardFont(.subheadline, macSize: 16))
-                        .foregroundColor(.themeTextSecondary)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, 6)
-                    VStack(spacing: 12) {
-                        Link(destination: JotleyEngagement.feedbackURL) {
-                            actionLabel("Share Your Experience", subtitle: "Open the Jotley form on Protomota", icon: "star")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Share your Jotley experience on Protomota")
-                        .accessibilityIdentifier("jotleySupportReview")
+                    VStack(spacing: 8) {
                         JotleyTipButton {
-                            actionLabel("Tip the Developer", subtitle: "Optional · One-time App Store purchase", icon: "heart.circle")
+                            actionLabel("Tip the Developer", subtitle: "Optional · One-time App Store purchase", icon: "cup.and.saucer")
                         }
                         .buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
+                        Link(destination: JotleyEngagement.feedbackURL) {
+                            actionLabel("Send Feedback", subtitle: "Help shape what comes next", icon: "bubble.left.and.bubble.right")
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportFeedback")
                         ShareLink(item: JotleyEngagement.website) {
                             actionLabel("Share Jotley", subtitle: "Help others discover Jotley", icon: "square.and.arrow.up")
                         }
                         .buttonStyle(.plain).accessibilityIdentifier("jotleySupportShare")
-                        Link(destination: JotleyEngagement.feedbackURL) {
-                            actionLabel("Send Feedback", subtitle: "Help shape what comes next", icon: "bubble.left.and.bubble.right")
-                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportFeedback")
+                        Link(destination: JotleySupportURLs.help) {
+                            actionLabel("Open a Support Ticket", subtitle: "Create a ticket or follow replies on Protomota", icon: "headphones")
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportTicket")
+                        Link(destination: JotleyEngagement.protomotaAppsURL) {
+                            actionLabel("More Free Apps by Protomota", subtitle: "Explore more free apps from our studio", icon: "arrow.up.right")
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportApps")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 24).padding(.bottom, 20)
+                .padding(.horizontal, 20).padding(.bottom, 12)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
             .frame(maxHeight: contentHeight)
             .scrollBounceBehavior(.basedOnSize)
             Rectangle().fill(Color.themeAccent.opacity(0.65)).frame(height: 1).padding(.horizontal, 24)
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
                 supportFooter.frame(maxWidth: .infinity, alignment: .leading)
-                dismissButton
+                dismissButton(expandsHorizontally: true)
             }
-            .padding(.horizontal, 24).padding(.top, 18).padding(.bottom, 20)
+            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 12)
         }
         .multilineTextAlignment(.leading)
         .background(Color.themeContentBackground, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -1095,11 +1082,7 @@ struct JotleySupportView: View {
     private var macCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
-                Image(systemName: "star.bubble")
-                    .font(.system(size: 30, weight: .medium))
-                    .foregroundStyle(Color.themePrimaryAccent)
-                    .frame(width: 66, height: 66)
-                    .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
+                JotleyAboutLogo()
                 VStack(alignment: .leading, spacing: 7) {
                     Text(isAutomatic ? "YOUR SUMMARY, SAVED" : "RATINGS & SUPPORT")
                         .font(.system(size: 12, weight: .bold)).tracking(1.4)
@@ -1109,32 +1092,26 @@ struct JotleySupportView: View {
                         .foregroundStyle(Color.themeTextPrimary)
                 }
                 Spacer(minLength: 0)
-                Button(action: dismiss) {
-                    Image(systemName: "xmark").font(.system(size: 14, weight: .semibold))
-                        .frame(width: 32, height: 32).contentShape(Circle())
-                }.buttonStyle(JotleyGlassButtonStyle(circular: true))
-                    .accessibilityLabel("Close support message").accessibilityIdentifier("jotleySupportClose")
+                closeButton(diameter: 36)
             }.padding(.bottom, 22)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Tell us about your experience.")
-                            .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
-                        Text("All Jotley note-taking features are free. Tips and personal technical support are optional paid purchases. Your ratings, reviews, sharing and feedback help more people discover Jotley and help us keep building. Thank you for your support.")
-                            .font(.system(size: 16)).foregroundStyle(Color.themeTextSecondary).lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
                     VStack(spacing: 10) {
-                        Button { visit(.review, url: JotleyEngagement.feedbackURL) } label: {
-                            macAction("Share Your Experience", detail: "Open the Jotley form on Protomota",
-                                      icon: "star.bubble", kind: .review)
-                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportReview")
-                        if allowsWebsiteTips {
+                        #if STORE_BUILD
+                        JotleyTipButton {
+                            macAction("Tip the Developer", detail: "Optional · One-time App Store purchase",
+                                      icon: "cup.and.saucer", kind: .tip)
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
+                        #else
                             Button { visit(.tip, url: JotleyEngagement.tipURL) } label: {
-                                macAction("Tip the Developer", detail: "Opens Buy Me a Coffee in your browser",
-                                          icon: "heart.circle", kind: .tip)
+                                macAction("Buy Me a Coffee", detail: "Opens Buy Me a Coffee in your browser",
+                                          icon: "cup.and.saucer", kind: .tip)
                             }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportTip")
-                        }
+                        #endif
+                        Button { visit(.feedback, url: JotleyEngagement.feedbackURL) } label: {
+                            macAction("Send Feedback", detail: "Help shape what comes next",
+                                      icon: "bubble.left.and.bubble.right", kind: .feedback)
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportFeedback")
                         Button {
                             engagement.recordClick(.share); didReset = false
                             JotleySupportSharing.shared.present(from: shareAnchor, dismiss: dismiss)
@@ -1143,10 +1120,14 @@ struct JotleySupportView: View {
                                       icon: "square.and.arrow.up", kind: .share)
                         }.buttonStyle(.plain).background(JotleySupportShareAnchor(view: shareAnchor))
                             .accessibilityIdentifier("jotleySupportShare")
-                        Button { visit(.feedback, url: JotleyEngagement.feedbackURL) } label: {
-                            macAction("Send Feedback", detail: "Your ideas help shape what comes next",
-                                      icon: "bubble.left.and.bubble.right", kind: .feedback)
-                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportFeedback")
+                        Button { visit(.support, url: JotleySupportURLs.help) } label: {
+                            macAction("Open a Support Ticket", detail: "Create a ticket or follow replies on Protomota",
+                                      icon: "headphones", kind: .support)
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportTicket")
+                        Link(destination: JotleyEngagement.protomotaAppsURL) {
+                            macAction("More Free Apps by Protomota", detail: "Explore more free apps from our studio",
+                                      icon: "arrow.up.right")
+                        }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportApps")
                     }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(didReset ? (engagement.automaticRemindersStopped
@@ -1167,24 +1148,21 @@ struct JotleySupportView: View {
                 Text("Note-taking features stay free.\nPaid support and tips are optional.")
                     .font(.system(size: 12)).foregroundStyle(Color.themeTextSecondary)
                 Spacer(minLength: 0)
-                Button(isAutomatic ? "Back to Notes" : "Back to Settings", action: dismiss)
-                    .font(.system(size: 15, weight: .semibold)).buttonStyle(JotleyGlassButtonStyle())
-                    .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("jotleySupportDismiss")
+                dismissButton()
             }.padding(.top, 22)
         }.padding(30)
             .background(Color.themeContentBackground)
             .accessibilityElement(children: .contain).accessibilityIdentifier("jotleyStyledSupportPrompt")
             .onAppear { engagement.supportCardOpened() }
-            .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
     }
     private func visit(_ action: JotleyEngagement.Action, url: URL) {
         engagement.recordClick(action); didReset = false
         openURL(url)
         if JotleyEngagement.dismissingActions.contains(action) { dismiss() }
     }
-    private func macAction(_ title: String, detail: String, icon: String,
-                           kind: JotleyEngagement.Action) -> some View {
+    private func macAction(_ title: LocalizedStringKey, detail: LocalizedStringKey, icon: String,
+                           kind: JotleyEngagement.Action? = nil) -> some View {
+        let clicked = kind.map { engagement.hasClicked($0) } ?? false
         return HStack(spacing: 14) {
             Image(systemName: icon).font(.system(size: 23))
                 .foregroundStyle(Color.themePrimaryAccent).frame(width: 30)
@@ -1194,14 +1172,14 @@ struct JotleySupportView: View {
                     .foregroundStyle(Color.themeTextSecondary)
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Image(systemName: engagement.hasClicked(kind) ? "checkmark.circle.fill" : "arrow.up.right")
+            Image(systemName: clicked ? "checkmark.circle.fill" : "arrow.up.right")
                 .font(.system(size: 15)).foregroundStyle(Color.themePrimaryAccent)
-                .accessibilityLabel(engagement.hasClicked(kind) ? "Previously clicked" : "Open")
+                .accessibilityHidden(true)
         }.foregroundStyle(Color.themeTextPrimary)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading).contentShape(Rectangle())
             .overlay { supportActionOutline }
-            .accessibilityValue(engagement.hasClicked(kind) ? "Clicked" : "Not clicked")
+            .accessibilityValue(clicked ? Text("Previously clicked") : Text(""))
     }
     #endif
     private func cardFont(_ mobile: Font, macSize: CGFloat, weight: Font.Weight = .regular) -> Font {
@@ -1217,17 +1195,43 @@ struct JotleySupportView: View {
             .font(cardFont(.caption, macSize: 14)).foregroundColor(.themeTextSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
-    private var dismissButton: some View {
-        Button(action: dismiss) {
-            Text("Back to Settings").font(cardFont(.body.weight(.medium), macSize: 16, weight: .medium))
-                .foregroundColor(.themeTextPrimary)
-                .padding(.horizontal, 16).frame(maxWidth: .infinity, minHeight: 44)
-                .background(Color.themeBackground, in: Capsule())
+    private func closeButton(diameter: CGFloat) -> some View {
+        #if os(macOS)
+        let usesTranslucentMaterial = true
+        #else
+        let usesTranslucentMaterial = false
+        #endif
+        return Button(action: dismiss) {
+            Image(systemName: "xmark").font(.subheadline.weight(.semibold))
         }
-        .buttonStyle(.plain).keyboardShortcut(.cancelAction)
-        .accessibilityIdentifier("jotleySupportDismiss")
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: diameter,
+                                           usesTranslucentMaterial: usesTranslucentMaterial))
+        .accessibilityLabel("Close support message")
+        .accessibilityIdentifier("jotleySupportClose")
     }
-    private func actionLabel(_ title: String, subtitle: String, icon: String) -> some View {
+    private func dismissButton(expandsHorizontally: Bool = false) -> some View {
+        let button = Button(action: dismiss) {
+            Text(isAutomatic ? "Back to Notes" : "Back to Settings")
+                .frame(maxWidth: expandsHorizontally ? .infinity : nil)
+        }
+        .keyboardShortcut(.cancelAction)
+        .accessibilityIdentifier("jotleySupportDismiss")
+        #if os(macOS)
+        return button
+            .font(.subheadline.weight(.semibold))
+            .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true, usesTranslucentMaterial: true))
+            .fixedSize(horizontal: true, vertical: false)
+        #else
+        return button
+        .jotleyDismissButtonStyle(expandsHorizontally: expandsHorizontally)
+        .overlay {
+            Capsule().strokeBorder(.primary.opacity(0.16), lineWidth: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        #endif
+    }
+    private func actionLabel(_ title: LocalizedStringKey, subtitle: LocalizedStringKey, icon: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon).font(cardFont(.title3, macSize: 22))
                 .foregroundStyle(Color.themePrimaryAccent).frame(width: 28)
@@ -1239,7 +1243,7 @@ struct JotleySupportView: View {
             Image(systemName: "arrow.up.right").font(cardFont(.caption, macSize: 14)).foregroundStyle(Color.themeTextSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12).frame(minHeight: 56)
+        .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 52)
         .contentShape(Rectangle())
         .overlay { supportActionOutline }
     }
@@ -1346,6 +1350,11 @@ struct JotleySupportLinks: View {
                 supportRow("More Free Apps by Protomota", systemImage: "arrow.up.right")
             }
             .accessibilityIdentifier("settingsProtomotaApps")
+            Button { showingSupport = true } label: {
+                supportRow("More Information & Support", systemImage: "heart")
+            }
+            .accessibilityIdentifier("settingsSupportJotleyCard")
+            .modifier(JotleySupportCardPresentation(isPresented: $showingSupport))
         }
         .buttonStyle(.plain)
     }
@@ -1363,13 +1372,7 @@ struct JotleySupportLinks: View {
         Label("Share Your Experience", systemImage: "star")
             .font(.body.weight(.semibold)).frame(minHeight: 44)
     }
-    private var supportTitle: String {
-        #if os(macOS)
-        return "More Information & Support"
-        #else
-        return "More Ways to Support Jotley"
-        #endif
-    }
+    private var supportTitle: LocalizedStringKey { "More Information & Support" }
 }
 
 // One local completion flag across windows; replay never changes notes or permissions.

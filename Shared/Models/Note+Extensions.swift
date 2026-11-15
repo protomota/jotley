@@ -93,6 +93,12 @@ public extension Note {
         Self.isMeaningfulSummaryText(summary)
     }
 
+    var shouldGenerateSummaryTags: Bool {
+        LocalNoteOrganizationSettings.autoTags() &&
+            tagSet.count < LocalNoteTags.maximumCount &&
+            (tagSet.isEmpty || !hasMeaningfulSummaryText)
+    }
+
     func shouldReplaceTitleFromGeneratedSummary(forceReplaceTitle: Bool = false) -> Bool {
         if forceReplaceTitle {
             return true

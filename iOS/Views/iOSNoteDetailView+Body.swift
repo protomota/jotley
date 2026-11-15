@@ -38,6 +38,7 @@ extension NoteDetailView {
             jumpScrollPhase = phase
             if phase == .interacting {
                 jumpScrollAnchor = NoteScrollRange(context.geometry).offset
+                jumpDestination = nil
             }
             guard isWritingVisibleSummary else { return }
             if phase == .interacting {
@@ -47,18 +48,19 @@ extension NoteDetailView {
                 followsLiveSummary = geometry.visibleRect.maxY >= geometry.contentSize.height - 40
             }
         }
+        .task(id: jumpScrollPhase) {
+            guard jumpScrollPhase == .idle, jumpDestination != nil else { return }
+            // Leave a short window to tap the arrow after the scroll settles.
+            do { try await Task.sleep(for: .seconds(1.5)) }
+            catch { return }
+            guard jumpScrollPhase == .idle else { return }
+            jumpDestination = nil
+        }
         .onChange(of: isWritingVisibleSummary) { _, writing in
             if !writing { followsLiveSummary = true }
         }
         .background(Color.themeBackground)
         .navigationBarTitleDisplayMode(.inline)
-        .overlay(alignment: .bottomTrailing) {
-            if let jumpDestination {
-                scrollJumpButton(to: jumpDestination)
-                    .padding(.trailing, newTranscriptionAction == nil ? 16 : 24)
-                    .padding(.bottom, actionsFooterHeight + 8)
-            }
-        }
         .overlay(alignment: .bottom) {
             if newTranscriptionAction == nil {
                 noteActionsFooter
@@ -101,7 +103,10 @@ extension NoteDetailView {
             }
         } message: { Text("This permanently deletes the note.") }
         .onAppear { currentTags = note.tagNames; if hasSummary { selectedTab = "Summary" } }
-        .onChange(of: note.tagNames) { _, tags in currentTags = tags }
+        .onChange(of: note.tagNames) { _, tags in
+            currentTags = tags
+            if tags.isEmpty { isTagsExpanded = false }
+        }
         .onChange(of: selectedTab) { _, _ in jumpDestination = nil }
         .onChange(of: isTitleFieldFocused) { _, focused in if !focused { isEditingTitle = false } }
         .onChange(of: hasSummary) { _, available in if !available { selectedTab = "Transcript" } }
@@ -114,7 +119,7 @@ extension NoteDetailView {
     private func updateScrollJump(_ range: NoteScrollRange) {
         if jumpScrollPhase == .interacting {
             let travel = range.offset - jumpScrollAnchor
-            if abs(travel) >= 12 {
+            if abs(travel) >= 3 {
                 jumpDestination = travel > 0 ? .bottom : .top
                 jumpScrollAnchor = range.offset
             }
@@ -142,6 +147,12 @@ extension NoteDetailView {
         .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
         .accessibilityLabel(destination == .top ? Text("Jump to top") : Text("Jump to bottom"))
         .accessibilityIdentifier(destination == .top ? "noteDetailJumpTop" : "noteDetailJumpBottom")
+    }
+
+    @ViewBuilder private var scrollJumpControl: some View {
+        if let jumpDestination {
+            scrollJumpButton(to: jumpDestination)
+        }
     }
 
     private var noteHeaderActions: some View {
@@ -189,9 +200,13 @@ extension NoteDetailView {
                     }
                     .disabled(!transcriptionManager.canStart)
                     .accessibilityIdentifier("noteDetailSummaryTemplateMenu")
-                    if !hasSummary {
+                    if note.hasMeaningfulSummaryText {
+                        Button("Regenerate Summary", systemImage: "arrow.clockwise") { generateSummary() }
+                            .disabled(!transcriptionManager.canStart)
+                            .accessibilityIdentifier("noteDetailRegenerateSummaryMenuButton")
+                    } else if !summaryIsRunning {
                         Button("Generate Summary", systemImage: "sparkles") { generateSummary() }
-                            .disabled(!transcriptionManager.canStart || !hasTranscript)
+                            .disabled(!transcriptionManager.canStart)
                             .accessibilityIdentifier("noteDetailGenerateSummaryMenuButton")
                     }
                 }
@@ -260,26 +275,69 @@ extension NoteDetailView {
                     .font(.subheadline).foregroundColor(.themeTextSecondary).padding(.horizontal)
                     .accessibilityIdentifier("noteDetailTimestamp")
             }
-            iOSNoteFolderRow(note: note, onChange: transcriptionManager.saveEdits).padding(.horizontal).padding(.top,8)
-            FlowLayout(spacing: 8) {
-                ForEach(note.tagNames, id: \.self) { tag in
-                    iOSTagView(tag: tag, onRemove: { note.removeTagByName(tag); currentTags = note.tagNames; transcriptionManager.saveEdits() })
-                        .accessibilityIdentifier("noteDetailTag-\(tag)")
-                }
-                Button { showingAddTag = true } label: {
-                    JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle")
-                }
-                .font(.caption.weight(.medium))
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
-                .disabled(note.tagSet.count >= LocalNoteTags.maximumCount)
-                .accessibilityHint(note.tagSet.count >= LocalNoteTags.maximumCount ? "Remove a tag to add another." : "")
-                .accessibilityIdentifier("noteDetailAddTagButton")
-            }
-            .padding(.horizontal)
-            .padding(.top, 8)
+            noteOrganization
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.top,8).padding(.bottom,16)
     }
+
+    private var noteOrganization: some View {
+        let tags = note.tagNames
+        return VStack(alignment: .leading, spacing: 2) {
+            FlowLayout(spacing: 8) {
+                iOSNoteFolderRow(note: note, onChange: transcriptionManager.saveEdits)
+                if tags.isEmpty {
+                    addTagButton
+                } else {
+                    Button { isTagsExpanded.toggle() } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "tag")
+                                .foregroundStyle(Color.themePrimaryAccent)
+                                .accessibilityHidden(true)
+                            Text("\(tags.count) tags")
+                                .foregroundStyle(.primary)
+                            Image(systemName: isTagsExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                        }
+                        .noteMetadataPill(font: .footnote.weight(.medium), minHeight: 27)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityValue(isTagsExpanded ? Text("Expanded") : Text("Collapsed"))
+                    .accessibilityIdentifier("noteDetailTagCount")
+                }
+            }
+            if isTagsExpanded && !tags.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(tags, id: \.self) { tag in
+                        iOSTagView(tag: tag, onRemove: {
+                            note.removeTagByName(tag)
+                            currentTags = note.tagNames
+                            transcriptionManager.saveEdits()
+                        })
+                        .accessibilityIdentifier("noteDetailTag-\(tag)")
+                    }
+                    addTagButton
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var addTagButton: some View {
+        Button { showingAddTag = true } label: {
+            JotleyAccentIconLabel(title: "Add Tag", systemImage: "plus.circle")
+                .noteMetadataPill(font: .footnote.weight(.medium), minHeight: 27)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(note.tagSet.count >= LocalNoteTags.maximumCount)
+        .accessibilityHint(note.tagSet.count >= LocalNoteTags.maximumCount ? "Remove a tag to add another." : "")
+        .accessibilityIdentifier("noteDetailAddTagButton")
+    }
+
     private var noteTabPickerSection: some View {
         HStack {
             NoteContentSwitch(selection: $selectedTab, showsSummary: hasSummary, animatesSelection: false)
@@ -321,6 +379,7 @@ extension NoteDetailView {
                         ProgressView(value: fraction).tint(.themePrimaryAccent)
                     }
                     HStack(spacing: newTranscriptionAction == nil ? 8 : 12) {
+                    scrollJumpControl
                     Button { transcriptionManager.cancelProcessing() } label: {
                         Label {
                             Text("Cancel Generation").modifier(JotleyNoteFooterTextStyle())
@@ -348,7 +407,7 @@ extension NoteDetailView {
                     summaryTemplateButton
                     primarySummaryButton
                 }
-                .frame(maxWidth: UIDevice.current.userInterfaceIdiom == .pad ? 384 : .infinity)
+                .frame(maxWidth: 384)
             }
             contextualActionsRow
         }
@@ -363,10 +422,10 @@ extension NoteDetailView {
             contextualNoteAction
             Spacer(minLength: 0)
         }
-        // Reserve equal space on both sides so the quick action stays centered
-        // on iPhone while the separate + remains tucked into its corner.
-        .padding(.horizontal, newTranscriptionAction == nil ? 0 : 56)
+        // Keep the main action centered even when the arrow appears or disappears.
+        .padding(.horizontal, 56)
         .frame(minHeight: 44)
+        .overlay(alignment: .leading) { scrollJumpControl }
         .overlay(alignment: .trailing) {
             if let newTranscriptionAction {
                 NotesNewTranscriptionButton(action: newTranscriptionAction)
@@ -442,15 +501,18 @@ extension NoteDetailView {
                 Text(selectedTemplateTitle).modifier(JotleyNoteFooterTextStyle())
             } icon: {
                 Image(systemName: "sparkles")
+                    .foregroundStyle(headerIconColor)
             }
                 .font(.system(size: 15, weight: .medium))
                 .lineLimit(1).truncationMode(.tail)
                 .padding(.horizontal, 16)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .modifier(JotleyGlassMenuLabel(shape: Capsule()))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
+        // Keeping the surface outside the native menu label avoids its extra highlight.
+        .modifier(JotleyGlassMenuLabel(shape: Capsule()))
         .disabled(!transcriptionManager.canStart)
         .accessibilityLabel("Templates: \(selectedTemplateTitle)")
         .accessibilityIdentifier("noteDetailTemplatesButton")
@@ -463,7 +525,7 @@ extension NoteDetailView {
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+        .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true, usesAccentForeground: true))
         .disabled(!transcriptionManager.canStart || transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         .accessibilityIdentifier("noteDetailGenerateSummaryButton")
     }

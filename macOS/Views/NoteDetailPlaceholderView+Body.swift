@@ -258,7 +258,7 @@ extension NoteDetailPlaceholderView {
                                     Text("Generate Summary")
                                         .font(.system(size: 13, weight: .semibold))
                                 }
-                                .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true))
+                                .buttonStyle(JotleyGlassButtonStyle(floatsOverContent: true, usesAccentForeground: true))
                                 .disabled(isGenerating || (try? templateCatalog.resolve(summaryTemplateKey)) == nil)
                                 .accessibilityIdentifier("noteDetailTranscriptSummarizeButton")
                             }
@@ -299,6 +299,7 @@ extension NoteDetailPlaceholderView {
                 Text(title).modifier(JotleyNoteFooterTextStyle())
             } icon: {
                 Image(systemName: "sparkles")
+                    .foregroundStyle(Color.themePrimaryAccent)
             }
             .font(.system(size: 13, weight: .medium))
             .lineLimit(1)

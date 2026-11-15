@@ -38,6 +38,7 @@ struct NoteDetailView: View {
     @State var exportPayload: LocalSharePayload?
     @State var exportDirectory: URL?
     @State var showingAddTag = false
+    @State var isTagsExpanded = false
     @State var newTagText = ""
     @State var currentTags: [String] = []
     @State var showingTranscriptEditor = false

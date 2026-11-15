@@ -283,7 +283,8 @@ public final class SharedPersistenceController: ObservableObject {
         try saveNoteChanges(note, values: values, replacingTags: replacingTags, autoFolder: nil)
     }
 
-    func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]?,
+    func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]? = nil,
+                         addingGeneratedTags: [String]? = nil,
                          autoFolder: LocalNoteFolder?, projectName: String? = nil, filingSource: String = "") throws {
         guard ready, note.managedObjectContext === context, !note.isDeleted else {
             throw LocalError.message("This note is unavailable.")
@@ -297,7 +298,7 @@ public final class SharedPersistenceController: ObservableObject {
         var createdFolder: NSManagedObject?
         var assignedFolder = false
         do {
-            if let replacingTags {
+            if let tagNames = replacingTags ?? addingGeneratedTags {
                 let request = NSFetchRequest<NSManagedObject>(entityName: "Tag")
                 request.relationshipKeyPathsForPrefetching = ["notes"]
                 let existing = try context.fetch(request).sorted {
@@ -310,8 +311,12 @@ public final class SharedPersistenceController: ObservableObject {
                     guard let name = tag.value(forKey: "name") as? String else { return nil }
                     return LocalTagCandidate(name: name, usageCount: (tag.value(forKey: "notes") as? NSSet)?.count ?? 0)
                 }
-                var selected: [NSManagedObject] = []
-                for name in LocalNoteTags.resolvedNames(replacingTags, library: library) {
+                let currentTags = (note.value(forKey: "tags") as? NSSet)?.copy() as? NSSet ?? NSSet()
+                var selected = replacingTags == nil ? currentTags.allObjects.compactMap { $0 as? NSManagedObject } : []
+                let limit = LocalNoteTags.maximumCount - selected.count
+                let excluded = Set(selected.map { LocalNoteTags.key($0.text("name")) })
+                let names = LocalNoteTags.resolvedNames(tagNames, library: library, limit: limit, excluding: excluded)
+                for name in names {
                     if let tag = existing.first(where: { LocalNoteTags.key($0.text("name")) == LocalNoteTags.key(name) }) {
                         selected.append(tag)
                     } else {
@@ -322,7 +327,7 @@ public final class SharedPersistenceController: ObservableObject {
                         createdTags.append(tag); selected.append(tag)
                     }
                 }
-                previousTags = (note.value(forKey: "tags") as? NSSet)?.copy() as? NSSet ?? NSSet()
+                previousTags = currentTags
                 note.setValue(NSSet(array: selected), forKey: "tags")
             }
             if let name = autoFolder?.name, note.value(forKey: "folder") == nil {
@@ -401,27 +406,21 @@ public final class SharedPersistenceController: ObservableObject {
 
     func organizeCompletedRecording(_ note: NSManagedObject, locale: Locale) {
         let transcript = note.text("transcription")
-        let autoFolder = LocalNoteOrganizationSettings.autoFolders() && note.value(forKey: "folder") == nil
-        let autoTags = LocalNoteOrganizationSettings.autoTags() && ((note.value(forKey: "tags") as? NSSet)?.count ?? 0) == 0
-        guard autoFolder || autoTags,
+        guard LocalNoteOrganizationSettings.autoFolders(), note.value(forKey: "folder") == nil,
               !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let id = note.objectID
         let lease = beginNoteOperation(for: id)
         Task { [weak self] in
             guard let self else { return }
             defer { self.endNoteOperation(lease: lease) }
-            let library = autoTags ? (try? self.tagLibrary()) ?? [] : []
             let organization = try? await LocalNoteTags.generateOrganization(from: "", transcript: transcript,
-                library: library, locale: locale, autoTags: autoTags, autoFolder: autoFolder)
+                library: [], locale: locale, autoTags: false, autoFolder: true)
             guard let current = try? self.context.existingObject(with: id),
-                  !current.isDeleted, current.text("transcription") == transcript else { return }
-            let shouldFile = autoFolder && LocalNoteOrganizationSettings.autoFolders() && current.value(forKey: "folder") == nil
-            let shouldTag = autoTags && LocalNoteOrganizationSettings.autoTags() && ((current.value(forKey: "tags") as? NSSet)?.count ?? 0) == 0
-            guard shouldFile || shouldTag else { return }
+                  !current.isDeleted, current.text("transcription") == transcript,
+                  LocalNoteOrganizationSettings.autoFolders(), current.value(forKey: "folder") == nil else { return }
             let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: transcript) : organization?.folder
-            let tags = shouldTag ? LocalNoteTags.completedNames(organization?.tags, transcript: transcript, summary: "", library: library) : nil
             do {
-                try self.saveNoteChanges(current, values: [:], replacingTags: tags, autoFolder: shouldFile ? category : nil,
+                try self.saveNoteChanges(current, values: [:], autoFolder: category,
                                          projectName: organization?.projectName, filingSource: transcript)
             } catch {
                 print("Could not organize the completed note: \(error)")

@@ -152,6 +152,10 @@ private struct MacSupportPreviewRoot: View {
     }
     @MainActor private static func runChecks() async {
         do {
+            if CommandLine.arguments.contains("--summary-footer-proof") {
+                try await verifySummaryFooter()
+                return
+            }
             try await verifyLanguageChoices()
             if CommandLine.arguments.contains("--languages-only") { return }
             if CommandLine.arguments.contains("--summary-editor-only") {
@@ -399,7 +403,8 @@ private struct MacSupportPreviewRoot: View {
         let viewModel = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store, summaryNotifications: notifications)
         let other = try store.create(title: "Other tag bucket", text: "Related note")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
-        try store.saveNoteChanges(note, values: [:], replacingTags: ["Outdated"])
+        try store.saveNoteChanges(note, values: [:], replacingTags: ["My own tag"])
+        note.summary = nil
         note.title = "Design review"
         note.transcription = String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5)
         viewModel.simulatedSummaryGeneration = { _ in "Finished design summary." }
@@ -408,21 +413,21 @@ private struct MacSupportPreviewRoot: View {
         }
         defer { viewModel.simulatedSummaryGeneration = nil; viewModel.simulatedOrganization = nil; try? store.deleteNote(other) }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.summary == "Finished design summary.", note.tagNames.count == 5,
-              Set(["AI", "Design"]).isSubset(of: note.tagNames), delivered == 1,
+        guard note.summary == "Finished design summary.", note.tagNames.count == 4,
+              Set(["AI", "Design", "My-own-tag"]).isSubset(of: note.tagNames), delivered == 1,
               (other.value(forKey: "tags") as? NSSet)?.count == 2 else {
-            throw LocalError.message("Mac summary must replace old tags and reuse existing library buckets.")
+            throw LocalError.message("Mac summary must preserve manual tags and reuse existing library buckets.")
         }
         viewModel.simulatedOrganization = { _, _ in throw LocalError.message("Injected tagging failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
-        guard note.tagNames.count == 5, note.summary == "Finished design summary.", delivered == 2, !viewModel.showSyncError else {
-            throw LocalError.message("Tagging failure must use local fallback tags and save the completed summary.")
+        guard note.tagNames.count == 4, note.summary == "Finished design summary.", delivered == 2, !viewModel.showSyncError else {
+            throw LocalError.message("Regenerating a summary must preserve its tags.")
         }
         viewModel.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
         await viewModel.generateSummary(note: note, templateKey: "Concise")
         guard delivered == 2, note.summary == "Finished design summary.", viewModel.showSyncError else { throw LocalError.message("Failed summaries must not notify.") }
         viewModel.showSyncError = false
-        print("PASS: Mac summaries replace tags and deliver local notifications only after saved results, including silent fallback tags and genuine summary failures.")
+        print("PASS: Mac summaries preserve manual tags and deliver local notifications only after saved results, including silent fallback tags and genuine summary failures.")
     }
     @MainActor private static func verifySummaryFollowAndCancel(note: Note, store: SharedPersistenceController, viewModel: NotesListViewModel) async throws {
         let previousSummary = (1...30).map { "## Saved section \($0)\nPreviously saved summary text that remains safe when generation is cancelled.\n" }.joined(separator: "\n")
@@ -1014,6 +1019,51 @@ private struct MacSupportPreviewRoot: View {
         }
         print("PASS: production support card renders at 600×780 with readable headings in five themes, Light and Dark.")
     }
+    @MainActor private static func verifySummaryFooter() async throws {
+        let store = try SharedPersistenceController(inMemory: true)
+        let note = try store.create(title: "Untitled Note",
+            text: "Maya will test the microphone by Friday. Sam will verify the summary templates before launch.") as! Note
+        let model = NotesListViewModel(viewContext: store.context, recorder: ProcessTapRecorder(), persistenceController: store)
+        ThemeManager.shared.setAppearanceMode(.light)
+        ThemeManager.shared.currentThemeColor = .magenta
+        UserDefaults.standard.set(true, forKey: LocalNoteOrganizationSettings.autoTagsKey)
+        UserDefaults.standard.set(true, forKey: "showTags")
+        let host = NSHostingView(rootView: NoteDetailPlaceholderView(note: note,
+            selectedTab: Binding(get: { model.selectedDetailTab }, set: { model.selectedDetailTab = $0 }), viewModel: model)
+            .environmentObject(store).environment(\.managedObjectContext, store.context).environment(\.colorScheme, .light))
+        host.frame = CGRect(x: 0, y: 0, width: 820, height: 640)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .aqua)
+        window.contentView = host
+        func capture(_ label: String) async throws {
+            try await Task.sleep(for: .milliseconds(300))
+            host.layoutSubtreeIfNeeded()
+            guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
+                throw LocalError.message("Cannot capture Mac summary footer.")
+            }
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            guard let png = bitmap.representation(using: .png, properties: [:]) else {
+                throw LocalError.message("Cannot encode Mac summary footer.")
+            }
+            print("MAC_PROOF_\(label)=\(png.base64EncodedString())")
+        }
+        model.selectedDetailTab = DetailTab.transcript.rawValue
+        try await capture("BEFORE")
+        let locale = Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US")
+        if let reason = LocalSummary.readiness(locale: locale) {
+            print("Mac Apple model unavailable: \(reason)")
+            model.simulatedSummaryGeneration = { _ in "Maya tests the microphone by Friday. Sam verifies the summary templates before launch." }
+            model.simulatedOrganization = { _, _ in LocalNoteOrganization(tags: ["Microphone", "Templates", "Launch"], folder: .work) }
+        }
+        await model.generateSummary(note: note, templateKey: LocalSummaryTemplate.auto.key)
+        guard note.hasMeaningfulSummaryText, note.title != "Untitled Note", note.tagNames.count == 3 else {
+            throw LocalError.message("Mac title, summary, and three tags must be saved together.")
+        }
+        model.selectedDetailTab = DetailTab.summary.rawValue
+        try await capture("AFTER")
+        print("PASS: Mac saved its title, summary and three tags together.")
+    }
+
     @MainActor private static func previewCompletedTranscript() {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)

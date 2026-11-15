@@ -79,6 +79,7 @@ struct JotleyiOSApp: App {
                 try await Task.sleep(for: .seconds(1))
                 return "AI and design guide the project research and planning."
             }
+            recorder.simulatedTitleGeneration = { _ in "Launch Design Plan" }
             recorder.simulatedOrganization = { _, _ in
                 LocalNoteOrganization(tags: ["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"], folder: .work)
             }

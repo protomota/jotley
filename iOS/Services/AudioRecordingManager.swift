@@ -805,7 +805,7 @@ final class LiveTranscriptionManager: ObservableObject {
                         generatedTitle = LocalSummary.fallbackTitle(transcript: job.checkpoint.input, summary: result)
                     }
                 }
-                let autoTags = LocalNoteOrganizationSettings.autoTags()
+                let autoTags = note.shouldGenerateSummaryTags
                 let autoFolder = canFileNote && note.folder == nil && LocalNoteOrganizationSettings.autoFolders()
                 let library = autoTags ? try store.tagLibrary() : []
                 var organization: LocalNoteOrganization?
@@ -829,14 +829,15 @@ final class LiveTranscriptionManager: ObservableObject {
                 guard !note.isDeleted, note.transcription == job.checkpoint.input else {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
                 }
-                let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
-                    ? LocalNoteTags.completedNames(organization?.tags, transcript: job.checkpoint.input, summary: result, library: library)
+                let tags = autoTags && note.shouldGenerateSummaryTags
+                    ? LocalNoteTags.completedNames(organization?.tags, transcript: job.checkpoint.input,
+                        summary: result, library: library, excluding: note.tagNames)
                     : nil
                 let filingSource = result + "\n" + job.checkpoint.input
                 let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: filingSource) : organization?.folder
                 let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? category : nil
                 try store.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
-                                          replacingTags: tags, autoFolder: folder,
+                                          addingGeneratedTags: tags, autoFolder: folder,
                                           projectName: organization?.projectName, filingSource: filingSource)
                 self.removeSummaryJob(); completed = true
                 await self.summaryNotifications.summarySaved(noteID: id)
@@ -868,6 +869,7 @@ struct RecordingActivityAttributes: ActivityAttributes {
         var elapsedSeconds: Int
         var isRecording: Bool
         var lastUpdatedAt: Date?
+        var themeColor: ThemeColor? = nil
         var formattedDuration: String { String(format: "%d:%02d", elapsedSeconds / 60, elapsedSeconds % 60) }
         var timerStartDate: Date { (lastUpdatedAt ?? Date()).addingTimeInterval(-Double(elapsedSeconds)) }
     }
@@ -886,7 +888,7 @@ struct RecordingActivityAttributes: ActivityAttributes {
     }
     func start(noteID: UUID) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        let state = RecordingActivityAttributes.ContentState(elapsedSeconds: 0, isRecording: true, lastUpdatedAt: Date())
+        let state = makeState(seconds: 0, recording: true)
         do {
             activity = try Activity.request(attributes: RecordingActivityAttributes(recordingId: noteID.uuidString, startTime: Date()),
                 content: ActivityContent(state: state, staleDate: nil), pushType: nil)
@@ -900,14 +902,18 @@ struct RecordingActivityAttributes: ActivityAttributes {
     func update(seconds: TimeInterval, recording: Bool, force: Bool = false) {
         guard let activity, force || Date().timeIntervalSince(lastUpdate) >= 15 else { return }
         lastUpdate = Date()
-        let state = RecordingActivityAttributes.ContentState(elapsedSeconds: max(0, Int(seconds)), isRecording: recording, lastUpdatedAt: Date())
+        let state = makeState(seconds: seconds, recording: recording)
         enqueue { await activity.update(ActivityContent(state: state, staleDate: nil)) }
     }
     func end(seconds: TimeInterval) {
         guard let activity else { return }
         self.activity = nil
-        let state = RecordingActivityAttributes.ContentState(elapsedSeconds: max(0, Int(seconds)), isRecording: false, lastUpdatedAt: Date())
+        let state = makeState(seconds: seconds, recording: false)
         enqueue { await activity.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .immediate) }
+    }
+    private func makeState(seconds: TimeInterval, recording: Bool) -> RecordingActivityAttributes.ContentState {
+        .init(elapsedSeconds: max(0, Int(seconds)), isRecording: recording, lastUpdatedAt: Date(),
+              themeColor: ThemeManager.shared.currentThemeColor)
     }
     private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
         let previous = transition, id = UUID()

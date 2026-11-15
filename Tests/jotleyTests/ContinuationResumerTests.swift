@@ -43,22 +43,22 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(try store.context.count(for: request), 1)
     }
 
-    func testCompletedTagsFillFiveDistinctSlotsEvenForShortNotes() {
+    func testCompletedTagsFillThreeDistinctSlotsEvenForShortNotes() {
         let library = [LocalTagCandidate(name: "AI", usageCount: 40), LocalTagCandidate(name: "Design", usageCount: 20)]
         let nine = "one two three four five six seven eight nine"
         let ten = nine + " ten"
-        XCTAssertEqual(LocalNoteTags.completedNames(["AI"], transcript: nine, summary: "AI", library: library).count, 5)
+        XCTAssertEqual(LocalNoteTags.completedNames(["AI"], transcript: nine, summary: "AI", library: library).count, 3)
         let short = LocalNoteTags.completedNames(nil, transcript: ten, summary: "AI helps design.", library: library)
-        XCTAssertEqual(short.count, 5)
+        XCTAssertEqual(short.count, 3)
         XCTAssertEqual(Array(short.prefix(2)), ["AI", "Design"])
         let long = String(repeating: "AI helps design teams plan research projects and meetings every week. ", count: 40)
         let modelTags = LocalNoteTags.completedNames(["Artificial Intelligence", "Design", "Research", "Planning", "Meetings", "Overflow"], transcript: long, summary: "", library: library)
-        XCTAssertEqual(modelTags, ["AI", "Design", "Research", "Planning", "Meetings"])
+        XCTAssertEqual(modelTags, ["AI", "Design", "Research"])
         for proposed: [String]? in [nil, [], ["###", " "]] {
             let fallback = LocalNoteTags.completedNames(proposed, transcript: long, summary: "AI helps design.", library: library)
             XCTAssertEqual(Array(fallback.prefix(2)), ["AI", "Design"])
-            XCTAssertEqual(Set(fallback.map(LocalNoteTags.key)).count, 5)
-            XCTAssertEqual(LocalNoteTags.completedNames(proposed, transcript: ten, summary: "", library: []).count, 5)
+            XCTAssertEqual(Set(fallback.map(LocalNoteTags.key)).count, 3)
+            XCTAssertEqual(LocalNoteTags.completedNames(proposed, transcript: ten, summary: "", library: []).count, 3)
         }
         XCTAssertEqual(LocalNoteTags.completedNames(nil, transcript: "", summary: "", library: library), [])
     }
@@ -159,7 +159,7 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertTrue(tags.contains("AI"), tags.description)
         XCTAssertTrue(tags.contains("Design"), tags.description)
         XCTAssertFalse(tags.contains("Gardening"), tags.description)
-        XCTAssertLessThanOrEqual(tags.count, 5)
+        XCTAssertLessThanOrEqual(tags.count, 3)
         XCTAssertEqual(Set(tags.map(LocalNoteTags.key)).count, tags.count)
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }

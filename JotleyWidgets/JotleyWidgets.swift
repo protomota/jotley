@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Brand Colors
 private extension Color {
-    static let jotleyPurple = Color(red: 0.576, green: 0.2, blue: 0.918) // #9333EA
+    static let jotleyWidgetAccent = ThemeColor.purple.color(in: .dark)
     static let jotleyDark = Color(white: 0.08)
 }
 
@@ -29,116 +29,85 @@ struct QuickRecordEntry: TimelineEntry {
     let date: Date
 }
 
-// MARK: - Small Widget View
-struct QuickRecordSmallView: View {
+// MARK: - Widget Views
+private struct QuickRecordGlyph: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    let diameter: CGFloat
+    let fontSize: CGFloat
+
     var body: some View {
-        ZStack {
-            // Dark background
-            Color.jotleyDark
-
-            VStack(spacing: 12) {
-                ZStack {
-                    // Main button
+        Image(systemName: "mic.fill")
+            .font(.system(size: fontSize, weight: .semibold))
+            .foregroundStyle(renderingMode == .fullColor ? Color.black : Color.primary)
+            .frame(width: diameter, height: diameter)
+            .background {
+                if renderingMode == .fullColor {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.jotleyPurple, Color.jotleyPurple.opacity(0.8)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 56, height: 56)
+                        .fill(Color.jotleyWidgetAccent)
                         .overlay(Circle().strokeBorder(.white.opacity(0.18)))
-                        .shadow(color: .black.opacity(0.30), radius: 3, y: 2)
-
-                    // Mic icon
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 3, y: 2)
+                } else {
+                    Circle().fill(.primary.opacity(0.15))
                 }
-                .frame(width: 72, height: 72)
-
-                // Label
-                Text("Transcribe")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.9))
             }
-        }
-        .widgetURL(URL(string: "jotley://starttranscription"))
     }
 }
 
-// MARK: - Medium Widget View
+struct QuickRecordSmallView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            QuickRecordGlyph(diameter: 56, fontSize: 24)
+                .frame(width: 72, height: 72)
+            Text("Transcribe")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 struct QuickRecordMediumView: View {
     var body: some View {
-        ZStack {
-            Color.jotleyDark
-
-            HStack(spacing: 16) {
-                // Left - Record button
-                VStack(spacing: 10) {
-                    ZStack {
-                        // Main button
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.jotleyPurple, Color.jotleyPurple.opacity(0.8)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 52, height: 52)
-                            .overlay(Circle().strokeBorder(.white.opacity(0.18)))
-                            .shadow(color: .black.opacity(0.30), radius: 3, y: 2)
-
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
+        HStack(spacing: 16) {
+            VStack(spacing: 10) {
+                QuickRecordGlyph(diameter: 52, fontSize: 22)
                     .frame(width: 64, height: 64)
+                Text("Transcribe live")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 100)
 
-                    Text("Transcribe live")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.jotleyWidgetAccent)
+                        .widgetAccentable()
+                    Text("Jotley")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                 }
-                .frame(width: 100)
 
-                // Right - Info
-                VStack(alignment: .leading, spacing: 8) {
-                    // Logo/title
-                    HStack(spacing: 6) {
-                        Image(systemName: "waveform.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.jotleyPurple)
-
-                        Text("Jotley")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-
-                    Text("Show up. Leave the notes to us.")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.5))
-                        .lineLimit(2)
-
-                    Spacer()
-
-                    // Waveform decoration
-                    HStack(spacing: 3) {
-                        ForEach(0..<12, id: \.self) { i in
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(Color.jotleyPurple.opacity(0.4 + Double(i % 3) * 0.2))
-                                .frame(width: 3, height: CGFloat([8, 14, 10, 18, 12, 16, 8, 14, 20, 10, 14, 8][i]))
-                        }
-                    }
-                }
-                .padding(.vertical, 14)
+                Text("Show up. Leave the notes to us.")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
 
                 Spacer()
+
+                HStack(spacing: 3) {
+                    ForEach(0..<12, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(Color.jotleyWidgetAccent.opacity(0.4 + Double(i % 3) * 0.2))
+                            .frame(width: 3, height: CGFloat([8, 14, 10, 18, 12, 16, 8, 14, 20, 10, 14, 8][i]))
+                    }
+                }
+                .widgetAccentable()
             }
-            .padding(.leading, 16)
+            .padding(.vertical, 14)
+
+            Spacer()
         }
-        .widgetURL(URL(string: "jotley://starttranscription"))
+        .padding(.leading, 16)
     }
 }
 
@@ -162,16 +131,17 @@ struct QuickRecordWidget: Widget {
 struct QuickRecordWidgetEntryView: View {
     var entry: QuickRecordProvider.Entry
     @Environment(\.widgetFamily) var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            QuickRecordSmallView()
-        case .systemMedium:
-            QuickRecordMediumView()
-        default:
-            QuickRecordSmallView()
+        Group {
+            switch family {
+            case .systemMedium: QuickRecordMediumView()
+            default: QuickRecordSmallView()
+            }
         }
+        .foregroundStyle(renderingMode == .fullColor ? Color.white : Color.primary)
+        .widgetURL(URL(string: "jotley://starttranscription"))
     }
 }
 

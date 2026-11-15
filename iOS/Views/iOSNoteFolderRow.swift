@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreData
 
-/// Compact folder row shown in the iOS note detail view above the tags section.
+/// Folder pill shown next to the tag count in the iOS note detail view.
 /// Displays the current folder (or "No folder") and opens a picker menu on tap.
 struct iOSNoteFolderRow: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -21,50 +21,50 @@ struct iOSNoteFolderRow: View {
     @State private var newFolderName = ""
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: note.folder == nil ? "folder" : "folder.fill")
-                .foregroundColor(.themePrimaryAccent)
-            Menu {
-                if note.folder != nil {
-                    Button("Remove from folder", role: .destructive) {
-                        note.clearFolder()
-                        onChange()
-                    }
-                    Divider()
+        Menu {
+            if note.folder != nil {
+                Button("Remove from folder", role: .destructive) {
+                    note.clearFolder()
+                    onChange()
                 }
-                if folders.isEmpty {
-                    Text("No folders yet")
-                } else {
-                    ForEach(folders) { folder in
-                        Button {
-                            note.assignFolder(folder)
-                            onChange()
-                        } label: {
-                            if note.folder?.objectID == folder.objectID {
-                                Label(folder.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(folder.displayName)
-                            }
+                Divider()
+            }
+            if folders.isEmpty {
+                Text("No folders yet")
+            } else {
+                ForEach(folders) { folder in
+                    Button {
+                        note.assignFolder(folder)
+                        onChange()
+                    } label: {
+                        if note.folder?.objectID == folder.objectID {
+                            Label(folder.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(folder.displayName)
                         }
                     }
-                    Divider()
                 }
-                Button("New Folder…") {
-                    newFolderName = ""
-                    showingCreate = true
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(note.folder?.displayName ?? "No folder")
-                        .foregroundStyle(Color.shouldUseDarkTheme() ? Color.white : Color.black)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(.themePrimaryAccent)
-                }
+                Divider()
             }
-            .accessibilityIdentifier("noteDetailFolderPicker")
+            Button("New Folder…") {
+                newFolderName = ""
+                showingCreate = true
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: note.folder == nil ? "folder" : "folder.fill")
+                    .foregroundStyle(Color.themePrimaryAccent)
+                Text(note.folder?.displayName ?? String(localized: "No Folder"))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            .noteMetadataPill(font: .footnote.weight(.medium), minHeight: 27)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .font(.footnote)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .accessibilityIdentifier("noteDetailFolderPicker")
         .sheet(isPresented: $showingCreate) {
             NewFolderInlineSheetiOS(
                 name: $newFolderName,

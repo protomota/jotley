@@ -273,17 +273,3 @@ extension NoteDetailPlaceholderView {
         }
     }
 }
-
-extension View {
-    func noteMetadataPill() -> some View {
-        self
-            .font(.system(size: 11, weight: .medium))
-            .padding(.horizontal, 8)
-            .frame(minHeight: 22)
-            .background {
-                Capsule()
-                    .strokeBorder(Color.gray.opacity(0.5), lineWidth: 1)
-            }
-            .contentShape(Capsule())
-    }
-}

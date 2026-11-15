@@ -160,6 +160,20 @@ extension NoteDetailPlaceholderView {
                     }
 
                     if showsTemplateActions {
+                        if note.hasMeaningfulSummaryText {
+                            MenuItemView(
+                                icon: "arrow.clockwise",
+                                title: String(localized: "Regenerate Summary"),
+                                disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
+                                    viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy
+                            ) {
+                                isPresented = false
+                                Task {
+                                    await parent.handleSummarizeAction(templateKey: note.summaryType ?? LocalSummaryTemplate.auto.key)
+                                }
+                            }
+                            .accessibilityIdentifier("noteDetailRegenerateSummaryMenuButton")
+                        }
                         Divider()
                             .padding(.vertical, 4)
                     }

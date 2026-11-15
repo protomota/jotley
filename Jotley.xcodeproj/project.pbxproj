@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9CA0DF61119D4D6C95BDDA11 /* ThemeColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA0DF61119D4D6C95BDDA10 /* ThemeColor.swift */; };
+		9CA0DF61119D4D6C95BDDA12 /* ThemeColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA0DF61119D4D6C95BDDA10 /* ThemeColor.swift */; };
+		9CA0DF61119D4D6C95BDDA13 /* ThemeColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA0DF61119D4D6C95BDDA10 /* ThemeColor.swift */; };
 		AB172A880000000000000001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB172A880000000000000003 /* Localizable.xcstrings */; };
 		AB172A880000000000000002 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB172A880000000000000003 /* Localizable.xcstrings */; };
 		F50000000000000000000042 /* SupportTicketsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000042; };
@@ -247,6 +250,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9CA0DF61119D4D6C95BDDA10 /* ThemeColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Styling/ThemeColor.swift; sourceTree = SOURCE_ROOT; };
 		AB172A880000000000000003 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Shared/Localizable.xcstrings; sourceTree = SOURCE_ROOT; };
 		F60000000000000000000042 /* SupportTicketsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportTicketsView.swift; sourceTree = "<group>"; };
 		0ACE223E0670475E88103715 /* LibraryBackupControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupControls.swift; sourceTree = "<group>"; };
@@ -882,6 +886,7 @@
 			children = (
 				A2EA91D3307B453D00AAB201 /* Font+Extensions.swift */,
 				A2EA91D4307B453D00AAB201 /* SharedThemeColors.swift */,
+				9CA0DF61119D4D6C95BDDA10 /* ThemeColor.swift */,
 			);
 			path = Styling;
 			sourceTree = "<group>";
@@ -1413,6 +1418,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9CA0DF61119D4D6C95BDDA13 /* ThemeColor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1442,6 +1448,7 @@
 				A2EA928A307B532700AAB201 /* String+MarkdownStripping.swift in Sources */,
 				A2EA928B307B532700AAB201 /* RecordingIndicator.swift in Sources */,
 				A2EA928C307B532700AAB201 /* SharedThemeColors.swift in Sources */,
+				9CA0DF61119D4D6C95BDDA11 /* ThemeColor.swift in Sources */,
 				A2EA928D307B532700AAB201 /* TranscriptionService.swift in Sources */,
 				A2EA928E307B532700AAB201 /* Folder+Extensions.swift in Sources */,
 				A2EA928F307B532700AAB201 /* SummaryEmptyStateContent.swift in Sources */,
@@ -1533,6 +1540,7 @@
 				F8000000000000000000021 /* SummaryTemplatesView.swift in Sources */,
 				A2EA91F2307B453D00AAB201 /* JotleyDefaults.swift in Sources */,
 				A2EA91F3307B453D00AAB201 /* SharedThemeColors.swift in Sources */,
+				9CA0DF61119D4D6C95BDDA12 /* ThemeColor.swift in Sources */,
 				A2EA91F4307B453D00AAB201 /* String+MarkdownStripping.swift in Sources */,
 				A2EA91F5307B453D00AAB201 /* FilterAndSortPopoverView.swift in Sources */,
 				A2EA91F6307B453D00AAB201 /* RecordingSidecar.swift in Sources */,

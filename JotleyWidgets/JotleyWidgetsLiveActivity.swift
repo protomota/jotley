@@ -8,6 +8,8 @@ struct RecordingActivityAttributes: ActivityAttributes {
         var elapsedSeconds: Int
         var isRecording: Bool
         var lastUpdatedAt: Date?
+        var themeColor: ThemeColor? = nil
+        var accent: Color { (themeColor ?? .purple).color(in: .dark) }
         var formattedDuration: String { String(format: "%d:%02d", elapsedSeconds / 60, elapsedSeconds % 60) }
         var timerStartDate: Date { (lastUpdatedAt ?? Date()).addingTimeInterval(-Double(elapsedSeconds)) }
     }
@@ -16,13 +18,11 @@ struct RecordingActivityAttributes: ActivityAttributes {
 }
 
 
-private let recordingAccent = Color(red: 0.576, green: 0.2, blue: 0.918)
-
 struct RecordingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RecordingActivityAttributes.self) { context in
             HStack(spacing: 16) {
-                Image(systemName: "waveform").font(.title2).foregroundStyle(recordingAccent)
+                Image(systemName: "waveform").font(.title2).foregroundStyle(context.state.accent)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(context.state.isRecording ? "Transcribing" : "Paused").font(.headline)
                     RecordingDuration(state: context.state).font(.subheadline.monospacedDigit())
@@ -39,7 +39,7 @@ struct RecordingLiveActivity: Widget {
                         Text(context.state.isRecording ? "Transcribing" : "Paused")
                             .foregroundStyle(.white)
                     } icon: {
-                        Image(systemName: "mic.fill").foregroundStyle(recordingAccent)
+                        Image(systemName: "mic.fill").foregroundStyle(context.state.accent)
                     }
                     .font(.caption)
                 }
@@ -50,14 +50,14 @@ struct RecordingLiveActivity: Widget {
                     RecordingControls(context: context).padding(.top, 8)
                 }
             } compactLeading: {
-                Image(systemName: "mic.fill").foregroundStyle(recordingAccent)
+                Image(systemName: "mic.fill").foregroundStyle(context.state.accent)
             } compactTrailing: {
                 Text(context.state.isRecording ? "LIVE" : "Paused").font(.caption.bold()).foregroundStyle(.white)
             } minimal: {
-                Image(systemName: context.state.isRecording ? "mic.fill" : "pause.fill").foregroundStyle(recordingAccent)
+                Image(systemName: context.state.isRecording ? "mic.fill" : "pause.fill").foregroundStyle(context.state.accent)
             }
             .widgetURL(recordingURL("transcription", id: context.attributes.recordingId))
-            .keylineTint(recordingAccent)
+            .keylineTint(context.state.accent)
         }
     }
 }
@@ -76,12 +76,12 @@ private struct RecordingControls: View {
         HStack(spacing: 12) {
             Link(destination: recordingURL("pausetranscription", id: context.attributes.recordingId)) {
                 Image(systemName: context.state.isRecording ? "pause.fill" : "play.fill")
-                    .frame(width: 44, height: 44).background(recordingAccent, in: Circle())
+                    .frame(width: 44, height: 44).background(context.state.accent, in: Circle())
             }.accessibilityLabel(context.state.isRecording ? "Pause Transcription" : "Resume Transcription")
             Link(destination: recordingURL("stoptranscription", id: context.attributes.recordingId)) {
-                Image(systemName: "stop.fill").frame(width: 44, height: 44).background(recordingAccent, in: Circle())
+                Image(systemName: "stop.fill").frame(width: 44, height: 44).background(context.state.accent, in: Circle())
             }.accessibilityLabel("Stop Transcription")
-        }.foregroundStyle(.white)
+        }.foregroundStyle(.black)
     }
 }
 

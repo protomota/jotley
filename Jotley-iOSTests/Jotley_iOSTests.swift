@@ -90,7 +90,7 @@ struct Jotley_iOSTests {
         #expect(note.summary == transcript)
         #expect(note.title == transcript)
         #expect(note.folder?.name == "Misc")
-        #expect(note.tagNames.count == 5)
+        #expect(note.tagNames.count == 3)
         #expect(manager.errorMessage == nil)
 
         let second = try manager.createNote(text: "Replace the porch light.", title: "Untitled Note")
@@ -107,7 +107,7 @@ struct Jotley_iOSTests {
         #expect(second.folder?.objectID == note.folder?.objectID)
     }
 
-    @MainActor @Test func successfulSummaryReplacesTagsAndFallsBackWithoutOverwritingCancelledWork() async throws {
+    @MainActor @Test func successfulSummaryAddsThreeTagsAndPreservesManualTagsAndCancelledWork() async throws {
         let store = try SharedPersistenceController(inMemory: true)
         defer { try? FileManager.default.removeItem(at: store.root) }
         let suite = "JotleySummaryDelivery-" + UUID().uuidString
@@ -124,9 +124,16 @@ struct Jotley_iOSTests {
         let note = try manager.createNote(text: String(repeating: "AI supports design and helps the team explore useful interface ideas. ", count: 5), title: "Design review")
         let other = try manager.createNote(text: "Related work", title: "Related")
         try store.saveNoteChanges(other, values: [:], replacingTags: ["AI", "Design"])
-        for index in 1...5 { try note.addTagByName("Outdated-\(index)", in: store.context) }
+        store.organizeCompletedRecording(note, locale: Locale(identifier: "zxx"))
+        for _ in 0..<200 {
+            if note.folder != nil { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(note.folder != nil)
+        #expect(note.tagNames.isEmpty)
+        #expect(!note.hasMeaningfulSummaryText)
+        try note.addTagByName("My own tag", in: store.context)
         try store.save()
-        #expect(note.tagNames.count == 5)
         manager.simulatedSummaryGeneration = { _ in "A completed design summary." }
         manager.simulatedOrganization = { _, library in
             #expect(library.contains { $0.name == "AI" })
@@ -135,26 +142,33 @@ struct Jotley_iOSTests {
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
         #expect(note.summary == "A completed design summary.")
-        #expect(note.tagNames.count == 5 && Set(["AI", "Design"]).isSubset(of: note.tagNames) && other.tagNames == ["AI", "Design"])
-        #expect(note.folder?.name == "Work")
+        #expect(note.tagNames.count == 4 && Set(["AI", "Design", "My-own-tag"]).isSubset(of: note.tagNames) && other.tagNames == ["AI", "Design"])
+        #expect(note.folder != nil)
         #expect(manager.errorMessage == nil && sent.count == 1)
-        manager.simulatedOrganization = { _, _ in throw LocalError.message("Model unavailable") }
+        try note.addTagByName("Follow-up", in: store.context)
+        #expect(throws: LocalError.self) { try note.addTagByName("Sixth tag", in: store.context) }
+        let savedTags = note.tagNames
+        manager.simulatedOrganization = { _, _ in
+            Issue.record("Regenerating a tagged summary should preserve the existing tags")
+            throw LocalError.message("Unexpected organization")
+        }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames.count == 5)
-        let fallbackTags = note.tagNames
+        #expect(note.tagNames == savedTags)
         #expect(manager.errorMessage == nil && sent.count == 2)
-        manager.simulatedSummaryGeneration = { _ in "Cancelled replacement summary" }
+        manager.simulatedSummaryGeneration = { _ in
+            try await Task.sleep(for: .seconds(5))
+            return "Cancelled replacement summary"
+        }
         manager.simulatedOrganization = { _, _ in
             try await Task.sleep(for: .seconds(5))
             return LocalNoteOrganization(tags: ["Wrong"], folder: .personal)
         }
         manager.summarize(note, template: .auto)
-        for _ in 0..<100 { if manager.summaryProgress == .organizingTags { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(manager.summaryProgress == .organizingTags)
+        #expect(manager.summaryNoteID != nil)
         manager.cancelProcessing()
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.summary == "A completed design summary." && note.tagNames == fallbackTags && sent.count == 2)
+        #expect(note.summary == "A completed design summary." && note.tagNames == savedTags && sent.count == 2)
         manager.simulatedSummaryGeneration = { _ in throw LocalError.message("Injected summary failure") }
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
@@ -164,11 +178,11 @@ struct Jotley_iOSTests {
         note.transcription = "one two three four five six seven eight nine ten"
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames.count == 5 && sent.count == 3)
+        #expect(note.tagNames == savedTags && sent.count == 3)
         note.transcription = "one two three four five six seven eight nine"
         manager.summarize(note, template: .auto)
         for _ in 0..<100 { if manager.summaryNoteID == nil { break }; try await Task.sleep(for: .milliseconds(10)) }
-        #expect(note.tagNames.count == 5 && sent.count == 4)
+        #expect(note.tagNames == savedTags && sent.count == 4)
     }
     #endif
 
@@ -827,6 +841,7 @@ final class SimulatorModelAcceptanceTests: XCTestCase {
         XCTAssertTrue(Note.isMeaningfulSummaryText(note.summary))
         XCTAssertNotEqual(note.title, "Untitled")
         XCTAssertEqual(note.summaryType, "default-summary")
+        XCTAssertEqual(note.tagNames.count, 3)
         #else
         throw XCTSkip("This acceptance check targets Simulator")
         #endif

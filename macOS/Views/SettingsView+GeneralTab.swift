@@ -48,7 +48,7 @@ extension SettingsView {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Note Organization").font(.headline)
                         JotleyNoteOrganizationSettings()
-                        Text("Auto Tags adds five topics to recordings and summaries. Auto File Notes organizes completed recordings and unfiled summaries into a matching project or broad folder.")
+                        Text("Auto Tags adds up to three topics when you generate a summary. Auto File Notes organizes completed recordings and unfiled summaries into a matching project or broad folder.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
 

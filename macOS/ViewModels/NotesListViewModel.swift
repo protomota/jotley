@@ -290,15 +290,17 @@ import AppKit
                     locale: locale, progress: progress, snapshot: update)
                 #endif
                 var generatedTitle: String?
-                var titleError: Error?
                 if note.shouldReplaceTitleFromGeneratedSummary() {
                     streamingSummaryViewModel.progress = .finishing
                     do {
                         generatedTitle = try await LocalSummary.generateTitle(from: result, locale: locale)
                     } catch is CancellationError { throw CancellationError() }
-                    catch { titleError = error }
+                    catch {}
+                    if generatedTitle == nil {
+                        generatedTitle = LocalSummary.fallbackTitle(transcript: source, summary: result)
+                    }
                 }
-                let autoTags = LocalNoteOrganizationSettings.autoTags()
+                let autoTags = note.shouldGenerateSummaryTags
                 let autoFolder = canFileNote && note.folder == nil && LocalNoteOrganizationSettings.autoFolders()
                 let library = autoTags ? try persistenceController.tagLibrary() : []
                 var organization: LocalNoteOrganization?
@@ -323,19 +325,18 @@ import AppKit
                 guard (note.transcription ?? "") == source else {
                     throw LocalError.message("This transcript changed during generation. Your current note was preserved; generate a summary again.")
                 }
-                let tags = autoTags && LocalNoteOrganizationSettings.autoTags()
-                    ? LocalNoteTags.completedNames(organization?.tags, transcript: source, summary: result, library: library)
+                let tags = autoTags && note.shouldGenerateSummaryTags
+                    ? LocalNoteTags.completedNames(organization?.tags, transcript: source, summary: result,
+                        library: library, excluding: note.tagNames)
                     : nil
                 let filingSource = result + "\n" + source
                 let category = organization?.folder.name == nil ? LocalNoteFolder.inferred(from: filingSource) : organization?.folder
                 let folder = autoFolder && LocalNoteOrganizationSettings.autoFolders() ? category : nil
                 try persistenceController.saveNoteChanges(note, values: note.generatedSummaryValues(result, template: template.key, generatedTitle: generatedTitle),
-                                                           replacingTags: tags, autoFolder: folder,
+                                                           addingGeneratedTags: tags, autoFolder: folder,
                                                            projectName: organization?.projectName, filingSource: filingSource)
                 await summaryNotifications.summarySaved(noteID: note.id)
                 JotleyEngagement.shared.completedSummary(result: result)
-                let warnings = [titleError.map { "Title: \($0.localizedDescription)" }].compactMap { $0 }
-                if !warnings.isEmpty { report(LocalError.message("Summary saved. " + warnings.joined(separator: " "))) }
                 NotificationCenter.default.post(name: Notification.Name("SummaryGenerationComplete"), object: nil,
                     userInfo: ["noteID": note.objectID, "summary": result])
             } catch is CancellationError { } catch { report(error) }
