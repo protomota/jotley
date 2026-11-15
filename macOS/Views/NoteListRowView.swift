@@ -183,7 +183,7 @@ struct NoteContextMenuView: View {
         Button {
             onDelete()
         } label: {
-            Text("Delete")
+            Text("Move to Trash")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(isHovering ? .white : .primary)
                 .padding(.horizontal, 16)

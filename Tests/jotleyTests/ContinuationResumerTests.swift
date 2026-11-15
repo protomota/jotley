@@ -198,6 +198,12 @@ final class LocalCoreTests: XCTestCase {
         XCTAssertEqual(try store.chatMessages(noteID: id).map(\.id), [question.id, answer.id])
         let saved = try XCTUnwrap(store.notes().first)
         try store.deleteNote(saved)
+        XCTAssertEqual(try store.chatMessages(noteID: id).map(\.id), [question.id, answer.id])
+        try store.restoreNote(saved)
+        XCTAssertEqual(try store.notes().first?.localNoteID, id)
+        XCTAssertThrowsError(try store.permanentlyDeleteNotes([saved]))
+        try store.deleteNote(saved)
+        try store.permanentlyDeleteNotes([saved])
         XCTAssertTrue(try store.chatMessages(noteID: id).isEmpty)
     }
 
@@ -548,7 +554,7 @@ extension LocalCoreTests {
         let model = NSManagedObjectModel()
         let entity = NSEntityDescription(); entity.name = "Note"
         entity.managedObjectClassName = NSStringFromClass(DeletionRefusedNote.self)
-        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType),
+        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType), ("trashedAt", .dateAttributeType),
                              ("title", .stringAttributeType), ("transcription", .stringAttributeType), ("noteType", .stringAttributeType)].map { name, type in
             let attribute = NSAttributeDescription(); attribute.name = name; attribute.attributeType = type; attribute.isOptional = true; return attribute
         }
@@ -559,7 +565,10 @@ extension LocalCoreTests {
             try? FileManager.default.removeItem(at: root)
         }
         let note = try store.create(title: "Keep after failure", text: "Final transcript")
-        XCTAssertThrowsError(try store.deleteNote(note))
+        try store.deleteNote(note)
+        XCTAssertThrowsError(try store.permanentlyDeleteNotes([note]))
+        XCTAssertTrue(SharedPersistenceController.trashedNotesPredicate.evaluate(with: note))
+        try store.restoreNote(note)
         XCTAssertEqual(try store.notes().count, 1)
         XCTAssertEqual(note.text("transcription"), "Final transcript")
     }
@@ -592,7 +601,7 @@ extension LocalCoreTests {
         let model = NSManagedObjectModel()
         let entity = NSEntityDescription(); entity.name = "Note"
         entity.managedObjectClassName = NSStringFromClass(CreationRefusedNote.self)
-        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType),
+        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType), ("trashedAt", .dateAttributeType),
                              ("title", .stringAttributeType), ("transcription", .stringAttributeType), ("noteType", .stringAttributeType)].map { name, type in
             let attribute = NSAttributeDescription(); attribute.name = name; attribute.attributeType = type; attribute.isOptional = true; return attribute
         }
@@ -634,7 +643,7 @@ extension LocalCoreTests {
         let model = NSManagedObjectModel()
         let entity = NSEntityDescription(); entity.name = "Note"
         entity.managedObjectClassName = NSStringFromClass(GeneratedContentRefusedNote.self)
-        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType),
+        entity.properties = [("id", NSAttributeType.UUIDAttributeType), ("timestamp", .dateAttributeType), ("trashedAt", .dateAttributeType),
             ("title", .stringAttributeType), ("transcription", .stringAttributeType), ("noteType", .stringAttributeType),
             ("summary", .stringAttributeType), ("summaryType", .stringAttributeType)].map { name, type in
                 let attribute = NSAttributeDescription(); attribute.name = name; attribute.attributeType = type; attribute.isOptional = true; return attribute

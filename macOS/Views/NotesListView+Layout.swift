@@ -199,6 +199,11 @@ extension NotesListView {
             case .none:
                 noteList()
             }
+            if currentEmptyState != .none {
+                NotesTrashLink(showingTrash: $showingTrash)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 72)
+            }
 
             }
 
@@ -309,7 +314,7 @@ extension NotesListView {
                                     }
                                 }
                                 label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("Move to Trash", systemImage: "trash")
                                 }
                                 .tint(.themePrimaryAccent)
                             }
@@ -330,7 +335,11 @@ extension NotesListView {
                     }
                 }
 
-                // Clicking the unused list area retains the open note.
+                NotesTrashLink(showingTrash: $showingTrash)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+
+                // Keep the Trash row clear of the floating controls.
                 Color.themeContentBackground
                     .frame(maxWidth: .infinity, minHeight: 80)
             }

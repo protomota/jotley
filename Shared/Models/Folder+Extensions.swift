@@ -15,7 +15,7 @@ public extension Folder {
 
     /// Number of notes currently in this folder.
     var noteCount: Int {
-        (notes as? Set<Note>)?.count ?? 0
+        (notes as? Set<Note>)?.count(where: { $0.trashedAt == nil }) ?? 0
     }
 
     /// Find an existing folder by name (case-insensitive), or return nil.

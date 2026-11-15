@@ -284,12 +284,12 @@ extension NoteDetailPlaceholderView {
                     // Delete
                     MenuItemView(
                         icon: "trash",
-                        title: "Delete",
+                        title: String(localized: "Move to Trash"),
                         isDestructive: true
                     ) {
                         isPresented = false
                         viewModel.performContextualDelete(for: note)
-                    }
+                    }.accessibilityIdentifier("noteDetailMoveToTrash")
                 }
             }
             .padding(6)

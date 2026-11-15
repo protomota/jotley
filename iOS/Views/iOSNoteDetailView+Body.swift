@@ -96,12 +96,12 @@ extension NoteDetailView {
             AddTagSheetView(note: note, isPresented: $showingAddTag, newTagText: $newTagText, currentTags: $currentTags, onSave: transcriptionManager.saveEdits)
         }
         .sheet(item: $exportPayload, onDismiss: clearExport) { payload in ShareSheet(activityItems: payload.items) }
-        .alert("Delete Note", isPresented: $showingDelete) {
+        .alert("Move to Trash?", isPresented: $showingDelete) {
             Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
+            Button("Move to Trash", role: .destructive) {
                 do { try transcriptionManager.delete(note); dismiss() } catch { transcriptionManager.errorMessage = error.localizedDescription }
             }
-        } message: { Text("This permanently deletes the note.") }
+        } message: { Text("You can restore this note from Trash.") }
         .onAppear { currentTags = note.tagNames; if hasSummary { selectedTab = "Summary" } }
         .onChange(of: note.tagNames) { _, tags in
             currentTags = tags
@@ -225,7 +225,7 @@ extension NoteDetailView {
                     .disabled(!transcriptionManager.canStart && !noteIsTranscribing)
                     .accessibilityIdentifier("noteDetailContinueTranscriptionMenuButton")
                 Divider()
-                Button("Delete Note", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
+                Button("Move to Trash", role: .destructive) { showingDelete = true }.disabled(!transcriptionManager.canStart)
             } label: { noteHeaderMenuLabel }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)

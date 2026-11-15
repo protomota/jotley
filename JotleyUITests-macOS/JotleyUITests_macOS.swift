@@ -1393,6 +1393,33 @@ private struct MacSupportPreviewRoot: View {
 import XCTest
 
 final class JotleyLocalUITests: XCTestCase {
+    @MainActor func testNotesTrash() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Friday launch plan","folder":"Work","tags":["Launch"],"transcript":"Confirm Friday’s launch checklist.","summary":"The checklist is ready."}]"#
+        app.launchArguments = ["-AppleLanguages", "(en)", "-jotleyWelcomeCompleted.v1", "YES", "-selectedAppearanceMode", "Light"]
+        app.launch()
+        let trash = app.buttons["notesTrashLink"]
+        if !trash.waitForExistence(timeout: 3) { app.typeKey("0", modifierFlags: [.command, .option]) }
+        XCTAssertTrue(trash.waitForExistence(timeout: 10))
+        let window = app.windows.firstMatch
+        capture(window, named: "mac-trash-01-notes-list")
+        let title = app.staticTexts["noteDetailTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        app.buttons["noteDetailMoreMenuButton"].click()
+        app.buttons["noteDetailMoveToTrash"].click()
+        XCTAssertTrue(title.waitForNonExistence(timeout: 5))
+        trash.click()
+        let done = app.buttons["notesTrashDone"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        capture(window, named: "mac-trash-02-management")
+        app.buttons["notesEmptyTrash"].click()
+        let empty = app.buttons.matching(identifier: "Empty Trash").firstMatch
+        XCTAssertTrue(empty.waitForExistence(timeout: 5))
+        empty.click()
+        XCTAssertTrue(app.staticTexts["Trash Is Empty"].waitForExistence(timeout: 5))
+    }
+
     @MainActor func testPersonalSupportCoverage() {
         continueAfterFailure = false
         let app = XCUIApplication()

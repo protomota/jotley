@@ -20,7 +20,8 @@ struct MainTabView: View {
         showingWelcome || replayAfterSettings || (!onboardingCompleted && !JotleyOnboarding.bypassForFixture)
     }
     @AppStorage(JotleyOnboarding.completedKey) private var onboardingCompleted = false
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)])
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)],
+                  predicate: SharedPersistenceController.activeNotesPredicate)
     private var notes: FetchedResults<Note>
     @State private var selectedNoteId: UUID?
     @State private var hasInitializedNoteSelection = false

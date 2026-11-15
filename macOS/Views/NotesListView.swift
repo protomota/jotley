@@ -9,6 +9,7 @@ struct NotesListView: View {
     @Environment(\.managedObjectContext) var viewContext
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)],
+        predicate: SharedPersistenceController.activeNotesPredicate,
         animation: .default)
     var notes: FetchedResults<Note>
 
@@ -16,7 +17,9 @@ struct NotesListView: View {
     @Binding var showingSettingsSheet: Bool
 
     @StateObject var viewModel: NotesListViewModel
+    let persistenceController: SharedPersistenceController
     @State var showingFolderManagement = false
+    @State var showingTrash = false
     @State var showingTagFilter = false
     @State var sidebarVisibility: NavigationSplitViewVisibility = .all
     @StateObject var filterState = FilterAndSortState()
@@ -25,6 +28,7 @@ struct NotesListView: View {
     @State var recordingWidgetController = RecordingWidgetController()
 
     init(recorder: ProcessTapRecorder, searchText: Binding<String>, showingSettingsSheet: Binding<Bool>, persistenceController: SharedPersistenceController) {
+        self.persistenceController = persistenceController
         _viewModel = StateObject(wrappedValue: NotesListViewModel(viewContext: persistenceController.container.viewContext, recorder: recorder, persistenceController: persistenceController))
         _searchText = searchText
         _showingSettingsSheet = showingSettingsSheet

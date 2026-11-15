@@ -17,6 +17,7 @@ struct NotesListView: View {
     @ObservedObject var themeManager = ThemeManager.shared
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)],
+        predicate: SharedPersistenceController.activeNotesPredicate,
         animation: .default
     )
     var notes: FetchedResults<Note>
@@ -27,6 +28,7 @@ struct NotesListView: View {
     @StateObject var filterState = FilterAndSortState()
     @State var showingFolderManagement = false
     @State var showingFolderDrawer = false
+    @State private var showingTrash = false
     @Binding var newTranscriptionNote: Note?
     @Environment(\.colorScheme) var colorScheme
 
@@ -248,7 +250,7 @@ struct NotesListView: View {
                                                 deleteItemsInGroup(at: IndexSet(integer: index), from: itemsInGroup)
                                             }
                                         } label: {
-                                            Label("Delete", systemImage: "trash")
+                                            Label("Move to Trash", systemImage: "trash")
                                         }
                                         // Keep the destructive fill independent of the list's readable text tint.
                                         .tint(.red)
@@ -264,6 +266,12 @@ struct NotesListView: View {
                         }
                     }
                 }
+                Section {
+                    NotesTrashLink(showingTrash: $showingTrash)
+                }
+                .listRowBackground(Color.themeBackground)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
             }
             .listStyle(PlainListStyle())
             .scrollContentBackground(.hidden)
@@ -295,6 +303,9 @@ struct NotesListView: View {
         .ignoresSafeArea(.container, edges: usesSplitView && !usesIPadLayout ? .top : [])
         // Apply to the sidebar root, including its custom header.
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showingTrash) {
+            NotesTrashView(store: persistenceController)
+        }
         .sheet(isPresented: $showingFolderManagement) {
             FolderManagementSheet()
         }

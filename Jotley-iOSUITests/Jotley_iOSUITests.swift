@@ -232,8 +232,8 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(older.waitForExistence(timeout: 5)); older.tap()
         XCTAssertEqual(title.label, "Older note")
         app.buttons["noteDetailMoreActionsButton"].tap()
-        app.buttons["Delete Note"].tap()
-        app.alerts["Delete Note"].buttons["Delete"].tap()
+        app.buttons["Move to Trash"].tap()
+        app.alerts["Move to Trash?"].buttons["Move to Trash"].tap()
         if isIPad {
             let selectedNewest = expectation(for: NSPredicate(format: "label == %@", "Newest note"), evaluatedWith: title)
             wait(for: [selectedNewest], timeout: 10)
@@ -315,6 +315,71 @@ final class Jotley_iOSUITests: XCTestCase {
             if sidebar.exists && sidebar.isHittable { sidebar.tap() }
         }
         XCTAssertTrue(settings.waitForExistence(timeout: 10), app.debugDescription)
+    }
+
+    @MainActor func testNotesTrashRestoreDeleteAndEmpty() {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #"[{"title":"Friday launch plan","folder":"Work","tags":["Launch"],"transcript":"Confirm Friday’s launch checklist.","summary":"The checklist is ready."},{"title":"Meeting follow-up","folder":"","tags":[],"transcript":"Send the meeting follow-up.","summary":""},{"title":"Voice memo draft","folder":"","tags":[],"transcript":"First draft of the recording.","summary":""}]"#
+        app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
+        app.launchEnvironment["JOTLEY_SCREENSHOT_APPEARANCE"] = "Light"
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES", "-AppleLanguages", "(en)"]
+        XCUIDevice.shared.orientation = .portrait
+        app.launch()
+        showNotesLibrary(app)
+        let trash = app.buttons["notesTrashLink"]
+        XCTAssertTrue(trash.waitForExistence(timeout: 10))
+        capture(XCUIScreen.main.screenshot(), named: "trash-01-notes-list")
+
+        func noteRow(_ title: String) -> XCUIElement {
+            app.buttons.containing(.staticText, identifier: title).firstMatch
+        }
+
+        func moveToTrash(_ title: String) {
+            let row = noteRow(title)
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            row.tap()
+            app.buttons["noteDetailMoreActionsButton"].tap()
+            app.buttons["Move to Trash"].tap()
+            app.alerts["Move to Trash?"].buttons["Move to Trash"].tap()
+            showNotesLibrary(app)
+            XCTAssertTrue(row.waitForNonExistence(timeout: 5))
+        }
+
+        moveToTrash("Friday launch plan")
+        moveToTrash("Meeting follow-up")
+        moveToTrash("Voice memo draft")
+        trash.tap()
+        let emptyTrash = app.buttons["notesEmptyTrash"]
+        XCTAssertTrue(emptyTrash.waitForExistence(timeout: 5))
+        capture(XCUIScreen.main.screenshot(), named: "trash-02-management")
+
+        func menu(_ title: String) -> XCUIElement {
+            app.buttons.matching(identifier: "notesTrashActions")
+                .matching(NSPredicate(format: "label == %@", title)).firstMatch
+        }
+        menu("Friday launch plan").tap()
+        capture(XCUIScreen.main.screenshot(), named: "trash-03-note-actions")
+        app.buttons["Restore"].tap()
+        XCTAssertTrue(menu("Friday launch plan").waitForNonExistence(timeout: 5))
+
+        menu("Meeting follow-up").tap()
+        app.buttons["Delete Permanently"].tap()
+        let permanentAlert = app.alerts["Delete Note Permanently?"]
+        XCTAssertTrue(permanentAlert.waitForExistence(timeout: 5))
+        capture(XCUIScreen.main.screenshot(), named: "trash-04-permanent-confirmation")
+        permanentAlert.buttons["Delete Permanently"].tap()
+        XCTAssertTrue(menu("Meeting follow-up").waitForNonExistence(timeout: 5))
+
+        emptyTrash.tap()
+        app.alerts["Empty Trash?"].buttons["Empty Trash"].tap()
+        XCTAssertTrue(app.staticTexts["Trash Is Empty"].waitForExistence(timeout: 5))
+        capture(XCUIScreen.main.screenshot(), named: "trash-05-empty")
+        app.buttons["notesTrashDone"].tap()
+        let restored = noteRow("Friday launch plan")
+        XCTAssertTrue(restored.waitForExistence(timeout: 5))
+        restored.tap()
+        XCTAssertTrue(app.staticTexts["noteDetailTitle"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["noteDetailTitle"].label, "Friday launch plan")
     }
 
     @MainActor func testPhoneCornerCaptureStaysClearOfNoteActions() throws {

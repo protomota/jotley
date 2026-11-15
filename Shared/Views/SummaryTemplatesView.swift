@@ -132,7 +132,8 @@ private struct SummaryTemplateEditor: View {
     @ObservedObject private var catalog = SummaryTemplateStore.shared
     @Environment(\.dismiss) private var dismiss
     @AppStorage("transcriptionLanguage") private var language = "en-US"
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "timestamp", ascending: false)]) private var notes: FetchedResults<Note>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(key: "timestamp", ascending: false)],
+                  predicate: SharedPersistenceController.activeNotesPredicate) private var notes: FetchedResults<Note>
     let draft: TemplateDraft
     let onSaved: (CustomSummaryTemplate) -> Void
     let onDuplicate: () -> Void

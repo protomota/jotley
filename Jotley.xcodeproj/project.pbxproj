@@ -29,7 +29,9 @@
 		F10000000000000000000007 /* SettingsView+MCPDesktopSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007; };
 		F10000000000000000000008 /* JotleyClaudeMCP in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008; };
 		F8000000000000000000022 /* SummaryTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000022; };
+		EFCD00000000000000004737 /* NotesTrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFCD00000000000000004735; };
 		F8000000000000000000021 /* SummaryTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000021; };
+		EFCD00000000000000004736 /* NotesTrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFCD00000000000000004734; };
 		F8000000000000000000012 /* SummaryTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000012; };
 		F8000000000000000000011 /* SummaryTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000011; };
 		F10000000000000000000005 = {isa = PBXBuildFile; fileRef = F20000000000000000000005; };
@@ -269,7 +271,9 @@
 		F20000000000000000000007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsView+MCPDesktopSetup.swift"; path = "macOS/Views/SettingsView+MCPDesktopSetup.swift"; sourceTree = SOURCE_ROOT; };
 		F20000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = folder; name = JotleyClaudeMCP; path = macOS/Resources/JotleyClaudeMCP; sourceTree = SOURCE_ROOT; };
 		F7000000000000000000022 /* SummaryTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplatesView.swift; sourceTree = "<group>"; };
+		EFCD00000000000000004735 /* NotesTrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesTrashView.swift; sourceTree = "<group>"; };
 		F7000000000000000000021 /* SummaryTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplatesView.swift; sourceTree = "<group>"; };
+		EFCD00000000000000004734 /* NotesTrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesTrashView.swift; sourceTree = "<group>"; };
 		F7000000000000000000012 /* SummaryTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplateStore.swift; sourceTree = "<group>"; };
 		F7000000000000000000011 /* SummaryTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplateStore.swift; sourceTree = "<group>"; };
 		F20000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = text; name = "MCP-NOTICES.txt"; path = "docs/MCP-NOTICES.txt"; sourceTree = SOURCE_ROOT; };
@@ -302,6 +306,7 @@
 		A2EA90F7307B41D700AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA90F8307B41D700AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		EFCD00000000000000004731 /* JotleyNotes 7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 7.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9107307B41EB00AAB201 /* JotleyUITests_macOS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JotleyUITests_macOS.swift; sourceTree = "<group>"; };
 		A2EA910A307B452800AAB201 /* Main.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Main.xcconfig; sourceTree = "<group>"; };
 		A2EA910C307B452800AAB201 /* PersistenceControllerCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceControllerCompat.swift; sourceTree = "<group>"; };
@@ -413,6 +418,7 @@
 		A2EA91E0307B453D00AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA91E1307B453D00AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		EFCD00000000000000004732 /* JotleyNotes 7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 7.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA91F9307B486500AAB201 /* Rambo-BSD-2-Clause.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "Rambo-BSD-2-Clause.txt"; path = "docs/Rambo-BSD-2-Clause.txt"; sourceTree = "<group>"; };
 		A2EA91FB307B487600AAB201 /* Comfortaa-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Comfortaa-OFL.txt"; sourceTree = "<group>"; };
 		A2EA9201307B4F2B00AAB201 /* Jotley-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Jotley-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -469,6 +475,7 @@
 		A2EA9281307B532700AAB201 /* JotleyNotes 4.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 4.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9282307B532700AAB201 /* JotleyNotes 5.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 5.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 6.xcdatamodel"; sourceTree = "<group>"; };
+		EFCD00000000000000004733 /* JotleyNotes 7.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = "JotleyNotes 7.xcdatamodel"; sourceTree = "<group>"; };
 		A2EA929B307BB12900AAB201 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A2F10003307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
 		A2F10004307E000100AAB201 /* StructuredSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StructuredSummaryView.swift; sourceTree = "<group>"; };
@@ -902,6 +909,7 @@
 				9975B635CEA54A318412D221 /* LibraryBackupControls.swift */,
 				AAE1035791134445A1EA3331 /* JotleySupporterCelebration.swift */,
 				F7000000000000000000021 /* SummaryTemplatesView.swift */,
+				EFCD00000000000000004734 /* NotesTrashView.swift */,
 				A2EA91DA307B453D00AAB201 /* SummaryStreamingDots.swift */,
 				A2F10003307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
@@ -1074,6 +1082,7 @@
 				0ACE223E0670475E88103715 /* LibraryBackupControls.swift */,
 				E6302170B6FE4EB2A2F7C1D0 /* JotleySupporterCelebration.swift */,
 				F7000000000000000000022 /* SummaryTemplatesView.swift */,
+				EFCD00000000000000004735 /* NotesTrashView.swift */,
 				A2EA927C307B532700AAB201 /* SummaryStreamingDots.swift */,
 				A2F10004307E000100AAB201 /* StructuredSummaryView.swift */,
 			);
@@ -1456,6 +1465,7 @@
 				14E49C2F2E3A43839FA2E9CE /* LibraryBackupControls.swift in Sources */,
 				A49A9896C0D540ED9450D2D2 /* JotleySupporterCelebration.swift in Sources */,
 				F8000000000000000000022 /* SummaryTemplatesView.swift in Sources */,
+				EFCD00000000000000004737 /* NotesTrashView.swift in Sources */,
 				A2EA9290307B532700AAB201 /* Font+Extensions.swift in Sources */,
 				A2EA9291307B532700AAB201 /* ServiceConstants.swift in Sources */,
 				A2EA9292307B532700AAB201 /* FilterAndSortState.swift in Sources */,
@@ -1538,6 +1548,7 @@
 				0119DE95AEA4437EB9D92073 /* LibraryBackupControls.swift in Sources */,
 				AE3598DDB22741F7B39C23D1 /* JotleySupporterCelebration.swift in Sources */,
 				F8000000000000000000021 /* SummaryTemplatesView.swift in Sources */,
+				EFCD00000000000000004736 /* NotesTrashView.swift in Sources */,
 				A2EA91F2307B453D00AAB201 /* JotleyDefaults.swift in Sources */,
 				A2EA91F3307B453D00AAB201 /* SharedThemeColors.swift in Sources */,
 				9CA0DF61119D4D6C95BDDA12 /* ThemeColor.swift in Sources */,
@@ -2251,8 +2262,9 @@
 				A2EA90F7307B41D700AAB201 /* JotleyNotes 4.xcdatamodel */,
 				A2EA90F8307B41D700AAB201 /* JotleyNotes 5.xcdatamodel */,
 				A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */,
+				EFCD00000000000000004731 /* JotleyNotes 7.xcdatamodel */,
 			);
-			currentVersion = A2EA90F9307B41D700AAB201 /* JotleyNotes 6.xcdatamodel */;
+			currentVersion = EFCD00000000000000004731 /* JotleyNotes 7.xcdatamodel */;
 			path = JotleyNotes.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
@@ -2266,8 +2278,9 @@
 				A2EA91E0307B453D00AAB201 /* JotleyNotes 4.xcdatamodel */,
 				A2EA91E1307B453D00AAB201 /* JotleyNotes 5.xcdatamodel */,
 				A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */,
+				EFCD00000000000000004732 /* JotleyNotes 7.xcdatamodel */,
 			);
-			currentVersion = A2EA91E2307B453D00AAB201 /* JotleyNotes 6.xcdatamodel */;
+			currentVersion = EFCD00000000000000004732 /* JotleyNotes 7.xcdatamodel */;
 			path = JotleyNotes.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;
@@ -2281,8 +2294,9 @@
 				A2EA9281307B532700AAB201 /* JotleyNotes 4.xcdatamodel */,
 				A2EA9282307B532700AAB201 /* JotleyNotes 5.xcdatamodel */,
 				A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */,
+				EFCD00000000000000004733 /* JotleyNotes 7.xcdatamodel */,
 			);
-			currentVersion = A2EA9283307B532700AAB201 /* JotleyNotes 6.xcdatamodel */;
+			currentVersion = EFCD00000000000000004733 /* JotleyNotes 7.xcdatamodel */;
 			path = JotleyNotes.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

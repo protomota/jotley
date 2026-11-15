@@ -83,6 +83,9 @@ public enum LocalPaths {
 /// Never opens the installed cloud app's store. No automatic repair or destructive recovery.
 @MainActor
 public final class SharedPersistenceController: ObservableObject {
+    public static let activeNotesPredicate = NSPredicate(format: "trashedAt == nil")
+    public static let trashedNotesPredicate = NSPredicate(format: "trashedAt != nil")
+
     public let container: NSPersistentContainer
     public let root: URL
     public let syncMode: NoteSyncMode
@@ -146,7 +149,8 @@ public final class SharedPersistenceController: ObservableObject {
 
     /// One capture owner per store, independent of which window initiated it.
     public func beginRecording(_ note: NSManagedObject) throws -> UUID {
-        guard ready, note.managedObjectContext === context, !note.isDeleted else {
+        guard ready, note.managedObjectContext === context, !note.isDeleted,
+              Self.activeNotesPredicate.evaluate(with: note) else {
             throw LocalError.message("This note is unavailable.")
         }
         guard activeRecording == nil else { throw LocalError.message("Finish the current transcription first.") }
@@ -177,7 +181,8 @@ public final class SharedPersistenceController: ObservableObject {
     }
 
     public func requireExternalWriteAccess(to note: NSManagedObject) throws {
-        guard ready, note.managedObjectContext === context, !note.isDeleted else {
+        guard ready, note.managedObjectContext === context, !note.isDeleted,
+              Self.activeNotesPredicate.evaluate(with: note) else {
             throw LocalError.message("This note is unavailable.")
         }
         guard activeRecording?.noteID != note.objectID else {
@@ -189,21 +194,51 @@ public final class SharedPersistenceController: ObservableObject {
     }
 
     public func deleteNote(_ note: NSManagedObject) throws {
-        guard note.managedObjectContext === context, !note.isDeleted else {
+        try setTrashDate(Date(), on: note, expecting: Self.activeNotesPredicate)
+    }
+
+    public func restoreNote(_ note: NSManagedObject) throws {
+        try setTrashDate(nil, on: note, expecting: Self.trashedNotesPredicate)
+    }
+
+    private func setTrashDate(_ date: Date?, on note: NSManagedObject, expecting predicate: NSPredicate) throws {
+        try checkTrashAccess(to: note, expecting: predicate)
+        try save()
+        note.setValue(date, forKey: "trashedAt")
+        do { try save() }
+        catch { context.rollback(); throw error }
+    }
+
+    private func checkTrashAccess(to note: NSManagedObject, expecting predicate: NSPredicate) throws {
+        guard ready, note.managedObjectContext === context, !note.isDeleted, predicate.evaluate(with: note) else {
             throw LocalError.message("This note is unavailable.")
         }
         guard activeRecording?.noteID != note.objectID else {
             throw LocalError.message("Stop this transcription before deleting its note.")
         }
+        guard !noteOperations.values.contains(note.objectID) else {
+            throw LocalError.message("Finish generating this note's content before moving or deleting it.")
+        }
+    }
+
+    public func permanentlyDeleteNotes(_ notes: [NSManagedObject]) throws {
+        for note in notes {
+            try checkTrashAccess(to: note, expecting: Self.trashedNotesPredicate)
+        }
         try save() // Rollback below must not discard unrelated pending edits.
+        let ids = notes.compactMap(\.localNoteID)
         var children: [NSManagedObject] = []
-        for entity in ["NoteChatMessage", "RecordingMarker"] where container.managedObjectModel.entitiesByName[entity] != nil {
+        for entity in ["NoteChatMessage", "RecordingMarker"]
+        where !ids.isEmpty && container.managedObjectModel.entitiesByName[entity] != nil {
             let request = NSFetchRequest<NSManagedObject>(entityName: entity)
-            request.predicate = NSPredicate(format: "noteId == %@", (note.localNoteID ?? UUID()) as CVarArg)
+            request.predicate = NSPredicate(format: "noteId IN %@", ids)
             children += try context.fetch(request)
         }
-        for child in children { context.delete(child) }
-        context.delete(note)
+        // Undo must not resurrect permanently deleted notes or their history.
+        let undoManager = context.undoManager
+        undoManager?.disableUndoRegistration()
+        defer { undoManager?.enableUndoRegistration() }
+        for object in children + notes { context.delete(object) }
         do { try save() }
         catch { context.rollback(); throw error }
     }
@@ -224,7 +259,7 @@ public final class SharedPersistenceController: ObservableObject {
     }
     public func saveChatMessage(_ message: LocalChatMessage, noteID: UUID) throws {
         let noteRequest = NSFetchRequest<NSManagedObject>(entityName: "Note")
-        noteRequest.predicate = NSPredicate(format: "id == %@", noteID as CVarArg)
+        noteRequest.predicate = NSPredicate(format: "id == %@ AND trashedAt == nil", noteID as CVarArg)
         noteRequest.fetchLimit = 1
         guard ready, ["user", "assistant"].contains(message.role), !message.content.isEmpty,
               try !context.fetch(noteRequest).isEmpty else {
@@ -254,6 +289,7 @@ public final class SharedPersistenceController: ObservableObject {
     public func notes() throws -> [NSManagedObject] {
         guard ready else { throw LocalError.message(errorMessage ?? "Local store is unavailable.") }
         let request = NSFetchRequest<NSManagedObject>(entityName: "Note")
+        request.predicate = Self.activeNotesPredicate
         request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
         return try context.fetch(request)
     }
@@ -286,7 +322,8 @@ public final class SharedPersistenceController: ObservableObject {
     func saveNoteChanges(_ note: NSManagedObject, values: [String: Any], replacingTags: [String]? = nil,
                          addingGeneratedTags: [String]? = nil,
                          autoFolder: LocalNoteFolder?, projectName: String? = nil, filingSource: String = "") throws {
-        guard ready, note.managedObjectContext === context, !note.isDeleted else {
+        guard ready, note.managedObjectContext === context, !note.isDeleted,
+              Self.activeNotesPredicate.evaluate(with: note) else {
             throw LocalError.message("This note is unavailable.")
         }
         guard values.keys.allSatisfy({ note.entity.attributesByName[$0] != nil }) else {

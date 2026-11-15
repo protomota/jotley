@@ -6,7 +6,7 @@ struct NoteDetailByIdView: View {
     private let newTranscriptionAction: (() -> Void)?
     init(noteId: UUID, newTranscriptionAction: (() -> Void)? = nil) {
         self.newTranscriptionAction = newTranscriptionAction
-        _notes = FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "id == %@", noteId as CVarArg))
+        _notes = FetchRequest(sortDescriptors: [], predicate: NSPredicate(format: "id == %@ AND trashedAt == nil", noteId as CVarArg))
     }
     var body: some View {
         if let note = notes.first { NoteDetailView(note: note, newTranscriptionAction: newTranscriptionAction) }

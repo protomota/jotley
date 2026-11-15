@@ -42,7 +42,7 @@ public enum LibraryBackupService {
     private static let schema: [String: Fields] = [
         "Folder": Fields(text: ["name"], dates: ["createdAt"], numbers: ["sortOrder": Double(Int32.min)...Double(Int32.max)]),
         "Tag": Fields(text: ["name", "canonicalName"], dates: ["createdAt"]),
-        "Note": Fields(text: ["title", "transcription", "cleantranscription", "summary", "summaryType", "notes", "noteType", "sourceDescription", "sourceURL", "transcriptUtterancesJSON"], dates: ["timestamp"]),
+        "Note": Fields(text: ["title", "transcription", "cleantranscription", "summary", "summaryType", "notes", "noteType", "sourceDescription", "sourceURL", "transcriptUtterancesJSON"], dates: ["timestamp", "trashedAt"]),
         "NoteChatMessage": Fields(text: ["role", "content"], dates: ["timestamp"], ownsNote: true),
         "RecordingMarker": Fields(text: ["label"], numbers: ["timestamp": 0...Double.greatestFiniteMagnitude], ownsNote: true)
     ]

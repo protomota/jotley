@@ -3,6 +3,9 @@ import AppKit
 extension NotesListView {
     var body: some View {
         navigationView
+            .sheet(isPresented: $showingTrash) {
+                NotesTrashView(store: persistenceController)
+            }
             .modifier(AlertModifier(viewModel: viewModel))
             .onChange(of: summaryNotifications.noteToOpen, initial: true) { _, id in
                 guard let id, let note = notes.first(where: { $0.id == id }) else { return }

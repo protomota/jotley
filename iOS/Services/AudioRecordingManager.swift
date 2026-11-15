@@ -656,7 +656,7 @@ final class LiveTranscriptionManager: ObservableObject {
 
     private func fetch(_ id: UUID) -> Note? {
         guard let store else { return nil }
-        let request = NSFetchRequest<Note>(entityName: "Note"); request.predicate = NSPredicate(format: "id == %@", id as CVarArg); request.fetchLimit = 1
+        let request = NSFetchRequest<Note>(entityName: "Note"); request.predicate = NSPredicate(format: "id == %@ AND trashedAt == nil", id as CVarArg); request.fetchLimit = 1
         return try? store.context.fetch(request).first
     }
 
