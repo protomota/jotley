@@ -1376,7 +1376,7 @@ final class Jotley_iOSUITests: XCTestCase {
          {"title":"Weekend plans","folder":"Personal","tags":["Home"],"transcript":"Pick up the groceries.","summary":""}]
         """#
         app.launchEnvironment["JOTLEY_TEST_ENGAGEMENT_COUNT"] = "0"
-        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES", "-selectedThemeColor", "Magenta"]
+        app.launchArguments = ["-jotleyWelcomeCompleted.v1", "YES", "-selectedThemeColor", "Purple"]
         let title = app.staticTexts["noteDetailTitle"]
         let folder = app.buttons["noteDetailFolderPicker"]
         let count = app.buttons["noteDetailTagCount"]

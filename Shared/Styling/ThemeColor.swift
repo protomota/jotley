@@ -13,8 +13,9 @@ enum ThemeColor: String, CaseIterable, Codable {
         return self.rawValue
     }
 
-    private static let purpleLightMode = Color(red: 0.576, green: 0.2, blue: 0.918)
-    private static let purpleDarkMode = purpleLightMode.mix(with: .white, by: 0.45)
+    // Match the website's violet for each appearance.
+    private static let purpleLightMode = Color(red: 124.0 / 255, green: 58.0 / 255, blue: 237.0 / 255)
+    private static let purpleDarkMode = Color(red: 139.0 / 255, green: 92.0 / 255, blue: 246.0 / 255)
 
     func color(in scheme: ColorScheme) -> Color {
         switch self {
