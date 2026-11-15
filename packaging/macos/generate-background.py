@@ -9,6 +9,25 @@ ROOT = Path(__file__).resolve().parent
 FONT = Path("/System/Library/Fonts/SFNS.ttf")
 
 
+def draw_arrow(canvas: Image.Image, scale: int) -> None:
+    # Supersample the stroke mask so the diagonal edges stay smooth at Finder's 1x size too.
+    left, top = 315, 210
+    width, height = 88, 40
+    resolution = 4 * scale
+    mask = Image.new("L", (width * resolution, height * resolution))
+    stroke = ImageDraw.Draw(mask)
+    shaft = [(321, 230), (397, 230)]
+    head = [(381, 215), (397, 230), (381, 245)]
+    for path in (shaft, head):
+        points = [((x - left) * resolution, (y - top) * resolution) for x, y in path]
+        stroke.line(points, fill=255, width=3 * resolution)
+        radius = 1.5 * resolution
+        for x, y in points:
+            stroke.ellipse((x - radius, y - radius, x + radius, y + radius), fill=255)
+    coverage = mask.resize((width * scale, height * scale), Image.Resampling.LANCZOS)
+    canvas.paste("#7C3AED", (left * scale, top * scale), coverage)
+
+
 def render(scale: int) -> None:
     width, height = 720 * scale, 460 * scale
     canvas = Image.new("RGB", (width, height))
@@ -68,9 +87,7 @@ def render(scale: int) -> None:
     for x, y in dots:
         draw.ellipse(box((x - 1.15, y - 1.15, x + 1.15, y + 1.15)), fill="#8B5CF6")
 
-    # Rounded arrow pointing from the app to the actual Applications shortcut.
-    draw.line(box((321, 230, 396, 230)), fill="#7C3AED", width=3 * scale)
-    draw.line(box((381, 215, 397, 230, 381, 245)), fill="#7C3AED", width=3 * scale)
+    draw_arrow(canvas, scale)
     draw.line(box((88, 355, 632, 355)), fill="#C4B5E8", width=scale)
     text("Eject this disk image when copying is complete.", 378, 15, "#342846")
     text("Open Jotley from your Applications folder.", 410, 14, "#4C3F62")
