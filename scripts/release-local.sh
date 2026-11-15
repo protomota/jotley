@@ -41,7 +41,8 @@ if [[ "$platform" == ios ]]; then
 fi
 
 products="$output/products"
-xcodebuild "${args[@]}" -scheme Jotley -destination 'platform=macOS,arch=arm64' CONFIGURATION_BUILD_DIR="$products" build
+xcodebuild "${args[@]}" -scheme Jotley -destination 'platform=macOS,arch=arm64' \
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CONFIGURATION_BUILD_DIR="$products" build
 app="$output/Jotley.app"
 ditto "$products/Jotley.app" "$app"
 info="$app/Contents/Info.plist"

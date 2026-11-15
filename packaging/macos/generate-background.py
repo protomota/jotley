@@ -13,13 +13,13 @@ def render(scale: int) -> None:
     width, height = 720 * scale, 460 * scale
     canvas = Image.new("RGB", (width, height))
     pixels = canvas.load()
-    # A quiet plum field with light concentrated behind the installation path.
+    # A light lavender field with a softer center behind the installation path.
     for y in range(height):
         for x in range(width):
             glow = math.exp(-(((x / scale - 360) / 410) ** 2
                               + ((y / scale - 240) / 300) ** 2))
             pixels[x, y] = tuple(round(base + glow * lift)
-                                 for base, lift in zip((34, 15, 53), (35, 15, 55)))
+                                 for base, lift in zip((236, 227, 250), (14, 17, 5)))
     draw = ImageDraw.Draw(canvas)
 
     def box(bounds):
@@ -36,15 +36,15 @@ def render(scale: int) -> None:
                   fill=color, anchor="mt")
 
     draw.rounded_rectangle(box((18, 18, 702, 442)), radius=22 * scale,
-                           outline="#74528E", width=scale)
-    text("Install Jotley", 48, 30, "#FFFFFF", 700)
-    text("Drag Jotley to Applications to get started.", 95, 16, "#EADDF4")
+                           outline="#C4B5E8", width=scale)
+    text("Install Jotley", 48, 30, "#201739", 700)
+    text("Drag Jotley to Applications to get started.", 95, 16, "#4C3F62")
 
     # The real draggable Finder icons are placed over these two quiet wells.
     draw.rounded_rectangle(box((117, 154, 273, 316)), radius=22 * scale,
-                           fill="#DDC9EE")
+                           fill="#FCFAFF")
     draw.rounded_rectangle(box((447, 154, 603, 316)), radius=22 * scale,
-                           fill="#DDC9EE", outline="#B895D4", width=scale)
+                           fill="#FCFAFF", outline="#C4B5E8", width=scale)
     # Rounded dotted outline: evenly spaced dots along four sides and corner arcs.
     left, top, right, bottom, radius = 110, 147, 280, 323, 29
     dots = []
@@ -66,14 +66,14 @@ def render(scale: int) -> None:
             dots.append((cx + radius * math.cos(math.radians(angle)),
                          cy + radius * math.sin(math.radians(angle))))
     for x, y in dots:
-        draw.ellipse(box((x - 1.15, y - 1.15, x + 1.15, y + 1.15)), fill="#F0D7FF")
+        draw.ellipse(box((x - 1.15, y - 1.15, x + 1.15, y + 1.15)), fill="#8B5CF6")
 
     # Rounded arrow pointing from the app to the actual Applications shortcut.
-    draw.line(box((321, 230, 396, 230)), fill="#E7CAF9", width=3 * scale)
-    draw.line(box((381, 215, 397, 230, 381, 245)), fill="#E7CAF9", width=3 * scale)
-    draw.line(box((88, 355, 632, 355)), fill="#74528E", width=scale)
-    text("Eject this disk image when copying is complete.", 378, 15, "#F5ECFC")
-    text("Open Jotley from your Applications folder.", 410, 14, "#D8C2E8")
+    draw.line(box((321, 230, 396, 230)), fill="#7C3AED", width=3 * scale)
+    draw.line(box((381, 215, 397, 230, 381, 245)), fill="#7C3AED", width=3 * scale)
+    draw.line(box((88, 355, 632, 355)), fill="#C4B5E8", width=scale)
+    text("Eject this disk image when copying is complete.", 378, 15, "#342846")
+    text("Open Jotley from your Applications folder.", 410, 14, "#4C3F62")
     target = ROOT / ("background.png" if scale == 1 else "background@2x.png")
     canvas.save(target, dpi=(72 * scale, 72 * scale))
     print(target.name, canvas.size)

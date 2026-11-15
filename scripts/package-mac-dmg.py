@@ -41,7 +41,8 @@ def install_background_reference(mount: Path) -> None:
 
 
 def verify(image: Path, source_app: Path) -> dict:
-    with tempfile.TemporaryDirectory(prefix="jotley-dmg-inspection-") as temporary:
+    # Finder can mount the image only on a local mount point, even when builds use an external drive.
+    with tempfile.TemporaryDirectory(prefix="jotley-dmg-inspection-", dir="/private/tmp") as temporary:
         mount = Path(temporary) / "volume"
         mount.mkdir()
         subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-noautoopen",
