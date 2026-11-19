@@ -448,9 +448,10 @@ extension NotesListView {
                     .opacity(isPulsing ? 0.0 : 0.55)
 
                 Image(systemName: "mic.fill")
+                    .symbolRenderingMode(.monochrome)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color.themeTextOnAccent)
-                    .shadow(color: Color.black.opacity(0.35), radius: 1, x: 0, y: 1)
+                    .foregroundStyle(Color.themePrimaryAccent)
+                    .accessibilityIdentifier("activeRecordingBannerMicrophone")
             }
             .id(themeUpdateId)
             .modifier(JotleyControlShadow())
