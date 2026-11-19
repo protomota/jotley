@@ -308,8 +308,8 @@ struct JotleyGlassButtonStyle: ButtonStyle {
 
     private var theme: ThemeColor { themeManager.currentThemeColor }
     private var glassInk: Color {
-        if circular || usesAccentForeground { return theme.glassForeground(in: colorScheme) }
-        return theme.usesDarkGlass(in: colorScheme) ? .white : .primary
+        if circular || usesAccentForeground { return theme.color(in: colorScheme) }
+        return .primary
     }
 
     private var controlHeight: CGFloat {
@@ -340,7 +340,6 @@ struct JotleyGlassButtonStyle: ButtonStyle {
     private func background<S: InsettableShape>(in shape: S) -> some View {
         JotleyFloatingGlassSurface(
             shape: shape,
-            usesDarkSurface: theme.usesDarkGlass(in: colorScheme),
             usesTranslucentMaterial: usesTranslucentMaterial
         )
     }
@@ -353,25 +352,22 @@ struct JotleyFloatingGlassSurface<Outline: InsettableShape>: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let shape: Outline
-    var usesDarkSurface = false
     var usesTranslucentMaterial = false
 
     var body: some View {
         let dark = colorScheme == .dark
-        let darkSurface = dark || usesDarkSurface
-        let surface = Color(white: darkSurface ? 0.18 : 0.96)
+        let surface = Color(white: dark ? 0.18 : 0.96)
         ZStack {
             if reduceTransparency {
                 shape.fill(surface)
             } else if usesTranslucentMaterial {
-                let material = Glass.regular.interactive()
-                Color.clear.glassEffect(usesDarkSurface ? material.tint(.black.opacity(0.55)) : material, in: shape)
+                Color.clear.glassEffect(.regular.interactive(), in: shape)
             } else {
                 Color.clear.glassEffect(.clear, in: shape)
                     .overlay { shape.fill(surface.opacity(0.85)) }
             }
         }
-        .overlay { shape.strokeBorder(.white.opacity(darkSurface ? 0.16 : 0.70), lineWidth: 1) }
+        .overlay { shape.strokeBorder(.white.opacity(dark ? 0.16 : 0.70), lineWidth: 1) }
         .background {
             ZStack {
                 shape.fill(.black)
@@ -394,10 +390,10 @@ struct JotleyGlassMenuLabel<Outline: InsettableShape>: ViewModifier {
 
     func body(content: Content) -> some View {
         let color = theme.currentThemeColor
-        let ink = color.glassForeground(in: colorScheme)
+        let ink = color.color(in: colorScheme)
         content
             .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.55))
-            .background { JotleyFloatingGlassSurface(shape: shape, usesDarkSurface: color.usesDarkGlass(in: colorScheme)) }
+            .background { JotleyFloatingGlassSurface(shape: shape) }
     }
 }
 

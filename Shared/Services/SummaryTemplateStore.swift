@@ -191,13 +191,17 @@ public final class SummaryTemplateStore: NSObject, ObservableObject {
             cloud.synchronize()
         }
     }
-    @objc private func cloudChanged(_ notification: Notification) {
-        if let reason = notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int,
-           reason == NSUbiquitousKeyValueStoreQuotaViolationChange {
-            storageError = "iCloud template storage is full. Your local templates are preserved."
-            return
+    @objc nonisolated private func cloudChanged(_ notification: Notification) {
+        let reason = notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+        // iCloud can deliver this notification on a background thread.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if reason == NSUbiquitousKeyValueStoreQuotaViolationChange {
+                storageError = "iCloud template storage is full. Your local templates are preserved."
+            } else {
+                mergeCloud()
+            }
         }
-        mergeCloud()
     }
     private func mergeCloud() {
         guard let cloud, !unreadable else { return }

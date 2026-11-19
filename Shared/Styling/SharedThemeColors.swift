@@ -309,13 +309,10 @@ extension View {
 }
 
 struct JotleyNoteFooterTextStyle: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
-    @ObservedObject private var theme = ThemeManager.shared
 
     func body(content: Content) -> some View {
-        let darkSurface = colorScheme == .dark || theme.currentThemeColor.usesDarkGlass(in: colorScheme)
-        return content.foregroundStyle((darkSurface ? Color.white : Color.black).opacity(isEnabled ? 1 : 0.55))
+        content.foregroundStyle(Color.primary.opacity(isEnabled ? 1 : 0.55))
     }
 }
 

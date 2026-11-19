@@ -1,7 +1,31 @@
+import Combine
 import XCTest
 @testable import jotley
 
 final class SummaryTemplateTests: XCTestCase {
+    @MainActor func testBackgroundCloudNotificationPublishesTemplatesOnMainThread() async throws {
+        let suite = "JotleyTemplateCloudTests.\(UUID())"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let cloud = TemplateCloudFixture()
+        let store = SummaryTemplateStore(defaults: defaults, cloud: cloud)
+        let date = Date(timeIntervalSince1970: 100)
+        let remote = CustomSummaryTemplate(id: UUID(), name: "Cloud recap", instructions: "List decisions.",
+            createdAt: date, updatedAt: date, deleted: false)
+        cloud.values["jotley.summary-template." + remote.id.uuidString.lowercased()] = try JSONEncoder().encode(remote)
+        let published = expectation(description: "Remote template published")
+        let subscription = store.$templates.dropFirst().sink { templates in
+            XCTAssertTrue(Thread.isMainThread)
+            XCTAssertEqual(templates, [remote])
+            published.fulfill()
+        }
+        defer { subscription.cancel() }
+        await Task.detached {
+            NotificationCenter.default.post(name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: cloud)
+        }.value
+        await fulfillment(of: [published], timeout: 2)
+    }
+
     @MainActor func testTemplatePersistenceConflictsAndDeletion() throws {
         let suite = "JotleyTemplateTests.\(UUID())"
         let defaults = UserDefaults(suiteName: suite)!
@@ -84,6 +108,13 @@ final class SummaryTemplateTests: XCTestCase {
         XCTAssertFalse(result.isEmpty)
         print("REAL CUSTOM TEMPLATE SUMMARY:\n\(result)")
     }
+}
+
+private final class TemplateCloudFixture: NSUbiquitousKeyValueStore, @unchecked Sendable {
+    var values: [String: Data] = [:]
+    override var dictionaryRepresentation: [String: Any] { values }
+    override func data(forKey aKey: String) -> Data? { values[aKey] }
+    override func synchronize() -> Bool { true }
 }
 
 private actor TemplateInferenceProbe {

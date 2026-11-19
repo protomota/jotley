@@ -17,7 +17,7 @@ struct NoteDetailByIdView: View {
 struct NoteDetailView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.colorScheme) private var colorScheme
-    var headerIconColor: Color { themeManager.currentThemeColor.glassForeground(in: colorScheme) }
+    var headerIconColor: Color { themeManager.currentThemeColor.color(in: colorScheme) }
     @ObservedObject var note: Note
     var newTranscriptionAction: (() -> Void)? = nil
     @EnvironmentObject var transcriptionManager: LiveTranscriptionManager

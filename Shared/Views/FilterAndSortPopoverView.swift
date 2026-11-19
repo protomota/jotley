@@ -119,7 +119,7 @@ struct FilterAndSortPopoverView: View {
                             #endif
                             .background {
                                 if state.tagMatchMode == mode {
-                                    Capsule().fill(Color.themePrimaryAccent)
+                                    Capsule().fill(selectedMatchFill)
                                 }
                             }
                             .contentShape(Capsule())
@@ -141,8 +141,17 @@ struct FilterAndSortPopoverView: View {
         }
     }
 
+    private var usesWhiteOnPurple: Bool {
+        theme.currentThemeColor == .purple && Color.shouldUseDarkTheme()
+    }
+
     private var selectedMatchText: Color {
-        Color.themeTextOnAccent
+        usesWhiteOnPurple ? .white : .themeTextOnAccent
+    }
+
+    private var selectedMatchFill: Color {
+        // Use the deeper purple so white text has enough contrast.
+        usesWhiteOnPurple ? theme.currentThemeColor.color(in: .light) : .themePrimaryAccent
     }
 
     private var tagSection: some View {

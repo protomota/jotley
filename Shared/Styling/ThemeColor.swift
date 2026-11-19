@@ -46,14 +46,4 @@ enum ThemeColor: String, CaseIterable, Codable {
     func textOnAccent(in scheme: ColorScheme) -> Color {
         scheme == .dark ? .black : .white
     }
-
-    /// Bright yellow needs a dark surface for small controls to remain readable.
-    func usesDarkGlass(in scheme: ColorScheme) -> Bool {
-        self == .yellow && scheme == .light
-    }
-
-    func glassForeground(in scheme: ColorScheme) -> Color {
-        usesDarkGlass(in: scheme) ? Color(red: 1, green: 0.89, blue: 0.12) : color(in: scheme)
-    }
-
 }
