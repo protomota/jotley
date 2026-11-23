@@ -1,75 +1,55 @@
 {
-  "fill-specializations" : [
+  "fill-specializations": [
     {
-      "value" : {
-        "automatic-gradient" : "extended-gray:0.50000,1.00000",
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
+      "value": {
+        "solid": "srgb:0.4862745098,0.2274509804,0.9294117647,1.0000000000"
       }
     },
     {
-      "appearance" : "dark",
-      "value" : {
-        "automatic-gradient" : "extended-gray:0.50000,1.00000",
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 0.7
-          }
-        }
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.4862745098,0.2274509804,0.9294117647,1.0000000000"
       }
     }
   ],
-  "groups" : [
+  "groups": [
     {
-      "layers" : [
+      "layers": [
         {
-          "blend-mode" : "normal",
-          "fill-specializations" : [
+          "blend-mode": "normal",
+          "fill-specializations": [
             {
-              "value" : "none"
+              "value": "none"
             },
             {
-              "appearance" : "dark",
-              "value" : "none"
+              "appearance": "dark",
+              "value": "none"
             }
           ],
-          "glass" : false,
-          "hidden" : false,
-          "image-name" : "jotley_logo.png",
-          "name" : "jotley_logo",
-          "position" : {
-            "scale" : 0.87,
-            "translation-in-points" : [
+          "glass": false,
+          "hidden": false,
+          "image-name": "jotley_logo.png",
+          "name": "jotley_logo",
+          "position": {
+            "scale": 1,
+            "translation-in-points": [
               0,
               0
             ]
           }
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "supported-platforms": {
+    "squares": "shared"
   }
 }

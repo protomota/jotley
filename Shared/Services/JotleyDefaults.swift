@@ -1532,6 +1532,10 @@ struct JotleyOnboardingView: View {
                     ViewThatFits(in: .vertical) {
                         mobilePageLayout(wide: wide, dense: compact, artWidth: artWidth, scale: scale)
                             .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
+                        if !wide && !compact && !dynamicTypeSize.isAccessibilitySize {
+                            mobilePageLayout(wide: false, dense: true, artWidth: artWidth, scale: scale)
+                                .fixedSize(horizontal: false, vertical: true).padding(.vertical, 12)
+                        }
                         ScrollView {
                             mobilePageLayout(wide: wide, dense: !dynamicTypeSize.isAccessibilitySize, artWidth: artWidth, scale: scale)
                                 .padding(.vertical, 8)
@@ -1668,18 +1672,24 @@ struct JotleyOnboardingView: View {
         .accessibilityIdentifier("onboardingHeader")
     }
     private func pageContent(page: Int, dense: Bool, inlineArtwork: Bool = false, scale: CGFloat = 1, twoLineTitle: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: (dense ? 10 : 22) * scale) {
+        let stackedArtwork = inlineArtwork && !dense
+        let headingLayout = stackedArtwork
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8 * scale))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12 * scale))
+        return VStack(alignment: .leading, spacing: (dense ? 10 : 22) * scale) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
+                headingLayout {
                     if inlineArtwork {
+                        let artworkSize = (stackedArtwork ? 116 : 88) * scale
                         Image(illustrationAsset(for: page)).resizable().interpolation(.high).antialiased(true).scaledToFit()
-                            .frame(width: 68, height: 68).accessibilityHidden(true)
+                            .frame(width: artworkSize, height: artworkSize)
+                            .accessibilityHidden(true)
                     }
                     Text(LocalizedStringKey(title(for: page, twoLines: twoLineTitle))).font(.system(inlineArtwork ? .title2 : .largeTitle, design: .rounded).weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
+                        .frame(height: (stackedArtwork ? 58 : 88) * scale, alignment: .topLeading)
                         .accessibilityIdentifier("onboardingTitle")
                 }
-                .frame(height: (inlineArtwork ? 68 : 88) * scale, alignment: .topLeading)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("onboardingHeading")
                 Text(LocalizedStringKey(dense && page == 2 ? "Choose your Apple Intelligence language." : subtitle(for: page))).font(dense ? .callout : .body).foregroundStyle(muted)

@@ -584,9 +584,9 @@ final class Jotley_iOSUITests: XCTestCase {
             }
         }
         var tallestPageHeight: CGFloat = 0
-        let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Free software.\nSupported by people."]
+        let titles = ["Stay in the conversation.", "Find the useful parts.", "Start with your language.", "Give your words a place.", "Summary notifications", "Free software.\nSupported by people."]
             .map { onboardingTitle($0, in: app) }
-        for index in 0..<5 {
+        for index in titles.indices {
             let titleMatches = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", titles[index]), object: app.staticTexts["onboardingTitle"])
             XCTAssertEqual(XCTWaiter.wait(for: [titleMatches], timeout: 15), .completed)
             if index == 2 {
@@ -612,7 +612,10 @@ final class Jotley_iOSUITests: XCTestCase {
                 XCTAssertLessThan(hint.frame.maxY, app.descendants(matching: .any)["onboardingProgress"].firstMatch.frame.minY - 8)
                 if app.buttons["onboardingSpeechSetup"].exists { XCTAssertTrue(app.buttons["onboardingSpeechSetup"].isHittable) }
             }
-            if index == 4 {
+            if titles[index] == "Summary notifications" {
+                XCTAssertTrue(app.switches["onboardingSummaryNotificationsToggle"].isHittable)
+            }
+            if index == titles.count - 1 {
                 XCTAssertTrue(app.buttons["onboardingTipJotley"].isHittable)
                 XCTAssertTrue(app.buttons["onboardingReviewJotley"].isHittable)
                 XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].isHittable)
@@ -624,7 +627,7 @@ final class Jotley_iOSUITests: XCTestCase {
             print("ONBOARDING step=\(index) block=\(block.frame) headerBottom=\(headerBottom) footerTop=\(footerTop) heading=\(app.staticTexts["onboardingTitle"].frame)")
             XCTAssertEqual(app.buttons["onboardingContinue"].frame.minY, initialAction.minY, accuracy: 1)
             XCTAssertEqual(app.staticTexts["onboardingTitle"].frame.minY, initialTitleTop, accuracy: 1, "Onboarding headings must stay at the same height on every page")
-            if index < 4 {
+            if index < titles.count - 1 {
                 if index == 3 && app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
                 else { app.buttons["onboardingContinue"].tap() }
             }
@@ -1182,6 +1185,9 @@ final class Jotley_iOSUITests: XCTestCase {
             }
             if app.buttons["onboardingNotNow"].exists { app.buttons["onboardingNotNow"].tap() }
             else { app.buttons["onboardingContinue"].tap() }
+            XCTAssertEqual(title.label, "Summary notifications")
+            XCTAssertTrue(app.switches["onboardingSummaryNotificationsToggle"].isHittable)
+            app.buttons["onboardingContinue"].tap()
             XCTAssertEqual(title.label, "Free software.\nSupported by people.")
             XCTAssertTrue(app.staticTexts["onboardingSupportSettingsHint"].exists)
             app.buttons["onboardingContinue"].tap()
