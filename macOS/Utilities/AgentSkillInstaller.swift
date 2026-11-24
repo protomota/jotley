@@ -1,6 +1,5 @@
 // Shared Protomota agent skill installer. Keep this file identical in every Protomota Mac app
 // (Inkspring, Glimmer, Jotley, Textley, OpenTalon); only the bundled SKILL.md differs.
-import CryptoKit
 import Foundation
 
 struct AgentSkillInstaller {
@@ -31,38 +30,29 @@ struct AgentSkillInstaller {
         let agentFound: Bool
     }
 
-    struct Marker: Codable, Equatable {
-        let app: String
-        let skillID: String
-        let version: String
-        let sha256: String
-    }
-
-    static let markerName = ".protomota-skill.json"
-
     let app: String
     let skillID: String
-    let version: String
     let instructions: Data
     let license: Data?
     let home: URL
 
-    init(app: String, skillID: String, version: String, instructions: Data, license: Data? = nil,
+    init(app: String, skillID: String, instructions: Data, license: Data? = nil,
          home: URL = AgentSkillInstaller.userHome) {
         self.app = app
         self.skillID = skillID
-        self.version = version
         self.instructions = instructions
         self.license = license
         self.home = home
     }
 
+    /// The bundled skill's `metadata.version`, the number every copy is compared against.
+    var version: String? { Self.frontMatter(instructions).version }
+
     /// Loads the bundled skill: AgentSkill.md (the SKILL.md) and AgentSkill-LICENSE.txt in the app's resources.
     init?(app: String, skillID: String, bundle: Bundle = .main, home: URL = AgentSkillInstaller.userHome) {
         guard let file = Self.bundledSkill(bundle), let instructions = try? Data(contentsOf: file) else { return nil }
-        let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
         let license = bundle.url(forResource: "AgentSkill-LICENSE", withExtension: "txt").flatMap { try? Data(contentsOf: $0) }
-        self.init(app: app, skillID: skillID, version: version, instructions: instructions, license: license, home: home)
+        self.init(app: app, skillID: skillID, instructions: instructions, license: license, home: home)
     }
 
     static func bundledSkill(_ bundle: Bundle = .main) -> URL? {
@@ -76,8 +66,6 @@ struct AgentSkillInstaller {
         }
         return FileManager.default.homeDirectoryForCurrentUser
     }
-
-    var sha256: String { SHA256.hash(data: instructions).map { String(format: "%02x", $0) }.joined() }
 
     /// Skill folders each agent reads, in the order the agent prefers them.
     func searchFolders(_ agent: Agent) -> [URL] {
@@ -111,8 +99,8 @@ struct AgentSkillInstaller {
 
     func statuses() -> [Status] { Agent.allCases.map(status) }
 
-    /// Installs or updates the bundled skill. A copy this app did not install is replaced only when
-    /// `replacing` is true, and the old folder moves to the Trash rather than being deleted.
+    /// Installs or updates the bundled skill. An older copy of the same skill is replaced; a folder holding
+    /// some other skill is replaced only when `replacing` is true. The old folder (or link) moves to the Trash.
     @discardableResult
     func install(_ agent: Agent, replacing: Bool = false) throws -> URL {
         let parent = installFolder(agent)
@@ -131,10 +119,6 @@ struct AgentSkillInstaller {
         do {
             try instructions.write(to: staging.appending(path: "SKILL.md"))
             if let license { try license.write(to: staging.appending(path: "LICENSE")) }
-            let marker = Marker(app: app, skillID: skillID, version: version, sha256: sha256)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(marker).write(to: staging.appending(path: Self.markerName))
             if exists(target) { try trash(target) }
             try manager.moveItem(at: staging, to: target)
         } catch {
@@ -148,7 +132,7 @@ struct AgentSkillInstaller {
         case differentVersion(URL)
         var errorDescription: String? {
             switch self {
-            case .differentVersion(let url): "A different version is already in \(url.path). Choose Replace to use this one."
+            case .differentVersion(let url): "A different skill is already in \(url.path). Choose Replace to use this one."
             }
         }
     }
@@ -199,15 +183,45 @@ struct AgentSkillInstaller {
 
     // MARK: - Detection
 
+    /// Same bytes, or the same skill at this version or newer: installed. The same skill at an older or
+    /// unknown version, or a copy this app can't read (such as a link the App Sandbox can't follow): update.
+    /// A folder whose SKILL.md names another skill: different.
     private func classify(_ candidate: URL) -> State {
-        let installed = try? Data(contentsOf: candidate.appending(path: "SKILL.md"))
+        guard let installed = try? Data(contentsOf: candidate.appending(path: "SKILL.md")) else { return .updateAvailable }
         if installed == instructions { return .installed }
-        if let data = try? Data(contentsOf: candidate.appending(path: Self.markerName)),
-           let marker = try? JSONDecoder().decode(Marker.self, from: data),
-           marker.app == app, marker.skillID == skillID {
-            return .updateAvailable
+        let found = Self.frontMatter(installed)
+        guard found.name == skillID else { return .differentVersion }
+        guard let current = version, let other = found.version else { return .updateAvailable }
+        return Self.compare(other, current) == .orderedAscending ? .updateAvailable : .installed
+    }
+
+    /// Reads `name` and `metadata.version` from a SKILL.md front matter block.
+    static func frontMatter(_ data: Data) -> (name: String?, version: String?) {
+        let lines = String(decoding: data, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: false)
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return (nil, nil) }
+        var name: String?, version: String?, inMetadata = false
+        for line in lines.dropFirst() {
+            if line.trimmingCharacters(in: .whitespaces) == "---" { break }
+            let indented = line.first == " " || line.first == "\t"
+            let parts = line.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { inMetadata = !indented && parts.first == "metadata"; continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            let value = parts[1].trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            if !indented { inMetadata = key == "metadata" && value.isEmpty }
+            if !indented && key == "name" { name = value }
+            if indented && inMetadata && key == "version" { version = value }
         }
-        return .differentVersion
+        return (name, version)
+    }
+
+    /// Compares dotted version numbers numerically (1.10.0 is newer than 1.9.2).
+    static func compare(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        let left = lhs.split(separator: ".").map { Int($0) ?? 0 }, right = rhs.split(separator: ".").map { Int($0) ?? 0 }
+        for index in 0..<max(left.count, right.count) {
+            let a = index < left.count ? left[index] : 0, b = index < right.count ? right[index] : 0
+            if a != b { return a < b ? .orderedAscending : .orderedDescending }
+        }
+        return .orderedSame
     }
 
     /// Claude Code plugins record their install folders; a matching plugin name or skill counts.

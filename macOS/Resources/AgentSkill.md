@@ -1,6 +1,8 @@
 ---
 name: jotley-mcp
 description: Install and use the Jotley MCP server, the voice notes and transcription app for Mac, from Claude Code, Codex or Claude chat. Use when someone wants to connect Jotley to their agent, asks why Jotley tools are missing, or asks to find, read, summarize, edit, tag, file, duplicate or delete their Jotley notes, meeting notes or transcripts.
+metadata:
+  version: "1.0.0"
 ---
 
 # Jotley MCP

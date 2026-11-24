@@ -84,7 +84,7 @@ struct AgentSkillSection: View {
                 Button("Update") { install(status.agent) }.disabled(busy != nil)
             case .differentVersion:
                 HStack(spacing: 8) {
-                    Text("Different version found").foregroundStyle(.secondary)
+                    Text("Different skill found").foregroundStyle(.secondary)
                     Button("Replace…") { replacing = status }.disabled(busy != nil)
                 }
             case .notInstalled:
