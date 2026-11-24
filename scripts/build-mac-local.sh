@@ -25,7 +25,7 @@ if [[ ! -d /Volumes/Expand ]]; then
   print -u2 'Expand is not mounted. Mount it before building; generated files must stay on Expand.'
   exit 1
 fi
-export TMPDIR="/Volumes/Expand/Codex Media/jotley-local-signed-build-tmp"
+export TMPDIR="/Volumes/Expand/Scratch/codex-media-jotley-local-signed-build-tmp"
 mkdir -p "$TMPDIR"
 xcodebuild -project "$task_repo_root/Jotley.xcodeproj" -scheme Jotley \
   -configuration "$task_configuration" -destination 'platform=macOS' \

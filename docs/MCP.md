@@ -121,8 +121,8 @@ Note writes use Jotley's open Core Data context and follow its configured iCloud
 Build the Debug Mac scheme using [PUBLIC_BUILD.md](PUBLIC_BUILD.md), directing build output to Expand. Then run:
 
 ```sh
-JOTLEY_MAC_BUILD_PRODUCTS='/Volumes/Expand/Codex Media/jotley-mcp/build/Build/Products/Debug' \
-JOTLEY_MCP_TEST_OUTPUT='/Volumes/Expand/Codex Media/jotley-mcp/tests' \
+JOTLEY_MAC_BUILD_PRODUCTS='/Volumes/Expand/Projects/Jotley/jotley-mcp/build/Build/Products/Debug' \
+JOTLEY_MCP_TEST_OUTPUT='/Volumes/Expand/Projects/Jotley/jotley-mcp/tests' \
   zsh scripts/test-mcp.sh
 ```
 
