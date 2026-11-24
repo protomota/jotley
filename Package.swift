@@ -24,10 +24,12 @@ let package = Package(
             "Shared/Services/TranscriptionService.swift",
             "macOS/ProcessTap/CoreAudioUtils.swift",
             "macOS/ProcessTap/ProcessTap.swift",
-            "macOS/ProcessTap/ProcessTapRecorder.swift"
-        ], resources: [.process("Shared/Models/JotleyNotes.xcdatamodeld")]),
+            "macOS/ProcessTap/ProcessTapRecorder.swift",
+            "macOS/Utilities/AgentSkillInstaller.swift"
+        ], resources: [.process("Shared/Models/JotleyNotes.xcdatamodeld")],
+        swiftSettings: [.enableUpcomingFeature("BareSlashRegexLiterals")]),
         .testTarget(name: "jotleyTests", dependencies: ["jotley"], path: "Tests/jotleyTests",
-                    sources: ["ContinuationResumerTests.swift", "SummaryTemplateTests.swift", "SupportClientTests.swift", "LibraryBackupTests.swift", "SupporterTests.swift", "TranscriptEditingTests.swift"])
+                    sources: ["ContinuationResumerTests.swift", "SummaryTemplateTests.swift", "SupportClientTests.swift", "LibraryBackupTests.swift", "SupporterTests.swift", "TranscriptEditingTests.swift", "AgentSkillInstallerTests.swift"])
     ],
     swiftLanguageModes: [.v5]
 )

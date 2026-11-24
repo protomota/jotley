@@ -87,6 +87,10 @@ extension SettingsView {
 
                 mcpDesktopSetup
 
+                AgentSkillSection()
+                    .padding(18)
+                    .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
+
                 Label("Connected agents can read your library and may send retrieved text to their AI provider. Read & write also allows changes and permanent deletion. Keep Jotley open while using MCP.", systemImage: "lock.shield")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 

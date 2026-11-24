@@ -27,6 +27,10 @@
 		F10000000000000000000009 = {isa = PBXBuildFile; fileRef = F20000000000000000000009; };
 		F10000000000000000000006 /* JotleyMCPDesktopSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000006; };
 		F10000000000000000000007 /* SettingsView+MCPDesktopSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000007; };
+		F1000000000000000000000A /* AgentSkillInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000A; };
+		F1000000000000000000000B /* AgentSkillSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000B; };
+		F1000000000000000000000C /* AgentSkill.md in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000C; };
+		F1000000000000000000000D /* AgentSkill-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = F2000000000000000000000D; };
 		F10000000000000000000008 /* JotleyClaudeMCP in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000008; };
 		F8000000000000000000022 /* SummaryTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7000000000000000000022; };
 		EFCD00000000000000004737 /* NotesTrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFCD00000000000000004735; };
@@ -269,6 +273,10 @@
 		F20000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPStdioBridge.swift"; path = "macOS/Utilities/JotleyMCPStdioBridge.swift"; sourceTree = SOURCE_ROOT; };
 		F20000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "JotleyMCPDesktopSetup.swift"; path = "macOS/Utilities/JotleyMCPDesktopSetup.swift"; sourceTree = SOURCE_ROOT; };
 		F20000000000000000000007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsView+MCPDesktopSetup.swift"; path = "macOS/Views/SettingsView+MCPDesktopSetup.swift"; sourceTree = SOURCE_ROOT; };
+		F2000000000000000000000A /* AgentSkillInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AgentSkillInstaller.swift"; path = "macOS/Utilities/AgentSkillInstaller.swift"; sourceTree = SOURCE_ROOT; };
+		F2000000000000000000000B /* AgentSkillSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AgentSkillSection.swift"; path = "macOS/Views/AgentSkillSection.swift"; sourceTree = SOURCE_ROOT; };
+		F2000000000000000000000C /* AgentSkill.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = "AgentSkill.md"; path = "macOS/Resources/AgentSkill.md"; sourceTree = SOURCE_ROOT; };
+		F2000000000000000000000D /* AgentSkill-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = "AgentSkill-LICENSE.txt"; path = "macOS/Resources/AgentSkill-LICENSE.txt"; sourceTree = SOURCE_ROOT; };
 		F20000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = folder; name = JotleyClaudeMCP; path = macOS/Resources/JotleyClaudeMCP; sourceTree = SOURCE_ROOT; };
 		F7000000000000000000022 /* SummaryTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTemplatesView.swift; sourceTree = "<group>"; };
 		EFCD00000000000000004735 /* NotesTrashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesTrashView.swift; sourceTree = "<group>"; };
@@ -789,6 +797,10 @@
 				F20000000000000000000009,
 				F20000000000000000000007,
 				F20000000000000000000008,
+				F2000000000000000000000A /* AgentSkillInstaller.swift */,
+				F2000000000000000000000B /* AgentSkillSection.swift */,
+				F2000000000000000000000C /* AgentSkill.md */,
+				F2000000000000000000000D /* AgentSkill-LICENSE.txt */,
 				F20000000000000000000003 /* JotleyMCPHTTPServer.swift */,
 				F20000000000000000000002 /* JotleyMCPTools.swift */,
 				F20000000000000000000001 /* JotleyMCPService.swift */,
@@ -1400,6 +1412,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F10000000000000000000008,
+				F1000000000000000000000C /* AgentSkill.md in Resources */,
+				F1000000000000000000000D /* AgentSkill-LICENSE.txt in Resources */,
 				A2EA91E4307B453D00AAB201 /* Comfortaa-Bold.ttf in Resources */,
 				A2EA91FA307B486500AAB201 /* Rambo-BSD-2-Clause.txt in Resources */,
 				F10000000000000000000005,
@@ -1619,6 +1633,8 @@
 				A2EA9105307B41D700AAB201 /* CoreAudioUtils.swift in Sources */,
 				A2EA9106307B41D700AAB201 /* JotleyApp.swift in Sources */,
 				F10000000000000000000004 /* SettingsView+MCPTab.swift in Sources */,
+				F1000000000000000000000A /* AgentSkillInstaller.swift in Sources */,
+				F1000000000000000000000B /* AgentSkillSection.swift in Sources */,
 				F10000000000000000000006,
 				F10000000000000000000009,
 				F10000000000000000000007,
