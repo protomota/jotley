@@ -32,20 +32,23 @@ extension NotesListView {
         }
         .navigationSplitViewStyle(.automatic)
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                let title = sidebarVisibility == .detailOnly ? "Show Sidebar" : "Hide Sidebar"
-                Button {
-                    sidebarVisibility = sidebarVisibility == .detailOnly ? .all : .detailOnly
-                } label: {
-                    Image(systemName: "sidebar.left").font(.system(size: 15, weight: .medium))
+            // The window toolbar stays visible during setup for the traffic lights, so drop the toggle there.
+            if !onboardingActive {
+                ToolbarItem(placement: .navigation) {
+                    let title = sidebarVisibility == .detailOnly ? "Show Sidebar" : "Hide Sidebar"
+                    Button {
+                        sidebarVisibility = sidebarVisibility == .detailOnly ? .all : .detailOnly
+                    } label: {
+                        Image(systemName: "sidebar.left").font(.system(size: 15, weight: .medium))
+                    }
+                    .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 30, floatsOverContent: true))
+                    .padding(4)
+                    .accessibilityLabel(title)
+                    .accessibilityIdentifier("notesSidebarToggle")
+                    .help(title)
                 }
-                .buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 30, floatsOverContent: true))
-                .padding(4)
-                .accessibilityLabel(title)
-                .accessibilityIdentifier("notesSidebarToggle")
-                .help(title)
+                .sharedBackgroundVisibility(.hidden)
             }
-            .sharedBackgroundVisibility(.hidden)
         }
         .background(Color.themeContentBackground)
     }

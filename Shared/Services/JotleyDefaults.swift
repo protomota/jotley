@@ -1385,6 +1385,11 @@ enum JotleyOnboarding {
     }
 }
 
+extension EnvironmentValues {
+    /// True while setup covers the window, so toolbar items behind it can step aside.
+    @Entry var jotleyOnboardingActive = false
+}
+
 struct JotleyOnboardingPresentation: ViewModifier {
     @Binding var replay: Bool
     var onDismiss: () -> Void
@@ -1400,6 +1405,7 @@ struct JotleyOnboardingPresentation: ViewModifier {
             // Preserve the open note and navigation state while setup owns the window.
             content.opacity(showing ? 0 : 1)
                 .disabled(showing).accessibilityHidden(showing)
+                .environment(\.jotleyOnboardingActive, showing)
             if showing {
                 JotleyOnboardingView { replay = false; onDismiss() }
                     .transition(.opacity).zIndex(1)
@@ -1592,7 +1598,14 @@ struct JotleyOnboardingView: View {
         #if os(macOS)
         .task { allowsWebsiteTips = await JotleyWebsiteTipPolicy.currentPermission() }
         #endif
-        .onAppear { refreshMicrophone() }
+        .onAppear {
+            refreshMicrophone()
+            #if DEBUG
+            // Screenshot checks can open a specific setup page.
+            if let page = ProcessInfo.processInfo.environment["JOTLEY_ONBOARDING_STEP"].flatMap(Int.init),
+               steps.indices.contains(page) { step = page }
+            #endif
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshMicrophone(); summaryReason = intelligenceReadiness() }
         }

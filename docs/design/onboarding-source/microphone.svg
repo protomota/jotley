@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1280" width="1280" height="1280">
+  <!-- yoke -->
+  <path d="M424 570 L468 570 L468 676 L537 744 L753 744 L822 676 L822 570 L866 570 L866 696 L778 792 L512 792 L424 696 Z" fill="#E9DDFF"/>
+  <path d="M410 504 L492 504 L492 592 L420 592 L400 572 L400 524 Z" fill="#2A1B46"/>
+  <path d="M880 504 L798 504 L798 592 L870 592 L890 572 L890 524 Z" fill="#2A1B46"/>
+  <!-- capsule -->
+  <path d="M550 196 L740 196 L810 266 L810 600 L776 652 L726 696 L564 696 L514 652 L480 600 L480 266 Z" fill="#7C3AED"/>
+  <g fill="#FFFFFF"><circle cx="565" cy="290" r="24"/><circle cx="645" cy="290" r="24"/><circle cx="725" cy="290" r="24"/><circle cx="565" cy="370" r="24"/><circle cx="645" cy="370" r="24"/><circle cx="725" cy="370" r="24"/><circle cx="565" cy="450" r="24"/><circle cx="645" cy="450" r="24"/><circle cx="725" cy="450" r="24"/></g>
+  <!-- stand -->
+  <rect x="609" y="792" width="72" height="96" fill="#2A1B46"/>
+  <path d="M526 884 L764 884 L806 928 L806 950 L484 950 L484 928 Z" fill="#2A1B46"/>
+  <!-- sound marks -->
+  <g fill="#7C3AED">
+    <path d="M940 196 L968 256 L862 330 L848 306 Z"/>
+    <path d="M870 378 L962 340 L956 392 L868 400 Z"/>
+  </g>
+</svg>

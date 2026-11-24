@@ -13,14 +13,13 @@ enum ThemeColor: String, CaseIterable, Codable {
         return self.rawValue
     }
 
-    // Match the website's violet for each appearance.
-    private static let purpleLightMode = Color(red: 124.0 / 255, green: 58.0 / 255, blue: 237.0 / 255)
-    private static let purpleDarkMode = Color(red: 139.0 / 255, green: 92.0 / 255, blue: 246.0 / 255)
+    // The app icon's violet (#7C3AED) in both appearances, so the theme matches the logo.
+    private static let iconViolet = Color(red: 124.0 / 255, green: 58.0 / 255, blue: 237.0 / 255)
 
     func color(in scheme: ColorScheme) -> Color {
         switch self {
         case .purple:
-            return scheme == .dark ? Self.purpleDarkMode : Self.purpleLightMode
+            return Self.iconViolet
         case .orange:
             return scheme == .dark
                 ? Color(red: 1, green: 181.0 / 255, blue: 111.0 / 255)
@@ -44,6 +43,8 @@ enum ThemeColor: String, CaseIterable, Codable {
     }
 
     func textOnAccent(in scheme: ColorScheme) -> Color {
-        scheme == .dark ? .black : .white
+        // The icon violet is dark enough for white text in both appearances.
+        if self == .purple { return .white }
+        return scheme == .dark ? .black : .white
     }
 }

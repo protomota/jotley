@@ -22,6 +22,7 @@ struct NotesListView: View {
     @State var showingTrash = false
     @State var showingTagFilter = false
     @State var sidebarVisibility: NavigationSplitViewVisibility = .all
+    @Environment(\.jotleyOnboardingActive) var onboardingActive
     @StateObject var filterState = FilterAndSortState()
     @AppStorage("foldersExpanded") var foldersExpanded: Bool = false
     @AppStorage(RecordingWidgetController.widgetEnabledDefaultsKey) var showRecordingWidget: Bool = true
