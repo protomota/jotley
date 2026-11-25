@@ -975,6 +975,12 @@ struct JotleySupportCardPresentation: ViewModifier {
     func body(content: Content) -> some View {
         presentedContent(content)
             .animation(.easeOut(duration: 0.18), value: isPresented)
+            #if DEBUG
+            // Screenshot hook: open the support card on launch.
+            .onAppear {
+                if ProcessInfo.processInfo.environment["JOTLEY_SHOW_SUPPORT_CARD"] == "1" { isPresented = true }
+            }
+            #endif
     }
 }
 
