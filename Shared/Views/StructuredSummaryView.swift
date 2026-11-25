@@ -760,6 +760,6 @@ struct NoteContentSwitch: View {
 
     private var selectionHighlight: some View {
         Capsule().fill(Color.themeBackground)
-            .overlay { Capsule().strokeBorder(Color.themePrimaryAccent.opacity(0.60)) }
+            .overlay { Capsule().strokeBorder(Color.themePrimaryAccent) }
     }
 }

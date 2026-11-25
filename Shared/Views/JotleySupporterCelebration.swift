@@ -14,7 +14,7 @@ struct JotleySupporterBadge: View {
             .font(.caption.weight(.semibold))
             .foregroundStyle(.primary)
             .padding(.horizontal, 12).padding(.vertical, 7)
-            .overlay(Capsule().strokeBorder(Color.themePrimaryAccent.opacity(0.55)))
+            .overlay(Capsule().strokeBorder(Color.themePrimaryAccent))
             .accessibilityIdentifier("jotleySupporterBadge")
         }
     }
@@ -92,7 +92,7 @@ private struct SupporterConfetti: View {
     }
 
     private func drawConfetti(_ context: GraphicsContext, size: CGSize, elapsed: Double) {
-        let colors: [Color] = [accent, .white, accent.opacity(0.65), Color(red: 1, green: 0.83, blue: 0.49)]
+        let colors: [Color] = [accent, .white, Color(red: 1, green: 0.83, blue: 0.49)]
         for index in 0..<150 {
             let delay = variation(index, 1) * 0.32 + (index > 95 ? 0.3 : 0)
             let age = elapsed - delay

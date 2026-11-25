@@ -86,7 +86,7 @@ struct RecordingIndicator: View {
         } else {
             ZStack {
                 Circle()
-                    .fill(Color.themePrimaryAccent.opacity(0.85))
+                    .fill(Color.themePrimaryAccent)
                     .frame(width: size, height: size)
 
                 // Use the parameterized iconView for the app icon
@@ -283,13 +283,13 @@ struct RecordingIndicator: View {
                     let staticHeight = constrainedHeight * min(max(smoothedHeightFactor * 0.72, 0.22), 0.72)
                     let accent = Color.themePrimaryAccent
                     RoundedRectangle(cornerRadius: constrainedHeight * 0.1)
-                        .fill(accent.opacity(0.8))
+                        .fill(accent)
                         .frame(width: barWidth, height: staticHeight)
                 } else {
                     // When inactive: Display a small dot
                     let accent = Color.themePrimaryAccent
                     Circle()
-                        .fill(accent.opacity(0.85))
+                        .fill(accent)
                         .frame(width: barWidth, height: barWidth)
                 }
             }

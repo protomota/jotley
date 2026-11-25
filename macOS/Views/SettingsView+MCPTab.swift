@@ -9,7 +9,7 @@ extension SettingsView {
                     Image(systemName: "point.3.connected.trianglepath.dotted")
                         .font(.system(size: 26, weight: .medium)).foregroundStyle(Color.themePrimaryAccent)
                         .frame(width: 52, height: 52)
-                        .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Connect your AI agents").font(.title2.bold())
                         Text("Work with your notes from Claude Code, Codex or Claude chat on your Mac. Set up directly in the desktop apps.")
@@ -119,7 +119,7 @@ extension SettingsView {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)").font(.system(.caption, design: .rounded).bold())
                 .foregroundStyle(.primary).frame(width: 25, height: 25)
-                .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
             VStack(alignment: .leading, spacing: 8) {
                 Text(title).font(.callout.bold())
                 Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

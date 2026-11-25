@@ -97,7 +97,7 @@ struct QuickRecordMediumView: View {
                 HStack(spacing: 3) {
                     ForEach(0..<12, id: \.self) { i in
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(Color.jotleyWidgetAccent.opacity(0.4 + Double(i % 3) * 0.2))
+                            .fill(Color.jotleyWidgetAccent)
                             .frame(width: 3, height: CGFloat([8, 14, 10, 18, 12, 16, 8, 14, 20, 10, 14, 8][i]))
                     }
                 }

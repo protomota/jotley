@@ -92,7 +92,7 @@ struct SettingsView: View {
                         .font(.system(size: 28))
                         .foregroundStyle(Color.themePrimaryAccent)
                         .padding(12)
-                        .background(Color.themePrimaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Your notes, connected on Mac.").font(.headline)

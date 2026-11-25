@@ -189,7 +189,7 @@ struct JotleyTranscriptCard: ViewModifier {
         }
         .overlay {
             shape.strokeBorder(
-                accentOutline ? accent.opacity(0.58) : Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.16),
+                accentOutline ? accent : Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.16),
                 lineWidth: 1
             )
                 .allowsHitTesting(false)
@@ -1246,7 +1246,7 @@ struct JotleySupportView: View {
     }
     private var supportActionOutline: some View {
         RoundedRectangle(cornerRadius: 14)
-            .strokeBorder(theme.currentThemeColor.color(in: colorScheme).opacity(0.8), lineWidth: 1)
+            .strokeBorder(theme.currentThemeColor.color(in: colorScheme), lineWidth: 1)
             .allowsHitTesting(false)
     }
 
@@ -1855,7 +1855,7 @@ struct JotleyOnboardingView: View {
                                 }
                                 .font(.body).padding(.horizontal, 12).padding(.vertical, 10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(item.id == language ? accent.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .background(item.id == language ? Color.primary.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 10))
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain).accessibilityLabel(item.name)

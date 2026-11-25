@@ -431,7 +431,7 @@ extension NotesListView {
         var body: some View {
             ZStack {
                 Circle()
-                    .fill(Color.themePrimaryAccent.opacity(0.35))
+                    .fill(Color.primary.opacity(0.12))
                     .frame(width: 24, height: 24)
                     .overlay(
                         Circle()

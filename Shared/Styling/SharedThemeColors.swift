@@ -357,7 +357,7 @@ struct JotleyNoteTagStyle: ViewModifier {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
             .overlay {
-                Capsule().strokeBorder(accent.opacity(0.48), lineWidth: 1)
+                Capsule().strokeBorder(accent, lineWidth: 1)
                     .allowsHitTesting(false)
             }
     }

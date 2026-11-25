@@ -111,7 +111,7 @@ extension NoteDetailPlaceholderView {
                 .padding(.vertical, icon == nil ? 5 : 8)
                 .frame(minHeight: 28)
                 .background(hoveredItem == key || selected ? Color.primary.opacity(0.06) : .clear, in: shape)
-                .overlay { shape.strokeBorder(selected ? accent.opacity(0.65) : .clear, lineWidth: 1).allowsHitTesting(false) }
+                .overlay { shape.strokeBorder(selected ? accent : .clear, lineWidth: 1).allowsHitTesting(false) }
                 .contentShape(shape)
             }
             .buttonStyle(.plain)

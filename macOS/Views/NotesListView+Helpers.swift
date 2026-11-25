@@ -81,7 +81,7 @@ extension NotesListView {
                     }
                     .overlay(
                         Circle()
-                            .stroke(Color.themePrimaryAccent.opacity(0.7), lineWidth: 0.8)
+                            .stroke(Color.themePrimaryAccent, lineWidth: 0.8)
                     )
                     .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.4 : 0.18), radius: 2, x: 0, y: 1)
                     .padding(.top, 5)

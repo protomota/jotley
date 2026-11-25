@@ -382,7 +382,7 @@ struct JotleySupportTicketsView: View {
                             }
                             .padding(14)
                             .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.themePrimaryAccent.opacity(message.senderRole == "support" ? 0.45 : 0.25)))
+                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(message.senderRole == "support" ? Color.themePrimaryAccent : Color.primary.opacity(0.16)))
                             .frame(maxWidth: .infinity, alignment: message.senderRole == "support" ? .leading : .trailing)
                             .id(message.id)
                         }
