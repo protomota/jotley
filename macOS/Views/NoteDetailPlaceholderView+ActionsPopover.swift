@@ -1,0 +1,339 @@
+import SwiftUI
+import AppKit
+
+extension NoteDetailPlaceholderView {
+    // Action popover content
+    var actionPopoverContentView: some View {
+        CustomMoreMenu(parent: self, viewModel: viewModel, note: note, isPresented: $showActionsPopover)
+    }
+
+    struct CustomMoreMenu: View {
+        let parent: NoteDetailPlaceholderView
+        @ObservedObject var viewModel: NotesListViewModel
+        let note: Note
+        @Binding var isPresented: Bool
+        @AppStorage(SummaryDisplayStyle.preferenceKey) private var summaryStyle: SummaryDisplayStyle = .cards
+        @State private var showTemplateSubmenu = false
+        @State private var showExportSubmenu = false
+        @State private var templateMenuFrame: CGRect = .zero
+        private let mainMenuWidth: CGFloat = 260
+        private let submenuGap: CGFloat = 2
+
+        // Get the current template name from note.summaryType
+        private var currentTemplateName: String {
+            parent.templateCatalog.title(for: note.summaryType)
+        }
+
+        private var hasSummary: Bool {
+            guard let summary = note.summary else { return false }
+            let trimmedSummary = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedSummary.isEmpty else { return false }
+
+            return trimmedSummary != "Transcription in progress..." && trimmedSummary != "Generating summary..."
+        }
+
+        private var showsSummaryActions: Bool {
+            hasSummary && !isRecordingThisNote
+        }
+
+        private var showsTemplateActions: Bool {
+            parent.hasContentToSummarize && !isRecordingThisNote
+        }
+
+        private var isRecordingThisNote: Bool {
+            viewModel.recorder.isRecording &&
+            viewModel.recorder.isRecordingNewNote &&
+            viewModel.newNoteBeingRecorded == note
+        }
+
+        private var liveTranscriptForCopy: String {
+            let finalized = viewModel.recorder.accumulatedTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+            let interim = viewModel.recorder.latestTranscriptDelta.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if !finalized.isEmpty && !interim.isEmpty {
+                return "\(finalized)\n\n\(interim)"
+            }
+
+            if !finalized.isEmpty {
+                return finalized
+            }
+
+            if !interim.isEmpty {
+                return interim
+            }
+
+            return (note.transcription ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        private func applyTemplateAndRegenerate(_ templateKey: String) {
+            isPresented = false
+            guard note.summaryType ?? "default-summary" != templateKey else { return }
+            parent.selectedTemplateKeyForAction = templateKey
+            parent.currentSelectedTemplate = parent.availableTemplates.first { $0.key == templateKey } ??
+                Template(
+                    key: "default-summary",
+                    title: "Auto",
+                    description: "General content with structured key points",
+                    category: nil
+                )
+
+            Task {
+                await parent.handleSummarizeAction(templateKey: templateKey)
+            }
+        }
+
+        var body: some View {
+            VStack(spacing: 0) {
+                if !isRecordingThisNote {
+                    HStack(spacing: 10) {
+                        Text("Summary Style")
+                            .accessibilityHidden(true)
+                        Spacer(minLength: 0)
+                        Menu {
+                            SummaryDisplayStylePicker()
+                                .pickerStyle(.inline)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(summaryStyle.title)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 30)
+                            .modifier(JotleyGlassMenuLabel(shape: Capsule()))
+                            .contentShape(Capsule())
+                        }
+                        .menuStyle(.button)
+                        .buttonStyle(.plain)
+                        .menuIndicator(.hidden)
+                        .accessibilityLabel("Summary Style")
+                        .accessibilityValue(summaryStyle.title)
+                        .accessibilityIdentifier("noteDetailSummaryStyleMenu")
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                }
+                if isRecordingThisNote {
+                    MenuItemView(
+                        icon: "doc.on.doc",
+                        title: "Copy",
+                        disabled: liveTranscriptForCopy.isEmpty
+                    ) {
+                        if !liveTranscriptForCopy.isEmpty {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(liveTranscriptForCopy, forType: .string)
+                        }
+                        isPresented = false
+                    }
+                } else {
+                    if showsTemplateActions {
+                        // Click to open/close template submenu.
+                        MenuItemView(
+                            icon: "sparkles",
+                            title: "Template",
+                            subtitle: currentTemplateName,
+                            hasSubmenu: true,
+                            submenuExpanded: showTemplateSubmenu
+                        ) {
+                            if showTemplateSubmenu {
+                                showTemplateSubmenu = false
+                            } else {
+                                if parent.availableTemplates.isEmpty {
+                                    parent.loadTemplates()
+                                }
+                                showTemplateSubmenu = true
+                            }
+                        }
+                        .background(
+                            GeometryReader { geometry in
+                                Color.clear
+                                    .onAppear {
+                                        templateMenuFrame = geometry.frame(in: .local)
+                                    }
+                            }
+                        )
+                    }
+
+                    if showsTemplateActions {
+                        if note.hasMeaningfulSummaryText {
+                            MenuItemView(
+                                icon: "arrow.clockwise",
+                                title: String(localized: "Regenerate Summary"),
+                                disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
+                                    viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy
+                            ) {
+                                isPresented = false
+                                Task {
+                                    await parent.handleSummarizeAction(templateKey: note.summaryType ?? LocalSummaryTemplate.auto.key)
+                                }
+                            }
+                            .accessibilityIdentifier("noteDetailRegenerateSummaryMenuButton")
+                        }
+                        Divider()
+                            .padding(.vertical, 4)
+                    }
+
+                    MenuItemView(icon: "bubble.left.and.bubble.right", title: "Ask AI",
+                        disabled: (!parent.hasContentToSummarize && !hasSummary) || parent.hasActiveRecordingSession || viewModel.isGeneratingSummary) {
+                        isPresented = false
+                        parent.showingAskAI = true
+                    }.accessibilityIdentifier("noteDetailAskAIMenuItem")
+
+                    // Copy — context-aware, copies current tab content
+                    MenuItemView(
+                        icon: "doc.on.doc",
+                        title: "Copy",
+                        subtitle: DetailTab(rawValue: parent.selectedTab)?.title
+                    ) {
+                        parent.copyCurrentTabContent()
+                        isPresented = false
+                    }
+
+                    // Save to File — inline-expanding submenu
+                    MenuItemView(
+                        icon: "square.and.arrow.up",
+                        title: "Save to File...",
+                        hasSubmenu: true,
+                        submenuExpanded: showExportSubmenu
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            showExportSubmenu.toggle()
+                        }
+                    }
+
+                    if showExportSubmenu {
+                        if showsSummaryActions {
+                            MenuItemView(
+                                icon: "doc.richtext",
+                                title: "Summary as PDF"
+                            ) {
+                                parent.exportSummaryPDF()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportSummaryPDFButton")
+
+                            MenuItemView(
+                                icon: "text.badge.checkmark",
+                                title: "Summary Only"
+                            ) {
+                                parent.exportSummary()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportSummaryButton")
+                        }
+
+                        if let transcription = note.transcription,
+                           !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            MenuItemView(
+                                icon: "text.badge.checkmark",
+                                title: "Transcript Only"
+                            ) {
+                                parent.exportTranscript()
+                                isPresented = false
+                            }
+                            .accessibilityIdentifier("exportTranscriptButton")
+                        }
+
+                        MenuItemView(
+                            icon: "doc.plaintext",
+                            title: "Full Note (Plain Text)"
+                        ) {
+                            parent.exportAsPlainText()
+                            isPresented = false
+                        }
+
+                        MenuItemView(
+                            icon: "text.badge.checkmark",
+                            title: "Full Note (Formatted)"
+                        ) {
+                            parent.exportAsMarkdown()
+                            isPresented = false
+                        }
+                    }
+
+                    if InkspringIdeaLink.isInstalled {
+                        MenuItemView(icon: "lightbulb", title: "Post Idea to Inkspring",
+                            disabled: !parent.hasContentToSummarize && !showsSummaryActions) {
+                            isPresented = false
+                            InkspringIdeaLink.send(title: note.title, summary: note.summary, transcript: note.transcription)
+                        }.accessibilityIdentifier("noteDetailPostIdeaToInkspringMenuItem")
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    if showsSummaryActions {
+                        MenuItemView(
+                            icon: "pencil",
+                            title: "Edit Summary",
+                            disabled: parent.hasActiveRecordingSession || viewModel.isGeneratingSummary
+                        ) {
+                            parent.requestSummaryInlineEdit()
+                            isPresented = false
+                        }
+                        .accessibilityIdentifier("noteDetailEditSummaryMenuItem")
+                    }
+
+                    if parent.hasContentToSummarize {
+                        MenuItemView(icon: "pencil", title: "Edit Transcript",
+                            disabled: parent.hasActiveRecordingSession || viewModel.recorder.isBusy ||
+                                viewModel.operationInProgress || viewModel.isGeneratingSummary || LocalAppModel.shared.busy) {
+                            parent.selectedTab = DetailTab.transcript.rawValue
+                            parent.isEditingTranscript = true
+                            isPresented = false
+                        }.accessibilityIdentifier("noteDetailEditTranscriptMenuItem")
+                    }
+
+                    // Delete
+                    MenuItemView(
+                        icon: "trash",
+                        title: String(localized: "Move to Trash"),
+                        isDestructive: true
+                    ) {
+                        isPresented = false
+                        viewModel.performContextualDelete(for: note)
+                    }.accessibilityIdentifier("noteDetailMoveToTrash")
+                }
+            }
+            .padding(6)
+            .frame(width: mainMenuWidth)
+            .modifier(MacNoteMenuSurface())
+            .overlay(alignment: .topLeading) {
+                if showTemplateSubmenu && showsTemplateActions {
+                    TemplateSubmenu(
+                        note: note,
+                        availableTemplates: parent.availableTemplates,
+                        onSelectTemplate: { templateKey in
+                            applyTemplateAndRegenerate(templateKey)
+                        }, onManageTemplates: { create in
+                            isPresented = false
+                            parent.templatePresentation = create ? .create : .manage
+                        }
+                    )
+                    // The overlay only offers the shorter main menu's height; without this the rows are squeezed.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .modifier(MacNoteMenuSurface())
+                    .offset(
+                        x: -(TemplateSubmenu.width + submenuGap),
+                        y: max(0, templateMenuFrame.minY - 8)
+                    )
+                }
+            }
+            .zIndex(1)
+            .onChange(of: parent.selectedTab) { _, _ in
+                showTemplateSubmenu = false
+                showExportSubmenu = false
+            }
+            .onDisappear {
+                showTemplateSubmenu = false
+                showExportSubmenu = false
+            }
+        }
+    }
+
+}

@@ -1,0 +1,266 @@
+//
+//  NoteDetailComponents.swift
+//  Jotley
+//
+//  Small UI components extracted from NoteDetailPlaceholderView+Body.swift
+//
+
+import SwiftUI
+import AppKit
+
+// MARK: - Spinning Tab Icon
+
+
+struct LocalMacAskNoteView: View {
+    @ObservedObject var note: Note
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @EnvironmentObject private var store: SharedPersistenceController
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var inputFocused: Bool
+    @State private var messages: [LocalChatMessage] = []
+    @State private var input = ""
+    @State private var preview = ""
+    @State private var error: String?
+    @State private var task: Task<Void, Never>?
+    @State private var generation: UUID?
+    @State private var showingClear = false
+    private var source: String {
+        let transcript = (note.transcription ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return transcript.isEmpty ? note.summary ?? "" : transcript
+    }
+    private var locale: Locale { Locale(identifier: UserDefaults.standard.string(forKey: "transcriptionLanguage") ?? "en-US") }
+    private var unavailable: String? {
+        LocalSummary.readiness(locale: locale)?.replacingOccurrences(of: "summaries", with: "Ask AI")
+    }
+    private var conversation: String { LocalNoteChat.conversationMarkdown(title: note.title, messages: messages) }
+    private var canSubmit: Bool { !showingClear && generation == nil && unavailable == nil }
+    private var canSend: Bool {
+        canSubmit && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                Text("Ask AI").font(.system(size: 20, weight: .semibold)).foregroundStyle(Color.themeTextPrimary)
+                Spacer()
+                Button("Copy Conversation", systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents(); NSPasteboard.general.setString(conversation, forType: .string)
+                }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
+                    .help("Copy Conversation").accessibilityIdentifier("askAICopyConversationButton")
+                ShareLink(item: conversation) { Label("Share Conversation", systemImage: "square.and.arrow.up") }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
+                    .help("Share Conversation").accessibilityIdentifier("askAIShareConversationButton")
+                Button("Clear Chat History", systemImage: "arrow.counterclockwise") { showingClear = true }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(JotleyGlassButtonStyle(keepsDisabledSurfaceVisible: true))
+                    .disabled(messages.isEmpty || generation != nil)
+                    .accessibilityIdentifier("askAIClearButton")
+                Button("Done") { dismiss() }
+                    .jotleyDismissButtonStyle()
+                    .accessibilityIdentifier("askAIDoneButton")
+            }.buttonStyle(JotleyGlassButtonStyle()).padding(16)
+            Divider()
+            VStack(spacing: 0) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 16) {
+                            if messages.isEmpty { welcome }
+                            ForEach(messages) { message in
+                                messageBubble(message).id(message.id)
+                            }
+                            if generation != nil {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if preview.isEmpty { ProgressView("Thinking on this device…").progressViewStyle(MacThemedCircularProgressStyle()) }
+                                    else { MacChatAnswerText(content: preview) }
+                                    Button("Stop Answer") { cancel() }.buttonStyle(JotleyGlassButtonStyle())
+                                        .accessibilityIdentifier("askAIStopButton")
+                                }.id("answer").padding().modifier(JotleyTranscriptCard())
+                            }
+                        }.padding()
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: messages.count) { _, _ in
+                        if let last = messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+                if let notice = error ?? unavailable {
+                    HStack(alignment: .top) {
+                        Image(systemName: "info.circle")
+                        Text(notice).font(.system(size: 13))
+                        if error != nil { Button("Dismiss") { error = nil }.buttonStyle(JotleyGlassButtonStyle()) }
+                    }.foregroundStyle(Color.themeTextSecondary).padding()
+                        .accessibilityIdentifier("askAIStatus")
+                }
+                Divider()
+                HStack(alignment: .center, spacing: 12) {
+                    TextField("Ask about this note…", text: $input, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .tint(Color.themePrimaryAccent)
+                        .accentColor(Color.themePrimaryAccent)
+                        .lineLimit(1...5).padding(12).frame(minHeight: 44)
+                        .modifier(JotleyAskComposerSurface(isFocused: inputFocused))
+                        .focused($inputFocused).disabled(generation != nil)
+                        .onKeyPress(keys: [.return, KeyEquivalent("\u{3}")], phases: .down) { press in
+                            let editor = NSApp.keyWindow?.firstResponder as? NSTextView
+                            // IME Return confirms composition before a question is sent.
+                            guard editor?.hasMarkedText() != true else { return .ignored }
+                            if !press.modifiers.isDisjoint(with: [.shift, .option]) {
+                                guard let editor else { return .ignored }
+                                editor.insertText("\n", replacementRange: editor.selectedRange())
+                                return .handled
+                            }
+                            send()
+                            return .handled
+                        }
+                        .accessibilityIdentifier("askAIQuestionField")
+                    Button(action: send) {
+                        Image(systemName: "arrow.up").font(.system(size: 20, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                    }.buttonStyle(JotleyGlassButtonStyle(circular: true, diameter: 44, keepsDisabledSurfaceVisible: true))
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .disabled(!canSend)
+                        .accessibilityLabel("Send Question").accessibilityIdentifier("askAISendButton")
+                }.padding()
+            }
+
+            .task {
+                guard let id = note.id else { error = "This note is unavailable."; return }
+                do { messages = try store.chatMessages(noteID: id) }
+                catch { self.error = error.localizedDescription }
+            }
+            .onDisappear { cancel() }
+            .onChange(of: scenePhase) { _, phase in if phase == .background { cancel() } }
+            .onReceive(NotificationCenter.default.publisher(for: .processTapRecordingStateChanged)) { _ in cancel() }
+            .tint(.themePrimaryAccent).observeThemeChanges()
+            .font(.system(size: 15))
+        }.frame(width: 580, height: 650)
+            .foregroundStyle(Color.themeTextPrimary)
+            .modifier(JotleyGlassPanel())
+            .preferredColorScheme(themeManager.effectiveColorScheme)
+            .allowsHitTesting(!showingClear)
+            .accessibilityHidden(showingClear)
+            .overlay { clearConfirmation }
+            .onChange(of: showingClear) { _, showing in if showing { inputFocused = false } }
+    }
+    @ViewBuilder private var clearConfirmation: some View {
+        if showingClear {
+            JotleyClearChatConfirmation(onCancel: { showingClear = false }, onClear: clearConversation)
+        }
+    }
+    private func clearConversation() {
+        showingClear = false
+        guard let id = note.id else { return }
+        do { try store.clearChat(noteID: id); messages = []; error = nil }
+        catch { self.error = error.localizedDescription }
+    }
+    private var welcome: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "bubble.left.and.bubble.right.fill").font(.system(size: 40)).foregroundStyle(Color.themePrimaryAccent)
+            Text("Ask about your note").font(.system(size: 24, weight: .bold)).foregroundStyle(Color.themeTextPrimary)
+            Text(note.title ?? "Untitled").font(.headline)
+            Text("Questions and answers are processed on this device using Apple Intelligence. No note content is sent to an AI service. Conversation history is saved with your notes and follows your optional iCloud setting.")
+                .font(.system(size: 15)).foregroundStyle(Color.themeTextSecondary)
+            if source.utf8.count > 2400 {
+                Text("For long notes, Ask AI selects relevant excerpts. Be specific about the topic you want to find.")
+                    .font(.system(size: 13)).foregroundStyle(Color.themeTextSecondary)
+            }
+            ForEach(["Summarize the key points", "What are the main topics?", "List any action items"], id: \.self) { suggestion in
+                Button(suggestion) { submit(suggestion, fromComposer: false) }
+                    .frame(minHeight: 44).buttonStyle(JotleyGlassButtonStyle()).disabled(!canSubmit)
+            }
+        }.padding(.vertical, 16)
+    }
+    private func messageBubble(_ message: LocalChatMessage) -> some View {
+        HStack {
+            if message.role == "user" { Spacer(minLength: 32) }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    Text(message.role == "user" ? "You" : "Jotley").font(.caption.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Text(message.timestamp, format: .dateTime.hour().minute())
+                        .font(.caption2.monospacedDigit())
+                }.foregroundStyle(Color.themeTextSecondary)
+                if message.role == "assistant" { MacChatAnswerText(content: message.content) }
+                else { Text(message.content).textSelection(.enabled).foregroundStyle(Color.themeTextPrimary) }
+            }.padding().modifier(JotleyTranscriptCard(accentOutline: message.role == "user"))
+            if message.role == "assistant" { Spacer(minLength: 32) }
+        }
+    }
+    private func send() {
+        submit(input, fromComposer: true)
+    }
+    private func submit(_ text: String, fromComposer: Bool) {
+        let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canSubmit, !question.isEmpty, let id = note.id, !note.isDeleted else { return }
+        let source = source, history = messages
+        do {
+            _ = try LocalNoteChat.prompt(source: source, question: question, history: history)
+            let message = LocalChatMessage(role: "user", content: question)
+            try store.saveChatMessage(message, noteID: id); messages.append(message)
+        } catch { self.error = error.localizedDescription; return }
+        if fromComposer { input = "" }
+        inputFocused = false; preview = ""; error = nil
+        let token = UUID(); generation = token
+        let locale = locale
+        JotleyEngagement.shared.beginProcessing()
+        task = Task { @MainActor in
+            defer { JotleyEngagement.shared.endProcessing() }
+            defer { if generation == token { generation = nil; task = nil; preview = "" } }
+            do {
+                let answer = try await LocalNoteChat.answer(source: source, question: question, history: history, locale: locale) { value in
+                    await MainActor.run { if generation == token { preview = value } }
+                }
+                try Task.checkCancellation()
+                guard generation == token, !note.isDeleted else { return }
+                let message = LocalChatMessage(role: "assistant", content: answer)
+                try store.saveChatMessage(message, noteID: id); messages.append(message)
+            } catch is CancellationError { }
+            catch {
+                if generation == token {
+                    self.error = error.localizedDescription
+                    if fromComposer { input = question }
+                }
+            }
+        }
+    }
+    private func cancel() {
+        task?.cancel(); task = nil; generation = nil; preview = ""
+    }
+}
+
+
+private struct MacChatAnswerText: View {
+    let content: String
+    var body: some View {
+        JotleyChatAnswerText(content: content, font: .system(size: 15))
+    }
+}
+
+
+/// AppKit's circular progress control can ignore a local tint. Draw the native
+/// activity symbol in the selected theme instead, retaining ProgressView labels.
+struct MacThemedCircularProgressStyle: ProgressViewStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            MacActivityIndicator()
+            configuration.label
+        }
+    }
+}
+
+private struct MacActivityIndicator: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        Image(systemName: "progress.indicator")
+            .font(.system(size: 14)).frame(width: 16, height: 16)
+            .foregroundStyle(themeManager.currentThemeColor.color)
+            .symbolEffect(.rotate, options: .repeating, isActive: !reduceMotion)
+            .accessibilityHidden(true)
+    }
+}

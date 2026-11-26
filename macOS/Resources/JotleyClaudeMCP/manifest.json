@@ -1,0 +1,36 @@
+{
+  "manifest_version": "0.3",
+  "name": "jotley",
+  "display_name": "Jotley",
+  "version": "1.0.0",
+  "description": "Read and work with your Jotley notes on this Mac.",
+  "long_description": "Connect Claude chat to the Jotley Mac app. Keep Jotley open with MCP access enabled. Jotley controls read-only or read-and-write access, including notes, tags, folders and custom summary templates. Connected agents may send retrieved text to their AI provider.",
+  "author": { "name": "Protomota, LLC", "url": "https://jotley.ai" },
+  "homepage": "https://jotley.ai",
+  "support": "https://jotley.ai",
+  "privacy_policies": ["https://jotley.ai/privacy#mcp"],
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.js"],
+      "env": {
+        "JOTLEY_MCP_URL": "http://127.0.0.1:17321/mcp",
+        "JOTLEY_MCP_TOKEN": "${user_config.access_token}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "compatibility": { "platforms": ["darwin"], "runtimes": { "node": ">=18.0.0" } },
+  "user_config": {
+    "access_token": {
+      "type": "string",
+      "title": "Jotley access token",
+      "description": "In Jotley, open Settings → Integrations → MCP and click Copy access token. Paste it here. Keep Jotley open while connected.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,408 @@
+import SwiftUI
+import CoreData
+import UIKit
+
+struct NotesListView: View {
+    let onSelectNote: (UUID) -> Void
+    let showsNewTranscriptionButton: Bool
+    let usesSplitView: Bool
+    var bottomContentInset: CGFloat = 0
+    @Binding var showingSettings: Bool
+    @Binding var selectedNoteId: UUID?
+    @Binding var showingTranscriptionModal: Bool
+    @Binding var columnVisibility: NavigationSplitViewVisibility
+
+    @EnvironmentObject var persistenceController: SharedPersistenceController
+    @EnvironmentObject var transcriptionManager: LiveTranscriptionManager
+    @ObservedObject var themeManager = ThemeManager.shared
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \Note.timestamp, ascending: false)],
+        predicate: SharedPersistenceController.activeNotesPredicate,
+        animation: .default
+    )
+    var notes: FetchedResults<Note>
+
+    @State var searchText = ""
+    @State var isSearchFocused = false
+    @State var showingTagFilter = false
+    @StateObject var filterState = FilterAndSortState()
+    @State var showingFolderManagement = false
+    @State var showingFolderDrawer = false
+    @State private var showingTrash = false
+    @Binding var newTranscriptionNote: Note?
+    @Environment(\.colorScheme) var colorScheme
+
+
+    var body: some View {
+        let isSearching = isSearchFocused || !searchText.isEmpty
+        ZStack {
+            VStack(spacing: 0) {
+                if usesIPadLayout && usesSplitView && columnVisibility != .detailOnly {
+                    // Keep the control out of the sidebar's system toolbar,
+                    // which adds its own glass treatment to custom buttons.
+                    JotleySidebarToggle(visibility: $columnVisibility)
+                        .frame(height: 54)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 10)
+                        .background(Color.themeBackground)
+                }
+                // Settings stays in the footer on every mobile layout.
+                HStack(spacing: 12) {
+                    // Search field
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(Color(white: 0.5))
+                        LocalSearchField(text: $searchText, focused: $isSearchFocused)
+                            .frame(height: 44)
+
+                        // Clear button
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(Color(white: 0.5))
+                            }
+                            .accessibilityIdentifier("clearSearchButton")
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(height: 44)
+                    .background(Color.themeContentBackground)
+                    .cornerRadius(10)
+
+                    // Cancel button — only while searching
+                    if isSearching {
+                        Button("Cancel") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                searchText = ""
+                                isSearchFocused = false
+                            }
+                        }
+                        .jotleyDismissButtonStyle()
+                        .accessibilityIdentifier("cancelSearchButton")
+                        .transition(.opacity.combined(with: .scale))
+                    }
+
+                    // Folder drawer button
+                    if !isSearching {
+                        Button(action: { showingFolderDrawer = true }) {
+                            Image(systemName: filterState.selectedFolder == .all ? "folder" : "folder.fill")
+                                .font(.system(size: 20, weight: .medium))
+                        }
+                        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
+                        .accessibilityLabel("Folders")
+                        .accessibilityIdentifier("notesListFolderDrawerButton")
+                        .transition(.opacity.combined(with: .scale))
+                    }
+
+                    // Filter & sort button
+                    if !isSearching {
+                        Button(action: { showingTagFilter = true }) {
+                            Image(systemName: filterState.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 20, weight: .medium))
+                        }
+                        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
+                        .accessibilityLabel("Filter and sort notes")
+                        .accessibilityIdentifier("notesListTagFilterButton")
+                        .transition(.opacity.combined(with: .scale))
+                        .sheet(isPresented: $showingTagFilter) {
+                            FilterAndSortPopoverView(
+                                state: filterState,
+                                allTags: getAllUniqueTags(),
+                                tagCounts: getTagCountsForVisibleResults(),
+                                onDone: { showingTagFilter = false }
+                            )
+                            .presentationDetents([.large])
+                            .presentationDragIndicator(.visible)
+                            .presentationBackground(Color.themeContentBackground)
+                        }
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: isSearching)
+                // Align the custom header with the unfolded iPhone's status row.
+                // The search, folder and filter controls move together.
+                .padding(.top, !showsNewTranscriptionButton && !usesIPadLayout ? 26 : 8)
+                .padding(.bottom, 12)
+                // The glyph has ten points inside its 44-point touch target.
+                // A smaller phone inset aligns it with the notes below.
+                .padding(.leading, usesIPadLayout ? 16 : 8)
+                .padding(.trailing, 16)
+                .background(Color.themeBackground)
+
+                // Combined folder + tag scope indicator (single scrollable row,
+                // folder pill first when present, then one pill per selected tag).
+                if filterState.selectedFolder != .all || !filterState.selectedTags.isEmpty {
+                    iOSCurrentScopeIndicator(
+                        filterState: filterState,
+                        onFolderTap: { showingFolderDrawer = true },
+                        onTagTap: { showingTagFilter = true }
+                    )
+                    .padding(.bottom, 8)
+                    .background(Color.themeBackground)
+                }
+
+                List {
+                    // Title (scrolls with list)
+                    Section {
+                        Text("Notes")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundColor(Color.themeTextPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 4)
+                            .accessibilityIdentifier("notesListTitle")
+                    }
+                    .listRowBackground(Color.themeBackground)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    if transcriptionManager.transcriptionState != .idle {
+                        Section {
+                            Button {
+                                showingTranscriptionModal = true
+                            } label: {
+                                ActiveTranscriptionJumpRowView(
+                                    recorder: transcriptionManager
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("activeRecordingJumpRow")
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 8, trailing: 16))
+                    }
+
+                    switch currentEmptyState {
+                    case .noSearchResults:
+                        Section {
+                            ContentUnavailableView {
+                                Label("No Results for \"\(searchText)\"", systemImage: "magnifyingglass")
+                            } description: {
+                                Text("Try searching with different keywords")
+                            }
+                            .foregroundColor(Color.themeTextPrimary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.vertical, 36)
+                        }
+                        .listRowBackground(Color.themeBackground)
+                        .listRowSeparator(.hidden)
+                    case .noNotesYet:
+                        Section {
+                            if usesSplitView {
+                                iOSNotesListEmptyStateView()
+                            } else {
+                                JotleyLibraryWelcome(canStart: transcriptionManager.canStart || transcriptionManager.isTranscribing,
+                                                     onStart: handleCreateNewNoteTapped)
+                                    .padding(.top, 34)
+                                    .accessibilityElement(children: .contain)
+                                    .accessibilityIdentifier("notesListEmptyState")
+                            }
+                        }
+                        .listRowBackground(Color.themeBackground)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    case .noNotesInFolder:
+                        Section {
+                            iOSNoNotesInFolderView()
+                        }
+                        .listRowBackground(Color.themeBackground)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    case .filtersHidingNotes:
+                        Section {
+                            iOSFiltersHidingNotesView(filterState: filterState)
+                        }
+                        .listRowBackground(Color.themeBackground)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    case .none:
+                        ForEach(groupedItems, id: \.0) { date, itemsInGroup in
+                        Section {
+                            if usesInlineDateHeaders {
+                                dateSectionHeader(date)
+                                    .listRowBackground(Color.themeBackground)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets())
+                            }
+                            ForEach(itemsInGroup) { item in
+                                switch item {
+                                case .note(let note):
+                                    let rowIsSelected = usesSplitView && note.id != nil && selectedNoteId == note.id
+                                    Button {
+                                        // A note synced from another device (or a legacy note) can
+                                        // arrive without an `id`. Guaranteeing one here is what makes
+                                        // the row openable — the old `if let note.id` silently dropped
+                                        // the tap, so the note looked unselectable.
+                                        let noteId = ensureStableNoteID(for: note)
+                                        onSelectNote(noteId)
+                                    } label: {
+                                        NoteRowView(note: note, isSelected: rowIsSelected)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityAddTraits(rowIsSelected ? .isSelected : [])
+                                    .accessibilityIdentifier("notesListNoteRow-\(note.id?.uuidString ?? "unknown")")
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 2, trailing: 16))
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            if let index = itemsInGroup.firstIndex(of: item) {
+                                                deleteItemsInGroup(at: IndexSet(integer: index), from: itemsInGroup)
+                                            }
+                                        } label: {
+                                            Label("Move to Trash", systemImage: "trash")
+                                        }
+                                        // Keep the destructive fill independent of the list's readable text tint.
+                                        .tint(.red)
+                                    }
+
+
+                                }
+                            }
+                        } header: {
+                            if !usesInlineDateHeaders {
+                                dateSectionHeader(date)
+                            }
+                        }
+                    }
+                }
+                Section {
+                    NotesTrashLink(showingTrash: $showingTrash)
+                }
+                .listRowBackground(Color.themeBackground)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
+            }
+            .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .contentMargins(.bottom, max(bottomContentInset, 84), for: .scrollContent)
+            .background(Color.themeBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            } // End of VStack
+
+            // Floating bottom controls
+            VStack {
+                Spacer()
+                HStack(alignment: .center) {
+                    settingsButton.padding(.leading, 20)
+                    Spacer()
+                    if showsNewTranscriptionButton {
+                        NotesNewTranscriptionButton(action: handleCreateNewNoteTapped)
+                            .padding(.trailing, 20)
+                    }
+                }
+                .padding(.bottom, usesIPadLayout ? MobileNoteFooterInsets.splitBottom : MobileNoteFooterInsets.phoneBottom)
+            }
+            // Match the phone capture control's window-bottom placement.
+            .ignoresSafeArea(.container, edges: usesIPadLayout ? [] : .bottom)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+        // The custom header occupies the status/toolbar row on the inner display.
+        // Otherwise the portrait drawer reserves that row again above the gear.
+        .ignoresSafeArea(.container, edges: usesSplitView && !usesIPadLayout ? .top : [])
+        // Apply to the sidebar root, including its custom header.
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showingTrash) {
+            NotesTrashView(store: persistenceController)
+        }
+        .sheet(isPresented: $showingFolderManagement) {
+            FolderManagementSheet()
+        }
+        .sheet(isPresented: $showingFolderDrawer) {
+            iOSFolderDrawer(filterState: filterState, showingFolderManagement: $showingFolderManagement,
+                            onDone: { showingFolderDrawer = false })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.themeBackground)
+        }
+        .observeThemeChanges()
+        .tint(.themeActionText)
+    }
+    // UIKit's pinned List section-header material can remain over earlier rows
+    // in Designed for iPad on Mac. Plain date rows avoid that material layer;
+    // keep native sticky headers on iPhone and iPad.
+    private var usesInlineDateHeaders: Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["JOTLEY_TEST_INLINE_NOTE_HEADERS"] == "1" { return true }
+        #endif
+        return ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
+    private func dateSectionHeader(_ date: Date) -> some View {
+        HStack {
+            Text(formatDateSectionHeader(date))
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(Color(white: 0.5))
+                .textCase(nil)
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.themeBackground)
+        .listRowInsets(EdgeInsets())
+    }
+
+    // Hardware idiom is intentional: a narrow iPad window still has window
+    // controls, even when its horizontal size class becomes compact.
+    private var usesIPadLayout: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+
+    private var settingsButton: some View {
+        Button(action: { showingSettings = true }) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 24, weight: .medium))
+            .frame(width: 44, height: 44)
+        }
+        .buttonStyle(JotleyGlassButtonStyle(circular: true, floatsOverContent: true))
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("notesListSettingsButton")
+    }
+
+    func ensureStableNoteID(for note: Note) -> UUID {
+        if let id = note.id { return id }
+        let id = UUID(); note.id = id; transcriptionManager.saveEdits(); return id
+    }
+}
+
+
+private struct LocalSearchField: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var focused: Bool
+    final class Field: UITextField {
+        override var intrinsicContentSize: CGSize {
+            let size = super.intrinsicContentSize
+            return CGSize(width: size.width, height: max(44, size.height))
+        }
+    }
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var owner: LocalSearchField
+        init(_ owner: LocalSearchField) { self.owner = owner }
+        @objc func changed(_ field: UITextField) { owner.text = field.text ?? "" }
+        func textFieldDidBeginEditing(_ field: UITextField) { if !owner.focused { owner.focused = true } }
+        func textFieldDidEndEditing(_ field: UITextField) { if owner.focused { owner.focused = false } }
+        func textFieldShouldReturn(_ field: UITextField) -> Bool { field.resignFirstResponder(); return true }
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> Field {
+        let field = Field()
+        field.placeholder = String(localized: "Search notes")
+        field.accessibilityIdentifier = "notesListSearchField"
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.returnKeyType = .search
+        field.autocorrectionType = .no
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return field
+    }
+    func updateUIView(_ field: Field, context: Context) {
+        context.coordinator.owner = self
+        if field.text != text { field.text = text }
+        field.textColor = UIColor(Color.themeTextPrimary)
+        if !focused && field.isFirstResponder { field.resignFirstResponder() }
+    }
+}

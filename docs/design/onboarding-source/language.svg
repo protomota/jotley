@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1280" width="1280" height="1280">
+  <defs>
+    <clipPath id="disc"><circle cx="560" cy="580" r="330"/></clipPath>
+    <path id="bubble" d="M610 600 L925 552 Q945 549 958 562 L1012 616 Q1024 628 1020 645 L982 822 Q979 835 970 844 L895 914 Q885 922 872 922 L640 922 L492 1012 L536 905 L486 870 Q474 860 478 846 L512 712 Q515 701 523 693 L590 628 Q598 619 610 600 Z"/>
+    <mask id="cut">
+      <rect width="1280" height="1280" fill="white"/>
+      <use href="#bubble" fill="black" stroke="black" stroke-width="56" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g mask="url(#cut)">
+    <circle cx="560" cy="580" r="330" fill="#E9DDFF"/>
+    <g clip-path="url(#disc)" fill="none" stroke="#7C3AED" stroke-width="22" stroke-linecap="round">
+      <ellipse cx="560" cy="580" rx="140" ry="330"/>
+      <line x1="560" y1="240" x2="560" y2="920"/>
+      <line x1="220" y1="580" x2="900" y2="580"/>
+      <path d="M262 430 Q560 476 858 430"/>
+      <path d="M262 730 Q560 684 858 730"/>
+    </g>
+    <circle cx="560" cy="580" r="319" fill="none" stroke="#7C3AED" stroke-width="22"/>
+  </g>
+  <use href="#bubble" fill="#7C3AED"/>
+  <g fill="#FFFFFF">
+    <rect x="615" y="728" width="44" height="96" rx="22"/>
+    <rect x="690" y="682" width="44" height="164" rx="22"/>
+    <rect x="765" y="642" width="44" height="206" rx="22"/>
+    <rect x="840" y="694" width="44" height="122" rx="22"/>
+  </g>
+</svg>

@@ -1,0 +1,174 @@
+import SwiftUI
+import AppKit
+
+extension NoteDetailPlaceholderView {
+    var contentWithAlerts: some View {
+        contentWithAlertsBase
+        .sheet(isPresented: $showingAskAI) {
+            LocalMacAskNoteView(note: note).environmentObject(persistenceController)
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isGeneratingThisSummary {
+                MacSummaryProgressFooter(progress: viewModel.summaryProgress) { viewModel.cancelInference() }
+            }
+        }
+        .onAppear(perform: handleOnAppear)
+        .onDisappear {
+            NotificationCenter.default.removeObserver(self, name: Notification.Name("JotVibeSaveCurrentNote"), object: nil)
+            // Clean up timers
+            summarySaveTimer?.invalidate()
+            summarySaveTimer = nil
+            transcriptSaveTimer?.invalidate()
+            transcriptSaveTimer = nil
+            // Only flush when the user was actively editing — an unconditional
+            // save here can race the SwiftUI binding update for editable*
+            // and overwrite real content with an empty @State buffer.
+            if isSummaryEditorFocused {
+                saveSummaryChanges()
+            }
+            if isTranscriptEditorFocused {
+                saveTranscriptChanges()
+            }
+        }
+        .onChange(of: viewModel.isTranscriptionPaused, handleTranscriptionPausedChanged)
+        .onChange(of: viewModel.recorder.isRecording, handleRecordingChanged)
+        .onChange(of: isTranscriptEditorFocused, handleTranscriptFocusChanged)
+        .onChange(of: note.objectID, handleNoteChanged)
+        .onChange(of: selectedTab, handleTabChanged)
+        .onChange(of: note.summary, handleSummaryChanged)
+        .onChange(of: note.title, handleTitleChanged)
+        .onChange(of: note.transcription) { oldValue, newValue in
+            guard !isTranscriptEditorFocused else { return }
+
+            // Guard against a CloudKit store-trump merge echoing the import-time
+            // "Loading transcript..." sentinel back over a real transcript while
+            // the auto-summary is still running. When that happens for THIS note
+            // (owner id matches) and we still hold real content, refuse the
+            // downgrade and re-assert the real transcript so Core Data — and the
+            // next CloudKit export — converge back to the truth. Without this the
+            // transcript tab snaps back to the import spinner and the real
+            // transcript is lost: the reported transcript persistence regression.
+            if Note.isTranscriptionLoadingPlaceholder(newValue),
+               editableTranscriptNoteID == note.objectID,
+               !Note.isTranscriptionLoadingPlaceholder(editableTranscript),
+               !editableTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+
+                let realTranscript = editableTranscript
+                if note.transcription != realTranscript {
+                    note.transcription = realTranscript
+                    if note.transcriptUtterances.isEmpty {
+                        note.setTranscriptUtterances(TranscriptUtterance.fallbackUtterances(from: realTranscript))
+                    }
+                    do {
+                        try persistenceController.save()
+                    } catch {
+
+                    }
+                }
+                return
+            }
+
+            // If viewing raw transcript or cleaned is not preferred/available, update editableTranscript.
+            if editableTranscript == savedTranscript {
+                editableTranscript = newValue ?? ""
+                savedTranscript = editableTranscript
+                editableTranscriptNoteID = note.objectID
+            }
+
+        }
+        .onChange(of: isSummaryEditorFocused, handleSummaryFocusChanged)
+        .onChange(of: editableSummary) { oldValue, newValue in
+            if oldValue != newValue {
+
+                scheduleSummarySave()
+            }
+        }
+        .onChange(of: editableTranscript) { oldValue, newValue in
+            if oldValue != newValue {
+
+                scheduleTranscriptSave()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            // When window loses focus, save any pending changes
+            if isSummaryEditorFocused {
+
+                saveSummaryChanges()
+            }
+            if isTranscriptEditorFocused {
+
+                saveTranscriptChanges()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NoteTagsUpdated"))) { notification in
+            // Refresh tags when they are updated asynchronously.
+            if let userInfo = notification.userInfo,
+               let noteID = userInfo["noteID"] as? NSManagedObjectID,
+               noteID == note.objectID {
+
+                currentTags = note.tagNames
+                viewRefreshID = UUID() // Force view refresh
+            }
+        }
+    }
+
+    var contentWithAlertsBase: some View {
+        bodyContentView
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.themeContentBackground.ignoresSafeArea())
+        .coordinateSpace(name: "contentView")
+
+        .overlay {
+            ZStack(alignment: .topLeading) {
+
+                if showActionsPopover {
+                    CustomMoreMenuOverlay(
+                        isPresented: $showActionsPopover,
+                        content: actionPopoverContentView
+                    )
+                }
+            }
+        }
+        .alert(obsidianAlertTitle, isPresented: $showObsidianSaveAlert) {
+            Button("OK", role: .cancel) {}
+                .frame(minWidth: 70)
+        } message: {
+            Text(obsidianAlertMessage)
+        }
+
+    }
+}
+
+
+/// Center the status itself over Cancel, rather than expanding a leading-aligned row.
+struct MacSummaryProgressFooter: View {
+    let progress: LocalSummaryProgress
+    let cancel: () -> Void
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                ProgressView().progressViewStyle(MacThemedCircularProgressStyle()).controlSize(.small)
+                Text(progress.title).font(.system(size: 15, weight: .semibold))
+            }.frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("noteDetailSummaryProgress")
+            if let detail = progress.detail {
+                Text(detail).font(.system(size: 13)).foregroundStyle(Color.themeTextSecondary)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            if let fraction = progress.fraction { ProgressView(value: fraction).tint(.themePrimaryAccent) }
+            Button(action: cancel) {
+                Label {
+                    Text("Cancel Generation").modifier(JotleyNoteFooterTextStyle())
+                } icon: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+            }.jotleyDismissButtonStyle()
+                .keyboardShortcut(.cancelAction).accessibilityIdentifier("noteDetailCancelGenerationButton")
+        }.foregroundStyle(Color.themeTextPrimary)
+            .frame(maxWidth: 480)
+            .padding(.top, 12)
+            .padding([.horizontal, .bottom], MacNoteFooterPlacement.edgeInset)
+            .frame(maxWidth: .infinity)
+            .background(Color.themeBackground)
+    }
+}
