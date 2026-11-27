@@ -80,8 +80,8 @@ extension SettingsView {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Need a hand?").font(.headline)
-                    Text("Try the quick fixes, ask the community or report a bug. Help is free.").font(.callout).foregroundStyle(.secondary)
-                    ProtomotaAppHelpLink()
+                    Text("Report a bug or ask for help. Help is free. A community is coming. Check back at projectatom.ai").font(.callout).foregroundStyle(.secondary)
+                    JotleyAppHelpLink()
                 }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
 

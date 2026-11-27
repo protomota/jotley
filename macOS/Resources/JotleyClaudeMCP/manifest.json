@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "description": "Read and work with your Jotley notes on this Mac.",
   "long_description": "Connect Claude chat to the Jotley Mac app. Keep Jotley open with MCP access enabled. Jotley controls read-only or read-and-write access, including notes, tags, folders and custom summary templates. Connected agents may send retrieved text to their AI provider.",
-  "author": { "name": "Protomota, LLC", "url": "https://jotley.ai" },
+  "author": { "name": "Project ATOM", "url": "https://projectatom.ai" },
   "homepage": "https://jotley.ai",
   "support": "https://jotley.ai",
   "privacy_policies": ["https://jotley.ai/privacy#mcp"],

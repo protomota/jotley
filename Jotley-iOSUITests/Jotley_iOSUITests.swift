@@ -2511,7 +2511,7 @@ final class Jotley_iOSUITests: XCTestCase {
         for _ in 0..<24 where !action.isHittable {
             let above = action.exists
                 ? action.frame.midY < form.frame.midY
-                : identifier == "settingsProtomotaAppHelp" && feedback.isHittable
+                : identifier == "settingsAppHelp" && feedback.isHittable
             let start = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.37 : 0.73))
             let end = form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.73 : 0.37))
             start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
@@ -2627,17 +2627,37 @@ final class Jotley_iOSUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settingsShareJotley"].isHittable)
     }
 
-    @MainActor func testSettingsShowsProtomotaAppsLink() {
+    @MainActor func testSettingsShowsAtomAppsLink() {
         let app = XCUIApplication()
         app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Settings preview","folder":"Work","tags":[],"transcript":"Sample transcript.","summary":""}] "#
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         openInlineSupportSettings(app)
-        let link = app.staticTexts["More Free Apps by Protomota"]
+        let link = app.staticTexts["More Free Apps from Project ATOM"]
         let form = app.descendants(matching: .any)["settingsForm"].firstMatch
         for _ in 0..<3 where !link.isHittable { form.swipeUp() }
         XCTAssertTrue(link.isHittable, app.debugDescription)
         attachSupportReview("Jotley Settings - More Free Apps")
+    }
+
+    @MainActor func testSettingsAboutShowsProjectAtomCredit() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["JOTLEY_SCREENSHOT_DATA"] = #" [{"title":"Settings preview","folder":"Work","tags":[],"transcript":"Sample transcript.","summary":""}] "#
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        openInlineSupportSettings(app)
+        let credit = app.descendants(matching: .any)["settingsAtomProduct"].firstMatch
+        let form = app.descendants(matching: .any)["settingsForm"].firstMatch
+        for _ in 0..<8 where !credit.isHittable { form.swipeUp() }
+        form.swipeUp()
+        XCTAssertTrue(credit.isHittable, app.debugDescription)
+        XCTAssertTrue(app.staticTexts["A Project ATOM project"].exists)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "Protomota")).firstMatch.exists)
+        let screenshot = XCUIScreen.main.screenshot()
+        if let path = ProcessInfo.processInfo.environment["JOTLEY_CREDIT_SCREENSHOT"] {
+            try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
+        }
+        attachSupportReview("Jotley Settings - Project ATOM credit")
     }
 
     @MainActor func testActualSummaryCompletionDoesNotInterruptWithCustomReviewMenu() throws {

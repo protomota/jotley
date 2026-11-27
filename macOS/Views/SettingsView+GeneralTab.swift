@@ -137,7 +137,7 @@ extension SettingsView {
                     }
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Support").font(.headline).id(Self.supportSectionID)
-                        ProtomotaAppHelpLink()
+                        JotleyAppHelpLink()
                     }
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Support Jotley").font(.headline)
@@ -147,6 +147,7 @@ extension SettingsView {
                         Text("About")
                             .font(.headline)
                         JotleyAboutLogo()
+                        AtomProductPill()
 
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {

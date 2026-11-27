@@ -181,11 +181,12 @@ struct SettingsView: View {
             Section("Backup & Restore") { LibraryBackupControls() }
             Section("Notifications") { JotleySummaryNotificationSettings() }
             Section("Support") {
-                ProtomotaAppHelpLink()
+                JotleyAppHelpLink()
             }
             Section("Support Jotley") { JotleySupportLinks() }
             Section("About") {
                 JotleyAboutLogo()
+                AtomProductPill()
                 Button { onShowWelcome() } label: {
                     MobileActionLabel("Welcome to Jotley", systemImage: "sparkles")
                 }.accessibilityIdentifier("settingsWelcomeJotley")

@@ -144,6 +144,11 @@ private struct MacSupportPreviewRoot: View {
             previewSupportCard()
             return
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--settings-about-snapshot"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            snapshotSettingsAbout(to: CommandLine.arguments[index + 1])
+            return
+        }
         Task { @MainActor in
             await runChecks()
             exit(0)
@@ -1147,6 +1152,37 @@ private struct MacSupportPreviewRoot: View {
         app.activate(ignoringOtherApps: true)
         withExtendedLifetime(delegate) { app.run() }
     }
+    /// Renders the real Settings view offscreen (works while the Mac is locked) and saves the
+    /// Support and About sections to its container's temporary folder. Launch with JOTLEY_SCREENSHOT_DATA and JOTLEY_SCREENSHOT_SETTINGS=support.
+    @MainActor private static func snapshotSettingsAbout(to path: String) {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        ThemeManager.shared.setAppearanceMode(.light)
+        app.appearance = NSAppearance(named: .aqua)
+        guard let base = LocalAppModel.shared.store,
+              let store = try? SharedPersistenceController(inMemory: true, model: base.container.managedObjectModel) else {
+            fputs("FAIL: settings store unavailable\n", stderr); exit(1)
+        }
+        let size = NSSize(width: 1160, height: 780)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+        let host = NSHostingView(rootView: SettingsView().environmentObject(store)
+            .environment(\.managedObjectContext, store.context))
+        window.contentView = host
+        window.orderBack(nil)
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            host.layoutSubtreeIfNeeded()
+            guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { exit(1) }
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            // The sandboxed harness can only write inside its container; print where the file landed.
+            let output = FileManager.default.temporaryDirectory.appending(path: URL(fileURLWithPath: path).lastPathComponent)
+            do { try bitmap.representation(using: .png, properties: [:])?.write(to: output) }
+            catch { fputs("FAIL: \(error.localizedDescription)\n", stderr); exit(1) }
+            print("PASS: wrote \(output.path)")
+            exit(0)
+        }
+        app.run()
+    }
     @MainActor private static func verifyTranscriptRevisions(note: Note) throws {
         guard let context = note.managedObjectContext else { throw LocalError.message("Missing fixture context.") }
         for revision in 0..<100 {
@@ -1438,11 +1474,11 @@ final class JotleyLocalUITests: XCTestCase {
         let mcp = app.buttons["settingsMCPSection"]
         XCTAssertTrue(mcp.waitForExistence(timeout: 10))
         mcp.click()
-        let help = app.buttons["settingsProtomotaAppHelp"]
+        let help = app.buttons["settingsAppHelp"]
         if !help.isHittable { app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -430) }
         XCTAssertTrue(help.isHittable)
-        // Every build opens the free protomota.com/support?app=jotley page.
-        XCTAssertTrue(help.label.contains("Get App Help"))
+        // Every build opens the free help page on projectatom.ai.
+        XCTAssertTrue(help.label.contains("Send Feedback"))
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "$")).firstMatch.exists)
         capture(app.windows.firstMatch, named: "mac-free-app-help")
     }

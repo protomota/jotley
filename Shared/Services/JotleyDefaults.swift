@@ -432,6 +432,38 @@ struct JotleyAboutLogo: View {
     }
 }
 
+/// The in-app credit: "A Project ATOM project" with the atom lockup, linking to projectatom.ai.
+struct AtomProductPill: View {
+    var body: some View {
+        Link(destination: URL(string: "https://projectatom.ai/")!) {
+            HStack(spacing: 8) {
+                Image("AtomCredit")
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 46, height: 20)
+                    .accessibilityHidden(true)
+                Text("A Project ATOM project")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.medium))
+                    .accessibilityHidden(true)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 16)
+            .frame(minHeight: 44)
+            .foregroundStyle(.white)
+            .background(.black, in: Capsule())
+            .overlay { Capsule().strokeBorder(.white.opacity(0.14)) }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("Visit projectatom.ai")
+        .accessibilityIdentifier("settingsAtomProduct")
+    }
+}
+
 struct JotleyLibraryWelcome: View {
     var hasNotes = false
     var canStart = true
@@ -799,8 +831,8 @@ struct JotleyClearChatConfirmation: View {
     static let legacyStoppedKey = "jotleySupportAutomaticRemindersStopped.v1"
     static let legacyPresentedCountKey = "jotleySupportPresentedSummaryCount.v1"
     static let website = URL(string: "https://jotley.ai")!
-    static let protomotaAppsURL = URL(string: "https://protomota.com/apps")!
-    static let feedbackURL = URL(string: "https://protomota.com/apps?app=jotley#feedback")!
+    static let atomAppsURL = URL(string: "https://projectatom.ai/apps")!
+    static let feedbackURL = URL(string: "https://projectatom.ai/apps?app=jotley#feedback")!
     enum Action: String, CaseIterable { case review, share, feedback, support, apps }
     /// Every one of these needs a checkmark before the weekly reminder stops.
     static let reminderActions: [Action] = [.feedback, .share, .support, .apps]
@@ -1043,11 +1075,11 @@ struct JotleySupportView: View {
                         }
                         .simultaneousGesture(TapGesture().onEnded { engagement.recordClick(.share) })
                         .buttonStyle(.plain).accessibilityIdentifier("jotleySupportShare")
-                        Button { visit(.support, url: JotleySupportURLs.help) } label: {
-                            actionLabel("Get App Help", subtitle: "Quick fixes, the community and bug reports", icon: "lifepreserver", kind: .support)
+                        Button { visit(.support, url: JotleySupportURLs.community) } label: {
+                            actionLabel("Community Coming Soon", subtitle: "Check back at projectatom.ai", icon: "person.2", kind: .support)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportHelp")
-                        Button { visit(.apps, url: JotleyEngagement.protomotaAppsURL) } label: {
-                            actionLabel("More Free Apps by Protomota", subtitle: "Explore more free apps from our studio", icon: "square.grid.2x2", kind: .apps)
+                        Button { visit(.apps, url: JotleyEngagement.atomAppsURL) } label: {
+                            actionLabel("More Free Apps from Project ATOM", subtitle: "Explore more free apps from our studio", icon: "square.grid.2x2", kind: .apps)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportApps")
                     }
                 }
@@ -1104,12 +1136,12 @@ struct JotleySupportView: View {
                                       icon: "square.and.arrow.up", kind: .share)
                         }.buttonStyle(.plain).background(JotleySupportShareAnchor(view: shareAnchor))
                             .accessibilityIdentifier("jotleySupportShare")
-                        Button { visit(.support, url: JotleySupportURLs.help) } label: {
-                            macAction("Get App Help", detail: "Quick fixes, the community and bug reports",
-                                      icon: "lifepreserver", kind: .support)
+                        Button { visit(.support, url: JotleySupportURLs.community) } label: {
+                            macAction("Community Coming Soon", detail: "Check back at projectatom.ai",
+                                      icon: "person.2", kind: .support)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportHelp")
-                        Button { visit(.apps, url: JotleyEngagement.protomotaAppsURL) } label: {
-                            macAction("More Free Apps by Protomota", detail: "Explore more free apps from our studio",
+                        Button { visit(.apps, url: JotleyEngagement.atomAppsURL) } label: {
+                            macAction("More Free Apps from Project ATOM", detail: "Explore more free apps from our studio",
                                       icon: "square.grid.2x2", kind: .apps)
                         }.buttonStyle(.plain).accessibilityIdentifier("jotleySupportApps")
                     }
@@ -1331,20 +1363,21 @@ private struct JotleySupportShareAnchor: NSViewRepresentable {
 #endif
 
 enum JotleySupportURLs {
-    static let help = URL(string: "https://protomota.com/support?app=jotley")!
+    static let help = URL(string: "https://projectatom.ai/apps?app=jotley#feedback")!
+    static let community = URL(string: "https://projectatom.ai/")!
 }
 
-struct ProtomotaAppHelpLink: View {
+struct JotleyAppHelpLink: View {
     @Environment(\.openURL) private var openURL
     var body: some View {
         Button {
             JotleyEngagement.shared.recordClick(.support)
             openURL(JotleySupportURLs.help)
         } label: {
-            JotleyAccentIconLabel(title: "Get App Help", systemImage: "lifepreserver")
+            JotleyAccentIconLabel(title: "Send Feedback", systemImage: "bubble.left.and.bubble.right")
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("settingsProtomotaAppHelp")
+        .accessibilityIdentifier("settingsAppHelp")
     }
 }
 
@@ -1377,12 +1410,12 @@ struct JotleySupportLinks: View {
             .frame(minHeight: 44).accessibilityIdentifier("settingsSupportJotleyCard")
             Button {
                 JotleyEngagement.shared.recordClick(.apps)
-                openURL(JotleyEngagement.protomotaAppsURL)
+                openURL(JotleyEngagement.atomAppsURL)
             } label: {
-                JotleyAccentIconLabel(title: "More Free Apps by Protomota", systemImage: "square.grid.2x2")
+                JotleyAccentIconLabel(title: "More Free Apps from Project ATOM", systemImage: "square.grid.2x2")
             }
             .frame(minHeight: 44)
-            .accessibilityIdentifier("settingsProtomotaApps")
+            .accessibilityIdentifier("settingsAtomApps")
         }
         .buttonStyle(.plain)
         #if os(iOS)
@@ -1411,10 +1444,10 @@ struct JotleySupportLinks: View {
                 supportRow("Send Feedback", systemImage: "bubble.left.and.bubble.right")
             }
             .accessibilityIdentifier("settingsFeedbackJotley")
-            Button { visit(.apps, url: JotleyEngagement.protomotaAppsURL) } label: {
-                supportRow("More Free Apps by Protomota", systemImage: "square.grid.2x2")
+            Button { visit(.apps, url: JotleyEngagement.atomAppsURL) } label: {
+                supportRow("More Free Apps from Project ATOM", systemImage: "square.grid.2x2")
             }
-            .accessibilityIdentifier("settingsProtomotaApps")
+            .accessibilityIdentifier("settingsAtomApps")
             Button { showingSupport = true } label: {
                 supportRow("More Information & Support", systemImage: "info.circle")
             }
@@ -1773,7 +1806,7 @@ struct JotleyOnboardingView: View {
             }
             switch page {
             case let value where value == supportStep:
-                Text("Enjoying Jotley? Share it with a friend or tell us what you think on Protomota.")
+                Text("Enjoying Jotley? Share it with a friend or tell us what you think on projectatom.ai.")
                     .font(.callout).foregroundStyle(muted).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: 10) {
                     ShareLink(item: JotleyEngagement.website) {

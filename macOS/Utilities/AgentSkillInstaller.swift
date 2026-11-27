@@ -1,4 +1,4 @@
-// Shared Protomota agent skill installer. Keep this file identical in every Protomota Mac app
+// Shared agent skill installer. Keep this file identical in every one of our Mac apps
 // (Inkspring, Glimmer, Jotley, Textley, OpenTalon); only the bundled SKILL.md differs.
 import Foundation
 

@@ -2085,7 +2085,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Protomota, LLC. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "A Project ATOM project.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2129,7 +2129,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = macOS/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Protomota, LLC. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "A Project ATOM project.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Jotley uses your microphone for live, on-device transcription. No audio files are saved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

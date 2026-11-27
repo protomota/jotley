@@ -2,14 +2,14 @@
 name: jotley-mcp
 description: Install and use the Jotley MCP server, the voice notes and transcription app for Mac, from Claude Code, Codex or Claude chat. Use when someone wants to connect Jotley to their agent, asks why Jotley tools are missing, or asks to find, read, summarize, edit, tag, file, duplicate or delete their Jotley notes, meeting notes or transcripts.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Jotley MCP
 
-Jotley is a voice notes and transcription app by Protomota. Its Mac app includes an
+Jotley is a voice notes and transcription app, a Project ATOM project. Its Mac app includes an
 optional local MCP server that works with the library open in the app, including
-notes synced through iCloud. Current status and setup: https://protomota.com/mcp#jotley
+notes synced through iCloud. Current status and setup: https://jotley.ai/mcp
 
 ## 1. Check the connection
 

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Settings block that installs Jotley's agent skill beside the MCP connection steps.
-/// Shared Protomota layout; the sandboxed app asks once for each agent folder.
+/// Shared layout; the sandboxed app asks once for each agent folder.
 struct AgentSkillSection: View {
     private let installer = AgentSkillInstaller(app: "Jotley", skillID: "jotley-mcp")
     @State private var statuses: [AgentSkillInstaller.Status] = []
