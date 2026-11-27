@@ -1,6 +1,6 @@
 # Credits and source provenance
 
-Jotley's original application code, documentation, designs and artwork are open source under the [MIT license](../LICENSE). The owner, Protomota, confirmed rights to distribute the original Jotley material. User-created notes, transcripts, summaries and recordings are not restricted by this source license.
+Jotley's original application code, documentation, designs and artwork are open source and dedicated to the public domain under [The Unlicense](../LICENSE). The owner, Protomota, confirmed rights to distribute the original Jotley material. User-created notes, transcripts, summaries and recordings are not restricted by this source license.
 
 Third-party material retains its own license; it is not relicensed by Jotley.
 

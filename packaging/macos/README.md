@@ -33,4 +33,4 @@ Use Python 3.12 or newer. Choose an output path that does not exist. The app mus
 - [dmgbuild upstream](https://github.com/dmgbuild/dmgbuild): disk image construction without scripting Finder.
 - [DMGKit's installer design example](https://dmgkit.app/blog/how-to-custom-design-a-macos-app-installer.html): familiar app-on-left, Applications-on-right installation flow. No external artwork was copied.
 
-The Python packaging dependencies are build tools and are not bundled into the app. Jotley's original artwork and scripts are covered by the repository's MIT license; existing application dependency notices remain unchanged.
+The Python packaging dependencies are build tools and are not bundled into the app. Jotley's original artwork and scripts are covered by the repository's Unlicense (public domain) dedication; existing application dependency notices remain unchanged.

@@ -2,7 +2,7 @@
 
 <p align="center"><strong>Turn conversations into clear, useful notes.</strong><br>Free native apps for Mac, iPhone and iPad. Powered by on-device Apple Intelligence.</p>
 
-<p align="center"><a href="https://jotley.ai/download"><strong>Download for Mac</strong></a> · <a href="#build-it-yourself">Build it yourself</a> · <a href="https://jotley.ai">Visit Jotley</a> · <a href="LICENSE">MIT license</a></p>
+<p align="center"><a href="https://jotley.ai/download"><strong>Download for Mac</strong></a> · <a href="#build-it-yourself">Build it yourself</a> · <a href="https://jotley.ai">Visit Jotley</a> · <a href="LICENSE">public domain (Unlicense)</a></p>
 
 ---
 
@@ -94,13 +94,13 @@ Choose **Jotley** for Mac or **Jotley-iOS** for iPhone/iPad. Local builds use se
 
 Use Jotley for personal work, school or paid work. Your notes, transcripts and summaries are yours.
 
-Jotley's source is open under the [MIT license](LICENSE). Use it, change it, ship it, sell it. Third-party code, fonts and dependencies keep their own terms.
+Jotley's source is open under the [public domain (Unlicense)](LICENSE). Use it, change it, ship it, sell it. Third-party code, fonts and dependencies keep their own terms.
 
 ## Made by Protomota. Supported by people.
 
 If Jotley helps you, a **rating and review** on the [App Store](https://apps.apple.com/us/app/jotley/id6746770199) helps other people find it. Sharing the app and sending feedback help us improve it. All features are free, and [app help](https://protomota.com/support?app=jotley) is free too.
 
-[Website](https://jotley.ai) · [Send feedback](https://protomota.com/apps?app=jotley#feedback) · [MIT license](LICENSE)
+[Website](https://jotley.ai) · [Send feedback](https://protomota.com/apps?app=jotley#feedback) · [public domain (Unlicense)](LICENSE)
 
 ---
 
@@ -108,7 +108,7 @@ If Jotley helps you, a **rating and review** on the [App Store](https://apps.app
   <a href="https://protomota.com"><img src="docs/readme/protomota-logo.png" width="40" height="40" alt="Protomota"></a>
 </p>
 
-<p align="center"><strong>Made by <a href="https://protomota.com">Protomota</a>.</strong> Free apps, open source under MIT.</p>
+<p align="center"><strong>Made by <a href="https://protomota.com">Protomota</a>.</strong> Free apps, open source and public domain (Unlicense).</p>
 
 <p align="center">
   <a href="https://opentalon.ai">OpenTalon</a> ·
